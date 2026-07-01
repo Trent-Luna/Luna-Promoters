@@ -1,5 +1,6 @@
 export const ADMIN_NAV = [
   { href: '/admin', label: 'Overview' },
+  { href: '/admin/mylink', label: 'My Link' },
   { href: '/admin/summary', label: 'Weekly Summary' },
   { href: '/admin/promoters', label: 'Promoters' },
   { href: '/admin/guestlists', label: 'Guestlists' },
@@ -9,5 +10,4 @@ export const ADMIN_NAV = [
   { href: '/admin/leaderboards', label: 'Leaderboards' },
   { href: '/admin/tiers', label: 'Tiers' },
   { href: '/admin/exports', label: 'Exports' },
-  { href: '/admin/mylink', label: 'My Link' },
 ]

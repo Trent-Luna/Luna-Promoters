@@ -16,7 +16,7 @@ export default async function MyLink() {
   if (!hasRole(s, 'admin', 'venue_manager')) redirect('/dashboard')
 
   const supabase = await createClient()
-  const { data } = await supabase.rpc('get_my_link')
+  const { data, error } = await supabase.rpc('get_my_link')
   const code = data?.promoter_code as string | undefined
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
   const link = code ? `${site}/p/${code}` : ''
@@ -24,12 +24,21 @@ export default async function MyLink() {
   return (
     <AppShell nav={navForRoles(s.roles)} current="/admin/mylink" title="My guestlist link">
       <p className="text-luna-muted text-sm mb-5 max-w-2xl">
-        Share your personal link or QR. Anyone who registers through it — or who you add manually —
+        Share your personal link or QR. Anyone who registers through it — or whom you add manually —
         counts toward your numbers below and on the leaderboard.
       </p>
 
-      {!code ? (
-        <div className="card p-6 text-luna-muted">Setting up your link… refresh in a moment.</div>
+      {error ? (
+        <div className="card p-6 space-y-2">
+          <p className="font-semibold text-red-400">Couldn&apos;t load your link.</p>
+          <p className="text-sm text-luna-muted">
+            The database update for this feature may not be applied yet. Ask your admin to run the
+            latest Supabase migration (0015), then refresh.
+          </p>
+          <p className="text-xs text-luna-muted/70">Details: {error.message}</p>
+        </div>
+      ) : !code ? (
+        <div className="card p-6 text-luna-muted">Preparing your link…</div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-5">
           <div className="card p-6 lg:col-span-2">
