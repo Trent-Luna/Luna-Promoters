@@ -41,6 +41,7 @@ export function StaffManager({ venues, staff }: { venues: Venue[]; staff: Staff[
       <form ref={formRef} action={submit} className="card p-5 space-y-3 h-fit lg:col-span-1">
         <h2 className="font-bold">Add a staff account</h2>
         <p className="text-xs text-luna-muted">They log in at the normal login page and are taken straight to their screen.</p>
+        <div><label className="label">Full name</label><input name="full_name" required className="input" placeholder="Jane Smith" /></div>
         <div><label className="label">Email</label><input name="email" type="email" required className="input" placeholder="name@lunagroup.com.au" /></div>
         <div><label className="label">Temporary password</label><input name="password" required minLength={6} className="input" placeholder="6+ characters" /></div>
         <div><label className="label">Role</label>

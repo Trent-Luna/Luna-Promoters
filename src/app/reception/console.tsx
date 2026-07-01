@@ -9,7 +9,7 @@ interface Row {
   id: string; status: string; qr_token: string
   first_name: string; last_name: string; mobile: string; email: string | null
   promoter_name: string; promoter_code: string
-  checked_in_at: string | null; notes: string | null
+  checked_in_at: string | null; notes: string | null; special_occasion: string | null
 }
 
 export function ReceptionConsole({ venues }: { venues: Venue[] }) {
@@ -27,10 +27,8 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
     setToast({ kind, msg }); setTimeout(() => setToast(null), 3500)
   }
 
-  // load events for venue
   useEffect(() => {
     if (!venueId) return
-    const today = new Date().toISOString().slice(0, 10)
     supabase.from('events').select('id,name,event_date,start_time')
       .eq('venue_id', venueId).eq('active', true)
       .gte('event_date', new Date(Date.now() - 864e5).toISOString().slice(0, 10))
@@ -45,7 +43,7 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
     setLoading(true)
     const { data } = await supabase
       .from('guest_registrations')
-      .select('id,status,qr_token,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes)')
+      .select('id,status,qr_token,special_occasion,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes)')
       .eq('event_id', eventId).order('created_at', { ascending: false })
     const mapped: Row[] = (data ?? []).map((r: any) => ({
       id: r.id, status: r.status, qr_token: r.qr_token,
@@ -53,6 +51,7 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
       mobile: r.guests?.mobile ?? '', email: r.guests?.email ?? null,
       promoter_name: r.promoters?.full_name ?? '', promoter_code: r.promoters?.promoter_code ?? '',
       checked_in_at: r.check_ins?.[0]?.checked_in_at ?? r.check_ins?.checked_in_at ?? null,
+      special_occasion: r.special_occasion ?? null,
       notes: r.check_ins?.[0]?.notes ?? null,
     }))
     setRows(mapped); setLoading(false)
@@ -60,7 +59,6 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
 
   useEffect(() => { load() }, [load])
 
-  // realtime: refresh on any check-in / registration change for this event
   useEffect(() => {
     if (!eventId) return
     const ch = supabase.channel(`door-${eventId}`)
@@ -123,7 +121,6 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
 
   return (
     <div className="space-y-5">
-      {/* selectors */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="label">Venue</label>
@@ -140,14 +137,12 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
         </div>
       </div>
 
-      {/* stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="stat"><div className="stat-num">{stats.registered}</div><div className="stat-lbl">Registered</div></div>
         <div className="stat"><div className="stat-num text-emerald-400">{stats.checked}</div><div className="stat-lbl">Checked in</div></div>
         <div className="stat"><div className="stat-num text-luna-gold">{stats.remaining}</div><div className="stat-lbl">Remaining</div></div>
       </div>
 
-      {/* search + scan */}
       <div className="flex gap-3">
         <input className="input flex-1 text-lg" placeholder="Search name, phone, email or promoter…"
           value={q} onChange={e => setQ(e.target.value)} autoFocus />
@@ -166,7 +161,6 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
         </div>
       )}
 
-      {/* latest check-ins */}
       {latest.length > 0 && (
         <div className="card p-4">
           <p className="text-xs uppercase tracking-wide text-luna-muted mb-2">Latest check-ins</p>
@@ -180,14 +174,16 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
         </div>
       )}
 
-      {/* guest list */}
       <div className="space-y-2">
         {loading && <p className="text-luna-muted text-sm">Loading…</p>}
         {!loading && filtered.length === 0 && <p className="text-luna-muted text-sm py-6 text-center">No guests match.</p>}
         {filtered.map(r => (
           <div key={r.id} className={`card p-4 flex items-center gap-3 ${r.status === 'checked_in' ? 'border-emerald-500/40' : r.status === 'no_entry' ? 'border-red-500/40' : ''}`}>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-lg truncate">{r.first_name} {r.last_name}</div>
+              <div className="font-semibold text-lg truncate flex items-center gap-2">
+                {r.first_name} {r.last_name}
+                {r.special_occasion && <span className="pill bg-luna-purple/25 text-white text-[11px]">🎉 {r.special_occasion}</span>}
+              </div>
               <div className="text-sm text-luna-muted truncate">
                 {r.mobile} · {r.promoter_name} ({r.promoter_code})
                 {r.checked_in_at && <span className="text-emerald-400"> · in {fmtDateTime(r.checked_in_at)}</span>}
@@ -237,7 +233,7 @@ function QRScanner({ onScan, onError }: { onScan: (token: string) => void; onErr
   return (
     <div className="card p-3">
       <div id="qr-reader" ref={ref} className="mx-auto max-w-xs rounded-xl overflow-hidden" />
-      <p className="text-center text-xs text-luna-muted mt-2">Point the iPad camera at the guest's QR code.</p>
+      <p className="text-center text-xs text-luna-muted mt-2">Point the iPad camera at the guest&apos;s QR code.</p>
     </div>
   )
 }

@@ -43,7 +43,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ type
   }
 
   else if (type === 'guests' || type === 'attendance') {
-    let q = sb.from('guest_registrations').select(`id,status,created_at,marketing_consent,
+    let q = sb.from('guest_registrations').select(`id,status,created_at,marketing_consent,special_occasion,
       guests(first_name,last_name,email,mobile,date_of_birth,instagram),
       events(name,event_date), venues(name), promoters(full_name,promoter_code),
       check_ins(checked_in_at,no_entry,notes)`)
@@ -64,10 +64,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ type
         r.guests?.date_of_birth, r.guests?.instagram, r.venues?.name, r.events?.name, r.events?.event_date,
         r.promoters?.full_name, r.promoters?.promoter_code, r.status,
         r.status === 'checked_in' ? 'Yes' : 'No',
-        r.check_ins?.[0]?.checked_in_at ?? '', r.marketing_consent ? 'Yes' : 'No', r.created_at])
+        r.check_ins?.[0]?.checked_in_at ?? '', r.special_occasion ?? '', r.marketing_consent ? 'Yes' : 'No', r.created_at])
       csv = toCSV(['Guest ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 'Instagram',
         'Venue', 'Event', 'Event Date', 'Promoter Name', 'Promoter Code', 'Registered Status',
-        'Checked In', 'Check-in Time', 'Marketing Consent', 'Created Date'], rows)
+        'Checked In', 'Check-in Time', 'Special Occasion', 'Marketing Consent', 'Created Date'], rows)
       filename = 'guests.csv'
     } else {
       const rows = filtered.map((r: any) => [

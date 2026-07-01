@@ -107,6 +107,7 @@ export async function updateTier(fd: FormData) {
 export async function createStaff(fd: FormData) {
   await ensureAdmin()
   const email = String(fd.get('email') || '').trim().toLowerCase()
+  const fullName = String(fd.get('full_name') || '').trim()
   const password = String(fd.get('password') || '')
   const role = String(fd.get('role') || '') as 'admin' | 'venue_manager' | 'reception'
   const venueId = String(fd.get('venue_id') || '') || null
@@ -120,7 +121,7 @@ export async function createStaff(fd: FormData) {
   // create the auth user (or reuse if they already exist)
   let userId: string | null = null
   const { data: created, error: createErr } = await svc.auth.admin.createUser({
-    email, password, email_confirm: true,
+    email, password, email_confirm: true, user_metadata: { full_name: fullName },
   })
   if (created?.user) {
     userId = created.user.id
@@ -130,6 +131,9 @@ export async function createStaff(fd: FormData) {
     if (existing?.id) userId = existing.id
     else throw new Error(createErr?.message || 'Could not create the account')
   }
+
+  // make sure the profile carries their name (for leaderboards etc.)
+  if (fullName && userId) await svc.from('users').update({ full_name: fullName }).eq('id', userId)
 
   // grant the role (venue-scoped for manager/reception)
   const { error: roleErr } = await svc.from('roles')
@@ -156,4 +160,29 @@ export async function setAutoApprove(on: boolean) {
     .update({ auto_approve_promoters: on, updated_at: new Date().toISOString() }).eq('id', 1)
   if (error) throw error
   revalidatePath('/admin/promoters')
+}
+
+// ---------- Blackout dates ----------
+export async function addBlackout(fd: FormData) {
+  const s = await ensureManager()
+  const supabase = await createClient()
+  const venueRaw = String(fd.get('venue_id') || '')
+  const venue_id = venueRaw === 'ALL' ? null : venueRaw || null
+  const date = String(fd.get('blackout_date') || '')
+  const reason = String(fd.get('reason') || '') || null
+  if (!date) throw new Error('Please choose a date')
+  // venue managers cannot create all-venue blackouts
+  if (!s.roles.includes('admin') && !venue_id) throw new Error('Only admins can black out all venues')
+  const { error } = await supabase.from('blackout_dates')
+    .insert({ venue_id, blackout_date: date, reason, created_by: s.userId })
+  if (error) throw error.message.includes('duplicate') ? new Error('That date is already blacked out for this venue') : error
+  revalidatePath('/admin/blackout')
+}
+
+export async function removeBlackout(id: string) {
+  await ensureManager()
+  const supabase = await createClient()
+  const { error } = await supabase.from('blackout_dates').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/admin/blackout')
 }

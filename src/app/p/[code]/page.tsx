@@ -14,6 +14,7 @@ export default async function PromoterLink({ params }: { params: Promise<{ code:
 
   const promoter = { full_name: data.full_name as string, promoter_code: data.promoter_code as string }
   const venues = (data.venues ?? []) as { id: string; name: string }[]
+  const blackouts = (data.blackouts ?? []) as { venue_id: string | null; date: string }[]
 
   return (
     <main className="min-h-screen">
@@ -30,7 +31,7 @@ export default async function PromoterLink({ params }: { params: Promise<{ code:
           {venues.length === 0 ? (
             <p className="text-center text-luna-muted py-8">No venues are available right now. Check back soon!</p>
           ) : (
-            <GuestRegistrationForm promoterCode={promoter.promoter_code} venues={venues} />
+            <GuestRegistrationForm promoterCode={promoter.promoter_code} venues={venues} blackouts={blackouts} />
           )}
         </div>
       </section>

@@ -36,8 +36,8 @@ export function CopyLink({ link }: { link: string }) {
   return (
     <div>
       <div className="flex flex-col sm:flex-row gap-3">
-        <code className="flex-1 bg-luna-surface border border-luna-border rounded-xl px-4 py-3 text-luna-gold text-sm truncate">{link}</code>
-        <div className="flex gap-2">
+        <code className="flex-1 min-w-0 bg-luna-surface border border-luna-border rounded-xl px-4 py-3 text-luna-gold text-sm truncate">{link}</code>
+        <div className="flex gap-2 shrink-0">
           <button onClick={() => copy('link')} className="btn-gold">{copied === 'link' ? 'Copied' : 'Copy'}</button>
           <button onClick={nativeShare} className="btn-ghost">Share</button>
         </div>
