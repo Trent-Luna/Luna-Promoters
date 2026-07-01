@@ -95,12 +95,16 @@ export function GuestRegistrationForm({ promoterCode, events }: { promoterCode: 
       <label className="flex items-start gap-3 text-sm cursor-pointer">
         <input type="checkbox" className="mt-1 accent-luna-gold w-4 h-4" checked={consent}
           onChange={e => setConsent(e.target.checked)} />
-        <span className="text-luna-muted">I'm happy for Luna Group to send me event updates and offers.</span>
+        <span className="text-luna-muted">I&apos;m happy for Luna Group to send me event updates and offers.</span>
       </label>
       {err && <p className="text-sm text-red-400">{err}</p>}
       <button className="btn-gold w-full btn-lg" disabled={loading}>
         {loading ? 'Registering…' : 'Get my QR code'}
       </button>
+      <p className="text-[11px] text-luna-muted text-center leading-relaxed">
+        Guestlist entry is subject to availability, venue capacity, dress code, valid 18+ ID and
+        management discretion. Registering does not guarantee entry. Please arrive early to avoid disappointment.
+      </p>
     </form>
   )
 }

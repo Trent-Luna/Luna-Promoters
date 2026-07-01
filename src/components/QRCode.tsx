@@ -5,7 +5,13 @@ import QR from 'qrcode'
 export function QRCode({ value, size = 220 }: { value: string; size?: number }) {
   const [url, setUrl] = useState('')
   useEffect(() => {
-    QR.toDataURL(value, {
+    // Ensure the QR always encodes an absolute URL, even if NEXT_PUBLIC_SITE_URL
+    // wasn't set at build time (fall back to the current origin).
+    let target = value
+    if (typeof window !== 'undefined' && value.startsWith('/')) {
+      target = window.location.origin + value
+    }
+    QR.toDataURL(target, {
       width: size, margin: 1,
       color: { dark: '#0a0a0f', light: '#ffffff' },
       errorCorrectionLevel: 'M',

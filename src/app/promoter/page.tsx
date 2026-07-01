@@ -87,7 +87,7 @@ export default async function PromoterDashboard() {
         <h2 className="text-lg font-bold">This month&apos;s leaderboard</h2>
         <span className="text-xs text-luna-muted">Ranked by checked-in guests</span>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto no-scrollbar">
         <table className="w-full text-sm">
           <thead className="text-luna-muted text-xs uppercase tracking-wide">
             <tr className="border-b border-luna-border">
@@ -119,7 +119,7 @@ export default async function PromoterDashboard() {
 
       {/* events */}
       <h2 className="text-lg font-bold mt-8 mb-3">Event performance</h2>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto no-scrollbar">
         <table className="w-full text-sm">
           <thead className="text-luna-muted text-xs uppercase tracking-wide">
             <tr className="border-b border-luna-border">

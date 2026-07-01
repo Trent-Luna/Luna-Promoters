@@ -38,3 +38,7 @@ html, body {
 /* tier identity colours (independent of brand chrome) */
 .tier-bronze { color:#cd7f32 } .tier-silver { color:#c0c0c0 }
 .tier-gold   { color:#d4af37 } .tier-elite  { color:#b28dff }
+
+/* clean horizontal scroll for the tab bar (no visible scrollbar) */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

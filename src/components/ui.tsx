@@ -27,12 +27,11 @@ export function StatusPill({ status }: { status: string }) {
   }
   return <span className={`pill ${map[status] ?? 'bg-luna-border text-luna-muted'}`}>{status.replace('_', ' ')}</span>
 }
-
 export function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
   return (
     <Link href={href}
-      className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-        active ? 'bg-luna-gold/15 text-luna-gold' : 'text-luna-muted hover:text-luna-text'}`}>
+      className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition ${
+        active ? 'bg-white/12 text-white' : 'text-luna-muted hover:text-luna-text'}`}>
       {label}
     </Link>
   )

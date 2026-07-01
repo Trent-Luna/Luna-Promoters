@@ -16,6 +16,7 @@ export default async function AdminPromoters({ searchParams }: { searchParams: P
   const supabase = await createClient()
   const { data: promoters } = await supabase.from('promoters')
     .select('id,full_name,email,mobile,date_of_birth,instagram,suburb,status,promoter_code,current_tier,elite_override,created_at,admin_notes(note,created_at)')
+    .eq('is_staff', false)
     .order('created_at', { ascending: false })
 
   return (

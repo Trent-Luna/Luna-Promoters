@@ -29,8 +29,8 @@ function LoginForm() {
       router.push(params.get('next') || '/dashboard')
       router.refresh()
     } catch (e: any) {
-      setErr(e.message || 'Something went wrong')
-    } finally { setLoading(false) }
+      setErr(e.message || 'Something went wrong'); setLoading(false)
+    }
   }
 
   return (
@@ -60,17 +60,18 @@ function LoginForm() {
             {err && <p className="text-sm text-red-400">{err}</p>}
             {msg && <p className="text-sm text-emerald-400">{msg}</p>}
             <button className="btn-gold w-full" disabled={loading}>
-              {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account & sign in'}
+              {loading && <span className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />}
+              {loading ? 'Signing you in…' : mode === 'signin' ? 'Sign in' : 'Create account & sign in'}
             </button>
           </form>
           <button onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-            className="text-sm text-luna-muted hover:text-luna-gold mt-4 w-full text-center">
+            className="text-sm text-luna-muted hover:text-white mt-4 w-full text-center">
             {mode === 'signin' ? 'Approved promoter? Create your login' : 'Already have an account? Sign in'}
           </button>
         </div>
         <p className="text-center text-sm text-luna-muted mt-6">
           Want to become a promoter?{' '}
-          <Link href="/" className="text-luna-gold font-medium">Apply here</Link>
+          <Link href="/" className="text-white font-medium">Apply here</Link>
         </p>
       </div>
     </main>
