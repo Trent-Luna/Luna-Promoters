@@ -5,9 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 
 const AGREEMENTS = [
   'I agree to follow Luna Group promoter guidelines.',
-  'I understand abusive behaviour may result in removal.',
-  'I understand only checked-in guests count toward rankings and rewards.',
-  'I agree not to submit fake or duplicate guests.',
   'I consent to Luna Group contacting me about promoter opportunities.',
 ]
 
