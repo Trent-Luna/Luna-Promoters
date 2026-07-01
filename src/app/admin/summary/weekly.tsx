@@ -7,16 +7,15 @@ import { pct } from '@/lib/format'
 const BRIS_OFFSET_MS = 10 * 3600 * 1000 // Brisbane = UTC+10 (no DST)
 const WEEK_MS = 7 * 24 * 3600 * 1000
 
-// Start (UTC Date) of the reporting week that is `weeksAgo` before the current one.
+// Start (UTC Date) of the reporting week `weeksAgo` before the current one.
 // A week begins Monday 05:00 Brisbane time.
 function weekStartUTC(weeksAgo: number): Date {
   const nowBris = new Date(Date.now() + BRIS_OFFSET_MS)
-  const day = nowBris.getUTCDay()            // 0 Sun .. 6 Sat (Brisbane wall clock)
+  const day = nowBris.getUTCDay()
   const sinceMon = (day + 6) % 7
   const mon5 = new Date(Date.UTC(nowBris.getUTCFullYear(), nowBris.getUTCMonth(),
     nowBris.getUTCDate() - sinceMon, 5, 0, 0))
   if (nowBris.getTime() < mon5.getTime()) mon5.setUTCDate(mon5.getUTCDate() - 7)
-  // mon5 is Brisbane wall time expressed via UTC getters -> convert to real UTC
   return new Date(mon5.getTime() - BRIS_OFFSET_MS - weeksAgo * WEEK_MS)
 }
 
@@ -25,6 +24,24 @@ function label(startUTC: Date) {
   const brisEnd = new Date(startUTC.getTime() + WEEK_MS + BRIS_OFFSET_MS - 1)
   const f = (d: Date) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })
   return `${f(brisStart)} – ${f(brisEnd)}`
+}
+
+function List({ title, empty, rows, withTier = false }:
+  { title: string; empty: string; rows: any[]; withTier?: boolean }) {
+  return (
+    <div className="card p-5">
+      <h2 className="font-bold mb-3">{title}</h2>
+      {rows.length === 0 && <p className="text-sm text-luna-muted">{empty}</p>}
+      {rows.map((r: any, i: number) => (
+        <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
+          <span className="w-6 font-bold text-white/80">#{i + 1}</span>
+          <span className="flex-1 font-medium">{r.full_name} <span className="text-luna-muted text-xs">({r.promoter_code})</span></span>
+          {withTier && <TierBadge tier={r.current_tier} />}
+          <span className="w-10 text-right font-semibold text-emerald-400">{r.checked_in}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function WeeklySummary() {
@@ -73,12 +90,17 @@ export function WeeklySummary() {
             <Stat label="Events held" value={data.events ?? 0} />
             <Stat label="Active promoters" value={data.active_promoters ?? 0} />
             <Stat label="New applications" value={data.new_applications ?? 0} />
-            <Stat label="Approved this week" value={data.approved ?? 0} />
+            <Stat label="Luna Group guestlist" value={data.house_checked_in ?? 0} />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-5">
             <div className="card p-5">
               <h2 className="font-bold mb-3">Top promoters</h2>
+              <div className="flex items-center gap-3 py-2 mb-1 rounded-lg bg-luna-purple/10 px-2">
+                <span className="w-6 text-center">🏠</span>
+                <span className="flex-1 font-medium">Luna Group <span className="text-luna-muted text-xs">(public guestlist)</span></span>
+                <span className="w-10 text-right font-semibold text-emerald-400">{data.house_checked_in ?? 0}</span>
+              </div>
               {(data.top_promoters ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
               {(data.top_promoters ?? []).map((r: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
@@ -89,16 +111,13 @@ export function WeeklySummary() {
                 </div>
               ))}
             </div>
-            <div className="card p-5">
-              <h2 className="font-bold mb-3">Top venues</h2>
-              {(data.top_venues ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
-              {(data.top_venues ?? []).map((r: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
-                  <span className="flex-1 font-medium">{r.name}</span>
-                  <span className="font-semibold text-emerald-400">{r.checked_in}</span>
-                </div>
-              ))}
-            </div>
+            <List title="Top venues" empty="No check-ins this week."
+              rows={(data.top_venues ?? []).map((v: any) => ({ full_name: v.name, promoter_code: '', checked_in: v.checked_in }))} />
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-5">
+            <List title="Top DJs" empty="No DJ check-ins this week." rows={data.top_djs ?? []} />
+            <List title="Top staff" empty="No staff check-ins this week." rows={data.top_staff ?? []} />
           </div>
         </>
       )}

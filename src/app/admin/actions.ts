@@ -186,3 +186,12 @@ export async function removeBlackout(id: string) {
   if (error) throw error
   revalidatePath('/admin/blackout')
 }
+
+// ---------- Promoter category (promoter / dj / staff) ----------
+export async function setPromoterCategory(id: string, category: 'promoter' | 'dj' | 'staff') {
+  await ensureAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase.from('promoters').update({ category }).eq('id', id)
+  if (error) throw error
+  revalidatePath('/admin/promoters')
+}

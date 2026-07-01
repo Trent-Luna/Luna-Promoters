@@ -1,10 +1,9 @@
 'use client'
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { fmtDate, fmtDateTime, fmtTime } from '@/lib/format'
+import { fmtDate, fmtDateTime } from '@/lib/format'
 
 interface Venue { id: string; name: string }
-interface Ev { id: string; name: string; event_date: string; start_time: string | null }
 interface Row {
   id: string; status: string; qr_token: string
   first_name: string; last_name: string; mobile: string; email: string | null
@@ -13,11 +12,15 @@ interface Row {
 }
 type ScanResult = { kind: 'ok' | 'err'; title: string; sub?: string } | null
 
+function localToday() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function ReceptionConsole({ venues }: { venues: Venue[] }) {
   const supabase = useMemo(() => createClient(), [])
   const [venueId, setVenueId] = useState(venues[0]?.id ?? '')
-  const [events, setEvents] = useState<Ev[]>([])
-  const [eventId, setEventId] = useState('')
+  const [date, setDate] = useState(localToday())
   const [rows, setRows] = useState<Row[]>([])
   const [q, setQ] = useState('')
   const [toast, setToast] = useState<{ kind: 'ok' | 'warn' | 'err'; msg: string } | null>(null)
@@ -29,31 +32,20 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
     setToast({ kind, msg }); setTimeout(() => setToast(null), 3500)
   }
 
-  // auto-dismiss the big scan flash so the next guest can scan
   useEffect(() => {
     if (!scanResult) return
     const t = setTimeout(() => setScanResult(null), 2400)
     return () => clearTimeout(t)
   }, [scanResult])
 
-  useEffect(() => {
-    if (!venueId) return
-    supabase.from('events').select('id,name,event_date,start_time')
-      .eq('venue_id', venueId).eq('active', true)
-      .gte('event_date', new Date(Date.now() - 864e5).toISOString().slice(0, 10))
-      .order('event_date').then(({ data }) => {
-        setEvents(data ?? [])
-        setEventId(prev => (data ?? []).some(e => e.id === prev) ? prev : (data?.[0]?.id ?? ''))
-      })
-  }, [venueId, supabase])
-
   const load = useCallback(async () => {
-    if (!eventId) { setRows([]); return }
+    if (!venueId || !date) { setRows([]); return }
     setLoading(true)
     const { data } = await supabase
       .from('guest_registrations')
-      .select('id,status,qr_token,special_occasion,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes)')
-      .eq('event_id', eventId).order('created_at', { ascending: false })
+      .select('id,status,qr_token,special_occasion,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes),events!inner(event_date)')
+      .eq('venue_id', venueId).eq('events.event_date', date)
+      .order('created_at', { ascending: false })
     const mapped: Row[] = (data ?? []).map((r: any) => ({
       id: r.id, status: r.status, qr_token: r.qr_token,
       first_name: r.guests?.first_name ?? '', last_name: r.guests?.last_name ?? '',
@@ -64,18 +56,18 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
       notes: r.check_ins?.[0]?.notes ?? null,
     }))
     setRows(mapped); setLoading(false)
-  }, [eventId, supabase])
+  }, [venueId, date, supabase])
 
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    if (!eventId) return
-    const ch = supabase.channel(`door-${eventId}`)
+    if (!venueId || !date) return
+    const ch = supabase.channel(`door-${venueId}-${date}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'check_ins' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_registrations', filter: `event_id=eq.${eventId}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_registrations', filter: `venue_id=eq.${venueId}` }, load)
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [eventId, supabase, load])
+  }, [venueId, date, supabase, load])
 
   const stats = useMemo(() => {
     const registered = rows.length
@@ -133,8 +125,6 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
     load()
   }
 
-  const selEvent = events.find(e => e.id === eventId)
-
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-4">
@@ -145,11 +135,8 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
           </select>
         </div>
         <div>
-          <label className="label">Event / date</label>
-          <select className="input" value={eventId} onChange={e => setEventId(e.target.value)}>
-            {events.length === 0 && <option value="">No events</option>}
-            {events.map(e => <option key={e.id} value={e.id}>{e.name} — {fmtDate(e.event_date)}{e.start_time ? ` · ${fmtTime(e.start_time)}` : ''}</option>)}
-          </select>
+          <label className="label">Date</label>
+          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
         </div>
       </div>
 
@@ -188,7 +175,7 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
 
       <div className="space-y-2">
         {loading && <p className="text-luna-muted text-sm">Loading…</p>}
-        {!loading && filtered.length === 0 && <p className="text-luna-muted text-sm py-6 text-center">No guests match.</p>}
+        {!loading && filtered.length === 0 && <p className="text-luna-muted text-sm py-6 text-center">No guests on the list for this venue &amp; date.</p>}
         {filtered.map(r => (
           <div key={r.id} className={`card p-4 flex items-center gap-3 ${r.status === 'checked_in' ? 'border-emerald-500/40' : r.status === 'no_entry' ? 'border-red-500/40' : ''}`}>
             <div className="flex-1 min-w-0">
@@ -215,14 +202,13 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
         ))}
       </div>
 
-      {/* full-screen scanner */}
       {scanning && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
             <div className="min-w-0">
               <div className="text-white font-semibold text-lg">Scan guest QR</div>
               <div className="text-luna-muted text-sm truncate">
-                {venues.find(v => v.id === venueId)?.name}{selEvent ? ` · ${fmtDate(selEvent.event_date)}` : ''}
+                {venues.find(v => v.id === venueId)?.name} · {fmtDate(date)}
               </div>
             </div>
             <button onClick={() => { setScanning(false); setScanResult(null) }}
@@ -234,7 +220,6 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
           </div>
           <p className="text-center text-luna-muted pb-6 text-lg">Point the camera at the guest&apos;s QR code</p>
 
-          {/* giant pass/fail flash */}
           {scanResult && (
             <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-8 ${
               scanResult.kind === 'ok' ? 'bg-emerald-500' : 'bg-red-600'}`}>

@@ -17,7 +17,7 @@ export default async function AdminPromoters({ searchParams }: { searchParams: P
   const supabase = await createClient()
   const [{ data: promoters }, { data: settings }] = await Promise.all([
     supabase.from('promoters')
-      .select('id,full_name,email,mobile,date_of_birth,instagram,suburb,status,promoter_code,current_tier,elite_override,created_at,admin_notes(note,created_at)')
+      .select('id,full_name,email,mobile,date_of_birth,instagram,suburb,status,promoter_code,current_tier,elite_override,category,created_at,admin_notes(note,created_at)')
       .eq('is_staff', false)
       .order('created_at', { ascending: false }),
     supabase.from('app_settings').select('auto_approve_promoters').eq('id', 1).maybeSingle(),

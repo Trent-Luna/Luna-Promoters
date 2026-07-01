@@ -3,11 +3,12 @@ import { useMemo, useState } from 'react'
 import { StatusPill, TierBadge } from '@/components/ui'
 import { fmtDate } from '@/lib/format'
 import { PromoterActions } from './actions-ui'
+import { CategorySelect } from './category-ui'
 
 interface P {
   id: string; full_name: string; email: string; mobile: string; date_of_birth: string
   instagram: string | null; suburb: string | null; status: string; promoter_code: string | null
-  current_tier: string; elite_override: boolean
+  current_tier: string; elite_override: boolean; category: 'promoter' | 'dj' | 'staff'
   admin_notes: { note: string }[]
 }
 
@@ -61,6 +62,7 @@ export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[];
                   <StatusPill status={p.status} />
                   {p.status === 'approved' && <TierBadge tier={p.current_tier} />}
                   {p.promoter_code && <code className="text-xs text-white/80">/p/{p.promoter_code}</code>}
+                  <CategorySelect id={p.id} value={p.category} />
                 </div>
                 <div className="text-sm text-luna-muted mt-1">
                   {p.email} · {p.mobile} · DOB {fmtDate(p.date_of_birth)}

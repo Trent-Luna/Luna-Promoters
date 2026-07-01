@@ -79,7 +79,7 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
       <div>
         <label className="label">Special occasion? <span className="text-luna-muted font-normal">(optional)</span></label>
         <select className="input" value={occasion} onChange={e => setOccasion(e.target.value)}>
-          <option value="">No — just heading out</option>
+          <option value="">No occasion — just vibes ✨</option>
           {OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         <p className="text-[11px] text-luna-muted mt-1">Let us know so the venue can look after you.</p>

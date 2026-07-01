@@ -18,11 +18,12 @@ export default async function AdminOverview() {
   const monthStart = new Date(); monthStart.setDate(1)
   const mStr = monthStart.toISOString().slice(0, 10)
 
-  const [{ data: stats }, { data: board }, { data: recent }, { data: pending }] = await Promise.all([
+  const [{ data: stats }, { data: board }, { data: recent }, { data: pending }, { data: house }] = await Promise.all([
     supabase.rpc('get_admin_stats', {}),
-    supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 5 }),
+    supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 10 }),
     supabase.from('check_ins').select('checked_in_at,no_entry,guest_registrations(guests(first_name,last_name),events(name),promoters(full_name))').order('checked_in_at', { ascending: false }).limit(8),
     supabase.from('promoters').select('id').eq('status', 'pending'),
+    supabase.rpc('get_house_stats', { p_from: mStr }),
   ])
 
   return (
@@ -47,7 +48,12 @@ export default async function AdminOverview() {
 
       <div className="grid lg:grid-cols-2 gap-5 mt-6">
         <div className="card p-5">
-          <h2 className="font-bold mb-3">Top promoters this month</h2>
+          <h2 className="font-bold mb-3">Top 10 promoters this month</h2>
+          <div className="flex items-center gap-3 py-2 mb-1 rounded-lg bg-luna-purple/10 px-2">
+            <span className="w-6 text-center">🏠</span>
+            <span className="flex-1 font-medium">Luna Group <span className="text-luna-muted text-xs">(public guestlist)</span></span>
+            <span className="text-emerald-400 font-semibold w-10 text-right">{house?.checked_in ?? 0}</span>
+          </div>
           {(board ?? []).length === 0 && <p className="text-luna-muted text-sm">No check-ins yet this month.</p>}
           {(board ?? []).map((r: any) => (
             <div key={r.promoter_id} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
