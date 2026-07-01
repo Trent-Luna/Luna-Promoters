@@ -1,6 +1,7 @@
 -- =====================================================================
--- Luna Promoters :: COMBINED MIGRATIONS (run once, top to bottom)
--- Generated from migrations/0001..0008 in order.
+-- Luna Promoters :: COMBINED MIGRATIONS (run once on a fresh project,
+-- top to bottom). On an existing project, run only the new files.
+-- Generated 2026-07-01 11:32 UTC from migrations/0001..0015.
 -- =====================================================================
 
 
@@ -864,3 +865,446 @@ begin
     perform public.refresh_promoter_month(r.id, current_date);
   end loop;
 end $$;
+
+-- ####################################################################
+-- ##  migrations/0009_autolink_on_approval.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0009 Auto-link promoter to login on approval
+-- Ensures an approved promoter is linked to their auth account and
+-- granted the 'promoter' role no matter when they created their login.
+-- =====================================================================
+
+create or replace function public.approve_promoter(p_id uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare code text; existing_user uuid; p_email citext; p_name text;
+begin
+  if not public.is_admin() then raise exception 'not authorised'; end if;
+
+  select promoter_code, email, full_name into code, p_email, p_name
+    from public.promoters where id = p_id;
+  if code is null then
+    code := public.generate_promoter_code(p_name);
+  end if;
+
+  -- If this person already created a login, link it now.
+  select id into existing_user from auth.users where lower(email) = lower(p_email::text) limit 1;
+
+  update public.promoters
+    set status='approved', promoter_code=code, approved_at=now(), approved_by=auth.uid(),
+        user_id = coalesce(user_id, existing_user)
+    where id = p_id;
+
+  if existing_user is not null then
+    insert into public.roles(user_id, role) values (existing_user, 'promoter')
+      on conflict do nothing;
+  end if;
+
+  perform public.log_action('promoter_approved', auth.uid(), null, null, p_id, null, null);
+  return code;
+end $$;
+
+grant execute on function public.approve_promoter(uuid) to authenticated;
+
+-- ####################################################################
+-- ##  migrations/0010_weekly_summary.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0010 Weekly summary
+-- Aggregates a time window (a "week" runs Mon 05:00 -> Mon 05:00, the
+-- page computes the Brisbane boundaries and passes UTC timestamps here).
+-- =====================================================================
+
+create or replace function public.get_weekly_summary(p_from timestamptz, p_to timestamptz)
+returns json language sql stable security definer set search_path = public as $$
+  with ci as (
+    select c.no_entry, gr.promoter_id, gr.venue_id
+    from public.check_ins c
+    join public.guest_registrations gr on gr.id = c.registration_id
+    where c.checked_in_at >= p_from and c.checked_in_at < p_to
+  )
+  select json_build_object(
+    'registered',       (select count(*) from public.guest_registrations gr
+                          where gr.created_at >= p_from and gr.created_at < p_to),
+    'checked_in',       (select count(*) from ci where no_entry = false),
+    'no_entry',         (select count(*) from ci where no_entry = true),
+    'new_applications', (select count(*) from public.promoters p
+                          where p.created_at >= p_from and p.created_at < p_to),
+    'approved',         (select count(*) from public.promoters p
+                          where p.approved_at >= p_from and p.approved_at < p_to),
+    'events',           (select count(*) from public.events e
+                          where e.event_date >= p_from::date and e.event_date < p_to::date),
+    'active_promoters', (select count(distinct promoter_id) from ci where no_entry = false),
+    'top_promoters', (
+      select coalesce(json_agg(t), '[]') from (
+        select p.full_name, p.promoter_code, p.current_tier,
+               count(*) filter (where ci.no_entry = false) as checked_in
+        from ci join public.promoters p on p.id = ci.promoter_id
+        group by p.id, p.full_name, p.promoter_code, p.current_tier
+        order by checked_in desc limit 10
+      ) t
+    ),
+    'top_venues', (
+      select coalesce(json_agg(t), '[]') from (
+        select v.name,
+               count(*) filter (where ci.no_entry = false) as checked_in
+        from ci join public.venues v on v.id = ci.venue_id
+        group by v.id, v.name order by checked_in desc
+      ) t
+    )
+  );
+$$;
+grant execute on function public.get_weekly_summary(timestamptz, timestamptz) to authenticated;
+
+-- ####################################################################
+-- ##  migrations/0011_manual_guests.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0011 Manual guestlist additions
+-- Admins / venue managers can add guests to an event by hand. The guest
+-- is attributed to the STAFF MEMBER who added them (a lightweight,
+-- is_staff promoter record is auto-created for them so they appear on
+-- leaderboards but are hidden from the promoter management list).
+-- =====================================================================
+
+alter table public.promoters add column if not exists is_staff boolean not null default false;
+
+-- find or create the staff member's own promoter record
+create or replace function public.ensure_staff_promoter()
+returns uuid language plpgsql security definer set search_path = public as $$
+declare pid uuid; u record; nm text;
+begin
+  select id into pid from public.promoters where user_id = auth.uid() limit 1;
+  if pid is not null then return pid; end if;
+
+  select * into u from public.users where id = auth.uid();
+  nm := coalesce(nullif(u.full_name, ''), split_part(u.email, '@', 1));
+
+  insert into public.promoters(
+    user_id, full_name, email, mobile, date_of_birth, status,
+    promoter_code, is_staff, agreement_accepted)
+  values (
+    auth.uid(), nm, u.email,
+    'staff:' || substr(auth.uid()::text, 1, 12), '2000-01-01', 'approved',
+    public.generate_promoter_code(nm), true, true)
+  returning id into pid;
+  return pid;
+end $$;
+
+-- add a guest to an event by hand (staff attribution)
+create or replace function public.add_guest_manual(
+  p_event uuid, p_first text, p_last text, p_mobile text,
+  p_email text, p_dob date, p_instagram text
+) returns json language plpgsql security definer set search_path = public as $$
+declare ev record; pid uuid; g_id uuid; existing uuid; reg record;
+begin
+  select * into ev from public.events where id = p_event;
+  if ev is null then return json_build_object('ok',false,'error','event_not_found'); end if;
+  if not public.manages_venue(ev.venue_id) then
+    return json_build_object('ok',false,'error','not_authorised'); end if;
+
+  pid := public.ensure_staff_promoter();
+
+  select id into g_id from public.guests
+    where mobile = p_mobile or (p_email is not null and p_email <> '' and email = p_email::citext) limit 1;
+  if g_id is null then
+    insert into public.guests(first_name,last_name,mobile,email,date_of_birth,instagram)
+      values (p_first,p_last,p_mobile,nullif(p_email,''),p_dob,nullif(p_instagram,''))
+      returning id into g_id;
+  end if;
+
+  select id into existing from public.guest_registrations where event_id = p_event and guest_id = g_id;
+  if existing is not null then return json_build_object('ok',false,'error','duplicate'); end if;
+
+  insert into public.guest_registrations(guest_id,promoter_id,event_id,venue_id,marketing_consent)
+    values (g_id, pid, p_event, ev.venue_id, false) returning * into reg;
+
+  perform public.log_action('guest_registered', auth.uid(), ev.venue_id, p_event, pid, g_id, 'manual add');
+  return json_build_object('ok',true,'registration_id',reg.id);
+end $$;
+
+grant execute on function public.ensure_staff_promoter() to authenticated;
+grant execute on function public.add_guest_manual(uuid,text,text,text,text,date,text) to authenticated;
+
+-- ####################################################################
+-- ##  migrations/0012_public_promoter_link.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0012 Public promoter-link data
+-- The /p/{code} page is public (guests are not logged in). RLS blocks
+-- anonymous reads of promoters/events, so we expose a SECURITY DEFINER
+-- function that returns only the promoter's display name + open events.
+-- =====================================================================
+
+create or replace function public.get_promoter_link(p_code text)
+returns json language plpgsql stable security definer set search_path = public as $$
+declare prom record; evs json;
+begin
+  select full_name, promoter_code into prom
+    from public.promoters
+    where promoter_code = p_code and status = 'approved';
+  if prom.promoter_code is null then
+    return null;   -- unknown or not-approved promoter -> page shows Not Found
+  end if;
+
+  select coalesce(json_agg(to_jsonb(x)), '[]'::json) into evs from (
+    select e.id, e.name, e.event_date, e.start_time, e.end_time,
+           e.venue_id, v.name as venue_name
+    from public.events e
+    join public.venues v on v.id = e.venue_id
+    where e.active = true
+      and e.guestlist_open = true
+      and e.event_date >= current_date
+      and (e.cutoff_at is null or now() <= e.cutoff_at)
+    order by e.event_date
+  ) x;
+
+  return json_build_object(
+    'full_name', prom.full_name,
+    'promoter_code', prom.promoter_code,
+    'events', evs
+  );
+end $$;
+
+grant execute on function public.get_promoter_link(text) to anon, authenticated;
+
+-- ####################################################################
+-- ##  migrations/0013_venue_date_flow.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0013 Venue + Date guest flow (no manual events)
+-- Guests pick a venue and a date. A "night" (event row) is created
+-- automatically behind the scenes so check-ins/leaderboards still work.
+-- =====================================================================
+
+-- find or create the night for a venue + date
+create or replace function public.ensure_event(p_venue uuid, p_date date)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare eid uuid;
+begin
+  select id into eid from public.events
+    where venue_id = p_venue and event_date = p_date
+    order by created_at limit 1;
+  if eid is null then
+    insert into public.events(venue_id, name, event_date, active, guestlist_open)
+      values (p_venue, to_char(p_date, 'Dy DD Mon'), p_date, true, true)
+      returning id into eid;
+  end if;
+  return eid;
+end $$;
+
+-- public guest registration by venue + date
+create or replace function public.register_guest_vd(
+  p_promoter_code text, p_venue uuid, p_date date,
+  p_first text, p_last text, p_mobile text, p_email text,
+  p_dob date, p_instagram text, p_marketing boolean
+) returns json language plpgsql security definer set search_path = public as $$
+declare prom record; ven record; eid uuid; g_id uuid; existing uuid; reg record;
+begin
+  select * into prom from public.promoters where promoter_code = p_promoter_code and status = 'approved';
+  if prom is null then return json_build_object('ok',false,'error','promoter_not_found'); end if;
+  select * into ven from public.venues where id = p_venue and active = true;
+  if ven is null then return json_build_object('ok',false,'error','venue_not_found'); end if;
+  if p_date is null or p_date < current_date or p_date > (current_date + interval '1 year') then
+    return json_build_object('ok',false,'error','bad_date'); end if;
+
+  eid := public.ensure_event(p_venue, p_date);
+
+  select id into g_id from public.guests
+    where mobile = p_mobile or (p_email is not null and p_email <> '' and email = p_email::citext) limit 1;
+  if g_id is null then
+    insert into public.guests(first_name,last_name,mobile,email,date_of_birth,instagram)
+      values (p_first,p_last,p_mobile,nullif(p_email,''),p_dob,nullif(p_instagram,''))
+      returning id into g_id;
+  end if;
+
+  select id into existing from public.guest_registrations where event_id = eid and guest_id = g_id;
+  if existing is not null then return json_build_object('ok',false,'error','duplicate'); end if;
+
+  insert into public.guest_registrations(guest_id,promoter_id,event_id,venue_id,marketing_consent)
+    values (g_id, prom.id, eid, p_venue, coalesce(p_marketing,false)) returning * into reg;
+  perform public.log_action('guest_registered', null, p_venue, eid, prom.id, g_id, null);
+  return json_build_object('ok',true,'registration_id',reg.id,'qr_token',reg.qr_token);
+end $$;
+
+-- manual staff add by venue + date
+create or replace function public.add_guest_manual_vd(
+  p_venue uuid, p_date date, p_first text, p_last text, p_mobile text,
+  p_email text, p_dob date, p_instagram text
+) returns json language plpgsql security definer set search_path = public as $$
+declare ven record; eid uuid; pid uuid; g_id uuid; existing uuid; reg record;
+begin
+  select * into ven from public.venues where id = p_venue;
+  if ven is null then return json_build_object('ok',false,'error','venue_not_found'); end if;
+  if not public.manages_venue(p_venue) then return json_build_object('ok',false,'error','not_authorised'); end if;
+  if p_date is null or p_date < (current_date - interval '1 day') or p_date > (current_date + interval '1 year') then
+    return json_build_object('ok',false,'error','bad_date'); end if;
+
+  eid := public.ensure_event(p_venue, p_date);
+  pid := public.ensure_staff_promoter();
+
+  select id into g_id from public.guests
+    where mobile = p_mobile or (p_email is not null and p_email <> '' and email = p_email::citext) limit 1;
+  if g_id is null then
+    insert into public.guests(first_name,last_name,mobile,email,date_of_birth,instagram)
+      values (p_first,p_last,p_mobile,nullif(p_email,''),p_dob,nullif(p_instagram,''))
+      returning id into g_id;
+  end if;
+  select id into existing from public.guest_registrations where event_id = eid and guest_id = g_id;
+  if existing is not null then return json_build_object('ok',false,'error','duplicate'); end if;
+
+  insert into public.guest_registrations(guest_id,promoter_id,event_id,venue_id,marketing_consent)
+    values (g_id, pid, eid, p_venue, false) returning * into reg;
+  perform public.log_action('guest_registered', auth.uid(), p_venue, eid, pid, g_id, 'manual add');
+  return json_build_object('ok',true,'registration_id',reg.id);
+end $$;
+
+-- promoter-link data now returns the list of venues (no events)
+create or replace function public.get_promoter_link(p_code text)
+returns json language plpgsql stable security definer set search_path = public as $$
+declare prom record; vens json;
+begin
+  select full_name, promoter_code into prom
+    from public.promoters where promoter_code = p_code and status = 'approved';
+  if prom.promoter_code is null then return null; end if;
+
+  select coalesce(json_agg(to_jsonb(x) order by x.name), '[]'::json) into vens
+    from (select id, name from public.venues where active = true order by name) x;
+
+  return json_build_object('full_name', prom.full_name, 'promoter_code', prom.promoter_code, 'venues', vens);
+end $$;
+
+grant execute on function public.ensure_event(uuid,date) to authenticated;
+grant execute on function public.register_guest_vd(text,uuid,date,text,text,text,text,date,text,boolean) to anon, authenticated;
+grant execute on function public.add_guest_manual_vd(uuid,date,text,text,text,text,date,text) to authenticated;
+grant execute on function public.get_promoter_link(text) to anon, authenticated;
+
+-- include the promoter code on the token lookup so the guest's
+-- "share with friends" can point friends at the promoter's own link
+create or replace function public.get_registration_by_token(p_token text)
+returns json language sql stable security definer set search_path = public as $$
+  select json_build_object(
+    'id', gr.id, 'status', gr.status, 'qr_token', gr.qr_token,
+    'first_name', g.first_name, 'last_name', g.last_name,
+    'event_name', e.name, 'event_date', e.event_date,
+    'start_time', e.start_time, 'end_time', e.end_time,
+    'venue_name', v.name, 'promoter_name', p.full_name, 'promoter_code', p.promoter_code
+  )
+  from public.guest_registrations gr
+  join public.guests g on g.id = gr.guest_id
+  join public.events e on e.id = gr.event_id
+  join public.venues v on v.id = gr.venue_id
+  join public.promoters p on p.id = gr.promoter_id
+  where gr.qr_token = p_token;
+$$;
+
+-- ####################################################################
+-- ##  migrations/0014_auto_approve.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0014 Auto-approve setting for promoter sign-ups
+-- =====================================================================
+
+create table if not exists public.app_settings (
+  id int primary key default 1,
+  auto_approve_promoters boolean not null default false,
+  updated_at timestamptz not null default now(),
+  constraint app_settings_single check (id = 1)
+);
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+
+alter table public.app_settings enable row level security;
+drop policy if exists settings_read on public.app_settings;
+drop policy if exists settings_admin on public.app_settings;
+create policy settings_read  on public.app_settings for select using (auth.uid() is not null);
+create policy settings_admin on public.app_settings for all
+  using (public.is_admin()) with check (public.is_admin());
+
+-- rebuild the application RPC to honour the auto-approve setting
+create or replace function public.submit_promoter_application(
+  p_full_name text, p_mobile text, p_email text, p_dob date,
+  p_instagram text, p_tiktok text, p_facebook text, p_suburb text,
+  p_preferred_venue uuid, p_other_venues uuid[],
+  p_agreement boolean, p_marketing boolean, p_ip text
+) returns json language plpgsql security definer set search_path = public as $$
+declare new_id uuid; auto boolean; code text;
+begin
+  if p_dob is null or p_dob > (current_date - interval '18 years') then
+    return json_build_object('ok',false,'error','under_18');
+  end if;
+  if not p_agreement then
+    return json_build_object('ok',false,'error','agreement_required');
+  end if;
+  if exists(select 1 from public.promoters where email = p_email::citext) then
+    return json_build_object('ok',false,'error','email_exists');
+  end if;
+  if exists(select 1 from public.promoters where mobile = p_mobile) then
+    return json_build_object('ok',false,'error','mobile_exists');
+  end if;
+
+  select auto_approve_promoters into auto from public.app_settings where id = 1;
+  auto := coalesce(auto, false);
+
+  if auto then code := public.generate_promoter_code(p_full_name); end if;
+
+  insert into public.promoters(full_name,email,mobile,date_of_birth,instagram,tiktok,facebook,
+      suburb,preferred_venue_id,other_venue_ids,agreement_accepted,agreement_accepted_at,
+      signup_ip,marketing_consent,status,promoter_code,approved_at)
+  values (p_full_name,p_email::citext,p_mobile,p_dob,nullif(p_instagram,''),nullif(p_tiktok,''),
+      nullif(p_facebook,''),nullif(p_suburb,''),p_preferred_venue,coalesce(p_other_venues,'{}'),
+      true, now(), p_ip, coalesce(p_marketing,false),
+      case when auto then 'approved'::promoter_status else 'pending'::promoter_status end,
+      code, case when auto then now() else null end)
+  returning id into new_id;
+
+  perform public.log_action(case when auto then 'promoter_auto_approved' else 'promoter_applied' end,
+    null, null, null, new_id, null, null);
+
+  return json_build_object('ok',true,'promoter_id',new_id,'auto_approved',auto,'promoter_code',code);
+end $$;
+
+grant execute on function public.submit_promoter_application(text,text,text,date,text,text,text,text,uuid,uuid[],boolean,boolean,text) to anon, authenticated;
+
+-- ####################################################################
+-- ##  migrations/0015_my_link.sql
+-- ####################################################################
+
+-- =====================================================================
+-- Luna Promoters :: 0015 "My Link" for staff (admins / venue managers)
+-- Returns (creating if needed) the caller's own promoter code + stats so
+-- they get a shareable link/QR and we can track guests on their list.
+-- =====================================================================
+
+create or replace function public.get_my_link()
+returns json language plpgsql security definer set search_path = public as $$
+declare pid uuid; prom record; reg bigint; ci bigint; reg_m bigint; ci_m bigint; m date;
+begin
+  pid := public.ensure_staff_promoter();  -- existing promoter for the user, or a new is_staff one
+  select full_name, promoter_code, current_tier into prom from public.promoters where id = pid;
+
+  select count(*), count(*) filter (where status = 'checked_in') into reg, ci
+    from public.guest_registrations where promoter_id = pid;
+
+  m := date_trunc('month', now())::date;
+  select count(*), count(*) filter (where gr.status = 'checked_in') into reg_m, ci_m
+    from public.guest_registrations gr
+    join public.events e on e.id = gr.event_id
+    where gr.promoter_id = pid and date_trunc('month', e.event_date)::date = m;
+
+  return json_build_object(
+    'promoter_code', prom.promoter_code,
+    'full_name', prom.full_name,
+    'registered_total', coalesce(reg,0),
+    'checked_in_total', coalesce(ci,0),
+    'registered_month', coalesce(reg_m,0),
+    'checked_in_month', coalesce(ci_m,0)
+  );
+end $$;
+
+grant execute on function public.get_my_link() to authenticated;
