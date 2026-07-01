@@ -47,7 +47,7 @@ export function PromoterSignupForm() {
         setErr(m[data?.error] || 'Could not submit application. Please check your details.')
         return
       }
-      router.push('/signup/success')
+      router.push(data.auto_approved ? '/signup/success?approved=1' : '/signup/success')
     } catch (e: any) {
       setErr(e.message || 'Something went wrong. Please try again.')
     } finally { setLoading(false) }

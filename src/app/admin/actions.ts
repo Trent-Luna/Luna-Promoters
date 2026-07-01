@@ -147,3 +147,13 @@ export async function removeStaffRole(roleId: string) {
   if (error) throw error
   revalidatePath('/admin/staff')
 }
+
+// ---------- Auto-approve setting ----------
+export async function setAutoApprove(on: boolean) {
+  await ensureAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase.from('app_settings')
+    .update({ auto_approve_promoters: on, updated_at: new Date().toISOString() }).eq('id', 1)
+  if (error) throw error
+  revalidatePath('/admin/promoters')
+}
