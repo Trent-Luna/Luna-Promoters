@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { ReceptionConsole } from './console'
+import { navForRoles } from '@/components/nav'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,7 @@ export default async function ReceptionPage() {
   const { data: venues } = await vq
 
   return (
-    <AppShell nav={[{ href: '/reception', label: 'Door Check-in' }]} current="/reception">
+    <AppShell nav={navForRoles(s.roles)} current="/reception">
       <ReceptionConsole venues={venues ?? []} />
     </AppShell>
   )
