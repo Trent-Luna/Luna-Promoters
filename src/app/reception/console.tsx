@@ -11,6 +11,7 @@ interface Row {
   promoter_name: string; promoter_code: string
   checked_in_at: string | null; notes: string | null; special_occasion: string | null
 }
+type ScanResult = { kind: 'ok' | 'err'; title: string; sub?: string } | null
 
 export function ReceptionConsole({ venues }: { venues: Venue[] }) {
   const supabase = useMemo(() => createClient(), [])
@@ -21,11 +22,19 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
   const [q, setQ] = useState('')
   const [toast, setToast] = useState<{ kind: 'ok' | 'warn' | 'err'; msg: string } | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<ScanResult>(null)
   const [loading, setLoading] = useState(false)
 
   const flash = (kind: 'ok' | 'warn' | 'err', msg: string) => {
     setToast({ kind, msg }); setTimeout(() => setToast(null), 3500)
   }
+
+  // auto-dismiss the big scan flash so the next guest can scan
+  useEffect(() => {
+    if (!scanResult) return
+    const t = setTimeout(() => setScanResult(null), 2400)
+    return () => clearTimeout(t)
+  }, [scanResult])
 
   useEffect(() => {
     if (!venueId) return
@@ -109,15 +118,22 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
 
   async function checkInByToken(token: string) {
     const { data, error } = await supabase.rpc('check_in_by_token', { p_token: token, p_no_entry: false, p_notes: null })
-    if (error) { flash('err', error.message); return }
+    if (error) { setScanResult({ kind: 'err', title: 'ERROR', sub: error.message }); return }
     if (!data?.ok) {
-      if (data?.error === 'already_checked_in') flash('warn', 'Already checked in')
-      else if (data?.error === 'not_found') flash('err', 'QR not recognised for this system')
-      else flash('err', 'Check-in failed')
-      return
+      if (data?.error === 'already_checked_in')
+        setScanResult({ kind: 'err', title: 'ALREADY CHECKED IN', sub: data.guest_name || '' })
+      else if (data?.error === 'not_found')
+        setScanResult({ kind: 'err', title: 'NOT RECOGNISED', sub: 'QR not in this system' })
+      else if (data?.error === 'not_authorised')
+        setScanResult({ kind: 'err', title: 'WRONG VENUE', sub: 'Guest is for another venue' })
+      else setScanResult({ kind: 'err', title: 'CHECK-IN FAILED' })
+      load(); return
     }
-    flash('ok', 'Checked in ✓'); load()
+    setScanResult({ kind: 'ok', title: 'CHECKED IN', sub: data.guest_name || '' })
+    load()
   }
+
+  const selEvent = events.find(e => e.id === eventId)
 
   return (
     <div className="space-y-5">
@@ -146,12 +162,8 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
       <div className="flex gap-3">
         <input className="input flex-1 text-lg" placeholder="Search name, phone, email or promoter…"
           value={q} onChange={e => setQ(e.target.value)} autoFocus />
-        <button className="btn-gold px-5" onClick={() => setScanning(s => !s)}>
-          {scanning ? 'Close scan' : 'Scan QR'}
-        </button>
+        <button className="btn-gold px-6 text-lg" onClick={() => setScanning(true)}>Scan QR</button>
       </div>
-
-      {scanning && <QRScanner onScan={checkInByToken} onError={m => flash('err', m)} />}
 
       {toast && (
         <div className={`fixed left-1/2 -translate-x-1/2 top-4 z-50 px-5 py-3 rounded-xl font-semibold shadow-glow ${
@@ -202,6 +214,42 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
           </div>
         ))}
       </div>
+
+      {/* full-screen scanner */}
+      {scanning && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="min-w-0">
+              <div className="text-white font-semibold text-lg">Scan guest QR</div>
+              <div className="text-luna-muted text-sm truncate">
+                {venues.find(v => v.id === venueId)?.name}{selEvent ? ` · ${fmtDate(selEvent.event_date)}` : ''}
+              </div>
+            </div>
+            <button onClick={() => { setScanning(false); setScanResult(null) }}
+              className="btn-ghost !py-3 !px-6 text-lg">Close</button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center p-4">
+            <QRScanner onScan={checkInByToken} onError={(m) => setScanResult({ kind: 'err', title: 'CAMERA ERROR', sub: m })} />
+          </div>
+          <p className="text-center text-luna-muted pb-6 text-lg">Point the camera at the guest&apos;s QR code</p>
+
+          {/* giant pass/fail flash */}
+          {scanResult && (
+            <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-8 ${
+              scanResult.kind === 'ok' ? 'bg-emerald-500' : 'bg-red-600'}`}>
+              <div className="text-white" style={{ fontSize: '7rem', lineHeight: 1 }}>
+                {scanResult.kind === 'ok' ? '✓' : '✕'}
+              </div>
+              <div className="text-white font-extrabold mt-4" style={{ fontSize: '3rem', lineHeight: 1.05 }}>
+                {scanResult.title}
+              </div>
+              {scanResult.sub && <div className="text-white/90 mt-4 text-2xl font-semibold">{scanResult.sub}</div>}
+              <div className="text-white/70 mt-8 text-base">Ready for the next guest…</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -217,13 +265,13 @@ function QRScanner({ onScan, onError }: { onScan: (token: string) => void; onErr
         const { Html5Qrcode } = await import('html5-qrcode')
         if (cancelled || !ref.current) return
         scanner = new Html5Qrcode(ref.current.id)
-        await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 },
+        await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 300 },
           (text: string) => {
             const token = (text.split('/g/')[1] || text).split(/[?#]/)[0]
             if (token && token !== lastRef.current) {
               lastRef.current = token
               onScan(token)
-              setTimeout(() => { lastRef.current = '' }, 2500)
+              setTimeout(() => { lastRef.current = '' }, 3000)
             }
           }, () => {})
       } catch (e: any) { onError('Camera unavailable — use search + manual check-in.') }
@@ -231,9 +279,8 @@ function QRScanner({ onScan, onError }: { onScan: (token: string) => void; onErr
     return () => { cancelled = true; if (scanner) scanner.stop().catch(() => {}) }
   }, [onScan, onError])
   return (
-    <div className="card p-3">
-      <div id="qr-reader" ref={ref} className="mx-auto max-w-xs rounded-xl overflow-hidden" />
-      <p className="text-center text-xs text-luna-muted mt-2">Point the iPad camera at the guest&apos;s QR code.</p>
+    <div className="w-full max-w-md">
+      <div id="qr-reader" ref={ref} className="w-full rounded-2xl overflow-hidden bg-black" />
     </div>
   )
 }
