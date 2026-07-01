@@ -1,15 +1,22 @@
+import { headers } from 'next/headers'
 import { Logo } from '@/components/Logo'
 import { PromoterSignupForm } from './signup-form'
+import { GuestlistContent } from './guestlist-content'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
+  const host = (await headers()).get('host') || ''
+  if (host.split(':')[0].startsWith('guestlist.')) {
+    return <GuestlistContent />
+  }
+
   return (
     <main className="min-h-screen">
       <header className="max-w-2xl mx-auto px-5 pt-8 flex items-center justify-between">
         <Logo size={34} />
-        <Link href="/login" className="text-sm text-luna-muted hover:text-luna-gold">Login</Link>
+        <Link href="/login" className="text-sm text-luna-muted hover:text-white">Login</Link>
       </header>
 
       <section className="max-w-2xl mx-auto px-5 pt-10 pb-6 text-center">
