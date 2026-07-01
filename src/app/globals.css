@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body {
+  background: radial-gradient(1200px 600px at 50% -10%, #1b1330 0%, #0a0a0f 55%) no-repeat #0a0a0f;
+  color: #f5f5f7;
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .card { @apply bg-luna-card border border-luna-border rounded-2xl; }
+  .input {
+    @apply w-full bg-luna-surface border border-luna-border rounded-xl px-4 py-3 text-luna-text
+           placeholder:text-luna-muted focus:outline-none focus:border-luna-gold transition;
+  }
+  .label { @apply block text-sm font-medium text-luna-muted mb-1.5; }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold
+           transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-gold  { @apply btn bg-gradient-to-b from-luna-goldsoft to-luna-gold text-black shadow-glow; }
+  .btn-ghost { @apply btn bg-luna-surface border border-luna-border text-luna-text hover:border-luna-gold; }
+  .btn-danger{ @apply btn bg-red-600/90 text-white hover:bg-red-600; }
+  .btn-lg    { @apply text-lg px-6 py-4; }
+  .pill      { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold; }
+  .stat      { @apply card p-5; }
+  .stat-num  { @apply text-3xl font-extrabold text-luna-text; }
+  .stat-lbl  { @apply text-xs uppercase tracking-wide text-luna-muted mt-1; }
+}
+
+.tier-bronze { color:#cd7f32 } .tier-silver { color:#c0c0c0 }
+.tier-gold   { color:#d4af37 } .tier-elite  { color:#b28dff }

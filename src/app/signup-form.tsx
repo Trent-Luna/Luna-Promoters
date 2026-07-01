@@ -1,0 +1,144 @@
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+
+interface Venue { id: string; name: string }
+const AGREEMENTS = [
+  'I agree to follow Luna Group promoter guidelines.',
+  'I understand abusive behaviour may result in removal.',
+  'I understand only checked-in guests count toward rankings and rewards.',
+  'I agree not to submit fake or duplicate guests.',
+  'I consent to Luna Group contacting me about promoter opportunities.',
+]
+
+export function PromoterSignupForm({ venues }: { venues: Venue[] }) {
+  const router = useRouter()
+  const [f, setF] = useState({
+    full_name: '', mobile: '', email: '', dob: '',
+    instagram: '', tiktok: '', facebook: '', suburb: '', preferred_venue: '',
+  })
+  const [others, setOthers] = useState<string[]>([])
+  const [agreed, setAgreed] = useState<boolean[]>(AGREEMENTS.map(() => false))
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: string) => setF(p => ({ ...p, [k]: v }))
+  const allAgreed = agreed.every(Boolean)
+
+  function toggleOther(id: string) {
+    setOthers(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setErr('')
+    if (!allAgreed) { setErr('Please accept all agreement points to continue.'); return }
+    // 18+ client check
+    const age = (Date.now() - new Date(f.dob).getTime()) / (365.25 * 864e5)
+    if (!f.dob || age < 18) { setErr('You must be 18 years or older to apply.'); return }
+    setLoading(true)
+    try {
+      let ip: string | null = null
+      try { ip = (await (await fetch('/api/signup-ip')).json()).ip } catch {}
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc('submit_promoter_application', {
+        p_full_name: f.full_name.trim(), p_mobile: f.mobile.trim(), p_email: f.email.trim(),
+        p_dob: f.dob, p_instagram: f.instagram, p_tiktok: f.tiktok, p_facebook: f.facebook,
+        p_suburb: f.suburb, p_preferred_venue: f.preferred_venue || null,
+        p_other_venues: others, p_agreement: true, p_marketing: true, p_ip: ip,
+      })
+      if (error) throw error
+      if (!data?.ok) {
+        const m: Record<string, string> = {
+          under_18: 'You must be 18 years or older to apply.',
+          email_exists: 'An application with this email already exists.',
+          mobile_exists: 'An application with this mobile number already exists.',
+          agreement_required: 'Please accept all agreement points.',
+        }
+        setErr(m[data?.error] || 'Could not submit application. Please check your details.')
+        return
+      }
+      router.push('/signup/success')
+    } catch (e: any) {
+      setErr(e.message || 'Something went wrong. Please try again.')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className="label">Full name *</label>
+          <input className="input" required value={f.full_name} onChange={e => set('full_name', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Mobile number *</label>
+          <input className="input" required type="tel" placeholder="04xx xxx xxx"
+            value={f.mobile} onChange={e => set('mobile', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Email address *</label>
+          <input className="input" required type="email" value={f.email} onChange={e => set('email', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Date of birth * <span className="text-luna-muted font-normal">(must be 18+)</span></label>
+          <input className="input" required type="date" value={f.dob} onChange={e => set('dob', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Suburb</label>
+          <input className="input" value={f.suburb} onChange={e => set('suburb', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Instagram</label>
+          <input className="input" placeholder="@handle" value={f.instagram} onChange={e => set('instagram', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">TikTok</label>
+          <input className="input" placeholder="@handle" value={f.tiktok} onChange={e => set('tiktok', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Facebook profile</label>
+          <input className="input" placeholder="facebook.com/…" value={f.facebook} onChange={e => set('facebook', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Preferred venue</label>
+          <select className="input" value={f.preferred_venue} onChange={e => set('preferred_venue', e.target.value)}>
+            <option value="">Select a venue…</option>
+            {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Other Luna venues you're interested in promoting</label>
+        <div className="flex flex-wrap gap-2">
+          {venues.map(v => (
+            <button type="button" key={v.id} onClick={() => toggleOther(v.id)}
+              className={`pill border ${others.includes(v.id)
+                ? 'bg-luna-gold/15 text-luna-gold border-luna-gold' : 'border-luna-border text-luna-muted'}`}>
+              {v.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card bg-luna-surface p-4 space-y-3">
+        <p className="text-sm font-semibold">Promoter agreement</p>
+        {AGREEMENTS.map((a, i) => (
+          <label key={i} className="flex items-start gap-3 text-sm text-luna-text cursor-pointer">
+            <input type="checkbox" className="mt-1 accent-luna-gold w-4 h-4" checked={agreed[i]}
+              onChange={e => setAgreed(p => p.map((x, j) => j === i ? e.target.checked : x))} />
+            <span>{a}</span>
+          </label>
+        ))}
+      </div>
+
+      {err && <p className="text-sm text-red-400">{err}</p>}
+      <button className="btn-gold w-full btn-lg" disabled={loading || !allAgreed}>
+        {loading ? 'Submitting…' : 'Submit application'}
+      </button>
+      <p className="text-xs text-luna-muted text-center">
+        Your application will be reviewed by the Luna Group team. You'll receive access once approved.
+      </p>
+    </form>
+  )
+}
