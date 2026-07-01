@@ -7,6 +7,7 @@ export const VENUE_NAV = [
   { href: '/reception', label: 'Door Check-in' },
   { href: '/admin/leaderboards', label: 'Leaderboards' },
   { href: '/admin/exports', label: 'Exports' },
+  { href: '/admin/mylink', label: 'My Link' },
 ]
 
 export function navForRoles(roles: Role[]) {
