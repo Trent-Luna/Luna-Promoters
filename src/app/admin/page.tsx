@@ -78,6 +78,8 @@ export default async function AdminOverview() {
 
       <div className="grid lg:grid-cols-2 gap-5 mt-6">
         <TopList title="Top 10 promoters this month" rows={promoters} houseRow={house?.checked_in ?? 0} />
+        <TopList title="Top 10 DJs this month" rows={djs} />
+        <TopList title="Top 10 staff this month" rows={staff} />
         <div className="card p-5">
           <h2 className="font-bold mb-3">Recent check-ins</h2>
           {(recent ?? []).length === 0 && <p className="text-luna-muted text-sm">Nothing yet.</p>}
@@ -92,10 +94,6 @@ export default async function AdminOverview() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-5 mt-5">
-        <TopList title="Top 10 DJs this month" rows={djs} />
-        <TopList title="Top 10 staff this month" rows={staff} />
-      </div>
     </AppShell>
   )
 }
