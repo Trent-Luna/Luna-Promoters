@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-interface Venue { id: string; name: string }
 const AGREEMENTS = [
   'I agree to follow Luna Group promoter guidelines.',
   'I understand abusive behaviour may result in removal.',
@@ -12,27 +11,21 @@ const AGREEMENTS = [
   'I consent to Luna Group contacting me about promoter opportunities.',
 ]
 
-export function PromoterSignupForm({ venues }: { venues: Venue[] }) {
+export function PromoterSignupForm() {
   const router = useRouter()
   const [f, setF] = useState({
     full_name: '', mobile: '', email: '', dob: '',
-    instagram: '', tiktok: '', facebook: '', suburb: '', preferred_venue: '',
+    instagram: '', tiktok: '', facebook: '', suburb: '',
   })
-  const [others, setOthers] = useState<string[]>([])
   const [agreed, setAgreed] = useState<boolean[]>(AGREEMENTS.map(() => false))
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setF(p => ({ ...p, [k]: v }))
   const allAgreed = agreed.every(Boolean)
 
-  function toggleOther(id: string) {
-    setOthers(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr('')
     if (!allAgreed) { setErr('Please accept all agreement points to continue.'); return }
-    // 18+ client check
     const age = (Date.now() - new Date(f.dob).getTime()) / (365.25 * 864e5)
     if (!f.dob || age < 18) { setErr('You must be 18 years or older to apply.'); return }
     setLoading(true)
@@ -43,8 +36,8 @@ export function PromoterSignupForm({ venues }: { venues: Venue[] }) {
       const { data, error } = await supabase.rpc('submit_promoter_application', {
         p_full_name: f.full_name.trim(), p_mobile: f.mobile.trim(), p_email: f.email.trim(),
         p_dob: f.dob, p_instagram: f.instagram, p_tiktok: f.tiktok, p_facebook: f.facebook,
-        p_suburb: f.suburb, p_preferred_venue: f.preferred_venue || null,
-        p_other_venues: others, p_agreement: true, p_marketing: true, p_ip: ip,
+        p_suburb: f.suburb, p_preferred_venue: null,
+        p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip,
       })
       if (error) throw error
       if (!data?.ok) {
@@ -98,26 +91,6 @@ export function PromoterSignupForm({ venues }: { venues: Venue[] }) {
         <div className="sm:col-span-2">
           <label className="label">Facebook profile</label>
           <input className="input" placeholder="facebook.com/…" value={f.facebook} onChange={e => set('facebook', e.target.value)} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="label">Preferred venue</label>
-          <select className="input" value={f.preferred_venue} onChange={e => set('preferred_venue', e.target.value)}>
-            <option value="">Select a venue…</option>
-            {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="label">Other Luna venues you're interested in promoting</label>
-        <div className="flex flex-wrap gap-2">
-          {venues.map(v => (
-            <button type="button" key={v.id} onClick={() => toggleOther(v.id)}
-              className={`pill border ${others.includes(v.id)
-                ? 'bg-luna-gold/15 text-luna-gold border-luna-gold' : 'border-luna-border text-luna-muted'}`}>
-              {v.name}
-            </button>
-          ))}
         </div>
       </div>
 

@@ -3,6 +3,8 @@ export const ADMIN_NAV = [
   { href: '/admin/promoters', label: 'Promoters' },
   { href: '/admin/events', label: 'Events' },
   { href: '/admin/venues', label: 'Venues' },
+  { href: '/admin/staff', label: 'Staff' },
+  { href: '/reception', label: 'Door Check-in' },
   { href: '/admin/leaderboards', label: 'Leaderboards' },
   { href: '/admin/tiers', label: 'Tiers' },
   { href: '/admin/exports', label: 'Exports' },

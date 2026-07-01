@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { PromoterSignupForm } from './signup-form'
 import Link from 'next/link'
@@ -27,7 +28,7 @@ export default async function HomePage() {
           <p className="text-sm text-luna-muted mb-6">
             Applications are reviewed by the Luna Group team. You must be 18 or older.
           </p>
-          <PromoterSignupForm />
+          <PromoterSignupForm venues={venues ?? []} />
         </div>
       </section>
     </main>

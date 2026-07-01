@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { PromoterSignupForm } from './signup-form'
 import Link from 'next/link'
@@ -5,6 +6,10 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: venues } = await supabase
+    .from('venues').select('id,name').eq('active', true).order('name')
+
   return (
     <main className="min-h-screen">
       <header className="max-w-2xl mx-auto px-5 pt-8 flex items-center justify-between">
@@ -27,7 +32,7 @@ export default async function HomePage() {
           <p className="text-sm text-luna-muted mb-6">
             Applications are reviewed by the Luna Group team. You must be 18 or older.
           </p>
-          <PromoterSignupForm />
+          <PromoterSignupForm venues={venues ?? []} />
         </div>
       </section>
     </main>

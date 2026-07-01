@@ -1,5 +1,5 @@
 'use server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getSession, hasRole } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 
@@ -101,49 +101,4 @@ export async function updateTier(fd: FormData) {
     .update({ min_guests: min, max_guests: max, perks: String(fd.get('perks') || '') }).eq('name', name)
   if (error) throw error
   revalidatePath('/admin/tiers')
-}
-
-// ---------- Staff management (admin creates managers / door staff) ----------
-export async function createStaff(fd: FormData) {
-  await ensureAdmin()
-  const email = String(fd.get('email') || '').trim().toLowerCase()
-  const password = String(fd.get('password') || '')
-  const role = String(fd.get('role') || '') as 'admin' | 'venue_manager' | 'reception'
-  const venueId = String(fd.get('venue_id') || '') || null
-
-  if (!email || password.length < 6) throw new Error('Email and a 6+ character password are required')
-  if ((role === 'venue_manager' || role === 'reception') && !venueId)
-    throw new Error('Please choose a venue for this role')
-
-  const svc = createServiceClient()
-
-  // create the auth user (or reuse if they already exist)
-  let userId: string | null = null
-  const { data: created, error: createErr } = await svc.auth.admin.createUser({
-    email, password, email_confirm: true,
-  })
-  if (created?.user) {
-    userId = created.user.id
-  } else {
-    // user may already exist — find their id from the profile table
-    const { data: existing } = await svc.from('users').select('id').eq('email', email).maybeSingle()
-    if (existing?.id) userId = existing.id
-    else throw new Error(createErr?.message || 'Could not create the account')
-  }
-
-  // grant the role (venue-scoped for manager/reception)
-  const { error: roleErr } = await svc.from('roles')
-    .insert({ user_id: userId, role, venue_id: venueId })
-  if (roleErr && !roleErr.message.includes('duplicate')) throw roleErr
-
-  await svc.rpc('log_action', { p_action: `staff_added_${role}`, p_user: (await ensureAdmin()).userId })
-  revalidatePath('/admin/staff')
-}
-
-export async function removeStaffRole(roleId: string) {
-  await ensureAdmin()
-  const supabase = await createClient()
-  const { error } = await supabase.from('roles').delete().eq('id', roleId)
-  if (error) throw error
-  revalidatePath('/admin/staff')
 }
