@@ -13,15 +13,18 @@ interface P {
 }
 
 const TABS = ['', 'pending', 'approved', 'suspended', 'rejected']
+const CATS: { v: string; label: string }[] = [{ v: '', label: 'All types' }, { v: 'promoter', label: 'Promoters' }, { v: 'dj', label: 'DJs' }, { v: 'staff', label: 'Staff' }]
 
 export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[]; initialStatus: string }) {
   const [status, setStatus] = useState(initialStatus)
+  const [cat, setCat] = useState('')
   const [q, setQ] = useState('')
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase()
     return promoters.filter(p => {
       if (status && p.status !== status) return false
+      if (cat && p.category !== cat) return false
       if (!t) return true
       return (
         p.full_name.toLowerCase().includes(t) ||
@@ -32,7 +35,7 @@ export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[];
         (p.instagram ?? '').toLowerCase().includes(t)
       )
     })
-  }, [promoters, status, q])
+  }, [promoters, status, cat, q])
 
   const countFor = (st: string) => promoters.filter(p => !st || p.status === st).length
 
@@ -42,11 +45,19 @@ export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[];
         <input className="input flex-1" placeholder="Search name, email, phone, code, suburb or Instagram…"
           value={q} onChange={e => setQ(e.target.value)} />
       </div>
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 mb-3 flex-wrap">
         {TABS.map(t => (
           <button key={t || 'all'} onClick={() => setStatus(t)}
             className={`pill border ${status === t ? 'bg-white/10 text-white border-white' : 'border-luna-border text-luna-muted'}`}>
             {t ? t[0].toUpperCase() + t.slice(1) : 'All'} <span className="ml-1 opacity-60">{countFor(t)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {CATS.map(c => (
+          <button key={c.v || 'allcat'} onClick={() => setCat(c.v)}
+            className={`pill border ${cat === c.v ? 'bg-luna-purple/25 text-white border-luna-purple' : 'border-luna-border text-luna-muted'}`}>
+            {c.label} <span className="ml-1 opacity-60">{promoters.filter(p => !c.v || p.category === c.v).length}</span>
           </button>
         ))}
       </div>

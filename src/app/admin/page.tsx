@@ -9,6 +9,31 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
+function TopList({ title, rows, houseRow }:
+  { title: string; rows: any[]; houseRow?: number }) {
+  return (
+    <div className="card p-5">
+      <h2 className="font-bold mb-3">{title}</h2>
+      {houseRow !== undefined && (
+        <div className="flex items-center gap-3 py-2 mb-1 rounded-lg bg-luna-purple/10 px-2">
+          <span className="w-6 text-center">🏠</span>
+          <span className="flex-1 font-medium">Luna Group <span className="text-luna-muted text-xs">(public guestlist)</span></span>
+          <span className="text-emerald-400 font-semibold w-10 text-right">{houseRow}</span>
+        </div>
+      )}
+      {rows.length === 0 && <p className="text-luna-muted text-sm">No check-ins yet this month.</p>}
+      {rows.map((r: any, i: number) => (
+        <div key={r.promoter_id} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
+          <span className="w-6 text-luna-gold font-bold">#{i + 1}</span>
+          <span className="flex-1 font-medium">{r.promoter_name} <span className="text-luna-muted text-xs">({r.promoter_code})</span></span>
+          <TierBadge tier={r.tier} />
+          <span className="text-emerald-400 font-semibold w-10 text-right">{r.checked_in}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default async function AdminOverview() {
   const s = await getSession()
   if (!s) redirect('/login')
@@ -20,11 +45,16 @@ export default async function AdminOverview() {
 
   const [{ data: stats }, { data: board }, { data: recent }, { data: pending }, { data: house }] = await Promise.all([
     supabase.rpc('get_admin_stats', {}),
-    supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 10 }),
+    supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 500 }),
     supabase.from('check_ins').select('checked_in_at,no_entry,guest_registrations(guests(first_name,last_name),events(name),promoters(full_name))').order('checked_in_at', { ascending: false }).limit(8),
     supabase.from('promoters').select('id').eq('status', 'pending'),
     supabase.rpc('get_house_stats', { p_from: mStr }),
   ])
+
+  const all = (board ?? []) as any[]
+  const promoters = all.filter(r => r.category === 'promoter').slice(0, 10)
+  const djs = all.filter(r => r.category === 'dj').slice(0, 10)
+  const staff = all.filter(r => r.category === 'staff').slice(0, 10)
 
   return (
     <AppShell nav={ADMIN_NAV} current="/admin" title="Admin overview">
@@ -47,23 +77,7 @@ export default async function AdminOverview() {
       )}
 
       <div className="grid lg:grid-cols-2 gap-5 mt-6">
-        <div className="card p-5">
-          <h2 className="font-bold mb-3">Top 10 promoters this month</h2>
-          <div className="flex items-center gap-3 py-2 mb-1 rounded-lg bg-luna-purple/10 px-2">
-            <span className="w-6 text-center">🏠</span>
-            <span className="flex-1 font-medium">Luna Group <span className="text-luna-muted text-xs">(public guestlist)</span></span>
-            <span className="text-emerald-400 font-semibold w-10 text-right">{house?.checked_in ?? 0}</span>
-          </div>
-          {(board ?? []).length === 0 && <p className="text-luna-muted text-sm">No check-ins yet this month.</p>}
-          {(board ?? []).map((r: any) => (
-            <div key={r.promoter_id} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
-              <span className="w-6 text-luna-gold font-bold">#{r.rank}</span>
-              <span className="flex-1 font-medium">{r.promoter_name} <span className="text-luna-muted text-xs">({r.promoter_code})</span></span>
-              <TierBadge tier={r.tier} />
-              <span className="text-emerald-400 font-semibold w-10 text-right">{r.checked_in}</span>
-            </div>
-          ))}
-        </div>
+        <TopList title="Top 10 promoters this month" rows={promoters} houseRow={house?.checked_in ?? 0} />
         <div className="card p-5">
           <h2 className="font-bold mb-3">Recent check-ins</h2>
           {(recent ?? []).length === 0 && <p className="text-luna-muted text-sm">Nothing yet.</p>}
@@ -76,6 +90,11 @@ export default async function AdminOverview() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-5 mt-5">
+        <TopList title="Top 10 DJs this month" rows={djs} />
+        <TopList title="Top 10 staff this month" rows={staff} />
       </div>
     </AppShell>
   )
