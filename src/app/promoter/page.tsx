@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { QRCode } from '@/components/QRCode'
+import { SaveQR } from '@/components/SaveQR'
 import { TierBadge, Stat } from '@/components/ui'
 import { TierProgressBar } from '@/components/TierProgressBar'
 import { fmtDate, pct } from '@/lib/format'
@@ -71,7 +72,9 @@ export default async function PromoterDashboard() {
         {/* QR card */}
         <div className="card p-6 flex flex-col items-center justify-center">
           <QRCode value={link} size={170} />
-          <p className="text-xs text-luna-muted mt-3">Share this QR to sign up guests</p>
+          <p className="text-xs text-luna-muted mt-3 mb-3">Share this QR to sign up guests</p>
+          <SaveQR qrValue={link} title={p.full_name} lines={[`Guestlist · /p/${p.promoter_code}`]}
+            fileName="luna-promoter-qr.png" label="Save my QR" />
         </div>
       </div>
 

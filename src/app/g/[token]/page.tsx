@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { QRCode } from '@/components/QRCode'
+import { SaveQR } from '@/components/SaveQR'
 import { StatusPill } from '@/components/ui'
 import { fmtDate, fmtTime } from '@/lib/format'
 import { notFound } from 'next/navigation'
@@ -34,12 +35,19 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
             <QRCode value={checkInUrl} size={240} />
           </div>
 
+          <div className="mb-5">
+            <SaveQR qrValue={checkInUrl}
+              title={`${reg.first_name} ${reg.last_name}`}
+              lines={[reg.venue_name, `${fmtDate(reg.event_date)}${reg.start_time ? ` · ${fmtTime(reg.start_time)}` : ''}`]}
+              fileName="luna-guestlist.png" label="Save QR to photos" />
+          </div>
+
           <div className="flex items-center justify-center gap-2 mb-1">
             <span className="text-sm text-luna-muted">Status</span>
             <StatusPill status={reg.status} />
           </div>
           <p className="text-xs text-luna-muted mb-6">
-            This QR is personal to you — screenshot it and show it at the door. Guest of {reg.promoter_name}.
+            This QR is personal to you — save it and show it at the door. Guest of {reg.promoter_name}.
           </p>
 
           <CalendarShare
