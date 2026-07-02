@@ -45,8 +45,11 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
           <CalendarShare
             title={`${reg.venue_name}`}
             date={reg.event_date} start={reg.start_time} end={reg.end_time}
-            promoterLink={promoterLink}
+            promoterLink={promoterLink} qrUrl={checkInUrl}
           />
+          <p className="text-[11px] text-luna-muted mt-4">
+            No screenshot? No problem — just give your name at the door and we&apos;ll find you.
+          </p>
         </div>
         <p className="text-center text-xs text-luna-muted mt-5">
           Everyone needs their own QR — send friends the promoter link so they can register too.

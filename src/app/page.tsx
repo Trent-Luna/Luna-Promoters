@@ -6,8 +6,9 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
   const host = (await headers()).get('host') || ''
+  const { ref } = await searchParams
   if (host.split(':')[0].startsWith('guestlist.')) {
     return <GuestlistContent />
   }
@@ -34,7 +35,7 @@ export default async function HomePage() {
           <p className="text-sm text-luna-muted mb-6">
             Applications are reviewed by the Luna Group team. You must be 18 or older.
           </p>
-          <PromoterSignupForm />
+          <PromoterSignupForm refCode={ref ?? ''} />
         </div>
       </section>
     </main>

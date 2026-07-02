@@ -5,6 +5,7 @@ export const ADMIN_NAV = [
   { href: '/admin/promoters', label: 'Promoters' },
   { href: '/admin/guestlists', label: 'Guestlists' },
   { href: '/admin/blackout', label: 'Blackout' },
+  { href: '/admin/whats-on', label: "What's On" },
   { href: '/admin/venues', label: 'Venues' },
   { href: '/admin/staff', label: 'Staff' },
   { href: '/reception', label: 'Door Check-in' },

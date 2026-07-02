@@ -8,7 +8,7 @@ const AGREEMENTS = [
   'I consent to Luna Group contacting me about promoter opportunities.',
 ]
 
-export function PromoterSignupForm() {
+export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
   const router = useRouter()
   const [f, setF] = useState({
     full_name: '', mobile: '', email: '', dob: '',
@@ -34,7 +34,7 @@ export function PromoterSignupForm() {
         p_full_name: f.full_name.trim(), p_mobile: f.mobile.trim(), p_email: f.email.trim(),
         p_dob: f.dob, p_instagram: f.instagram, p_tiktok: f.tiktok, p_facebook: f.facebook,
         p_suburb: f.suburb, p_preferred_venue: null,
-        p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip,
+        p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip, p_ref_code: refCode || null,
       })
       if (error) throw error
       if (!data?.ok) {
@@ -102,6 +102,9 @@ export function PromoterSignupForm() {
         ))}
       </div>
 
+      <p className="text-xs text-luna-muted">
+        By submitting you agree to our <a href="/terms" target="_blank" className="underline hover:text-white">Terms &amp; Conditions</a>.
+      </p>
       {err && <p className="text-sm text-red-400">{err}</p>}
       <button className="btn-gold w-full btn-lg" disabled={loading || !allAgreed}>
         {loading ? 'Submitting…' : 'Submit application'}

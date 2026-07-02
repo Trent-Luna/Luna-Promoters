@@ -7,6 +7,7 @@ import { TierBadge, Stat } from '@/components/ui'
 import { TierProgressBar } from '@/components/TierProgressBar'
 import { fmtDate, pct } from '@/lib/format'
 import { CopyLink } from './copy-link'
+import { PROMOTER_NAV } from '@/components/nav'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export default async function PromoterDashboard() {
 
   if (!p) {
     return (
-      <AppShell nav={[{ href: '/promoter', label: 'Dashboard' }]} current="/promoter" title="Promoter">
+      <AppShell nav={PROMOTER_NAV} current="/promoter" title="Promoter">
         <div className="card p-6">Your promoter profile isn&apos;t linked yet. Please contact Luna Group.</div>
       </AppShell>
     )
@@ -29,11 +30,12 @@ export default async function PromoterDashboard() {
 
   const monthStart = new Date(); monthStart.setDate(1)
   const mStr = monthStart.toISOString().slice(0, 10)
-  const [{ data: tiers }, { data: perf }, { data: events }, { data: board }] = await Promise.all([
+  const [{ data: tiers }, { data: perf }, { data: events }, { data: board }, { data: refs }] = await Promise.all([
     supabase.from('tiers').select('name,min_guests,max_guests,invite_only,perks').order('sort_order'),
     supabase.from('promoter_performance').select('checked_in_count,registered_count').eq('promoter_id', p.id).eq('period_month', mStr).maybeSingle(),
     supabase.rpc('get_promoter_events', { p_promoter: p.id }),
     supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 500 }),
+    supabase.rpc('get_my_referrals', { p_promoter: p.id }),
   ])
 
   const checkedThisMonth = perf?.checked_in_count ?? 0
@@ -42,6 +44,7 @@ export default async function PromoterDashboard() {
 
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
   const link = `${site}/p/${p.promoter_code}`
+  const referralLink = `${site}/?ref=${p.promoter_code}`
   const totalReg = (events ?? []).reduce((a: number, e: any) => a + Number(e.registered), 0)
   const totalCi = (events ?? []).reduce((a: number, e: any) => a + Number(e.checked_in), 0)
 
@@ -51,7 +54,7 @@ export default async function PromoterDashboard() {
   const boardShow = mine && !top.some(r => r.promoter_id === p.id) ? [...top, mine] : top
 
   return (
-    <AppShell nav={[{ href: '/promoter', label: 'Dashboard' }]} current="/promoter"
+    <AppShell nav={PROMOTER_NAV} current="/promoter"
       title={`Welcome, ${p.full_name.split(' ')[0]}`}>
       <div className="grid lg:grid-cols-3 gap-5">
         {/* link card */}
@@ -80,6 +83,24 @@ export default async function PromoterDashboard() {
         </div>
         <TierProgressBar checkedThisMonth={checkedThisMonth} tiers={(tiers ?? []) as any} currentTier={p.current_tier} />
         <p className="text-sm text-luna-muted mt-4"><span className="text-luna-text font-medium">Perks unlocked:</span> {perks}</p>
+      </div>
+
+      {/* referral program */}
+      <div className="card p-6 mt-5">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <h2 className="text-lg font-bold">Refer a friend</h2>
+          <span className="text-xs text-luna-muted">Each approved referral = <span className="text-luna-gold font-semibold">+3</span> toward your tier</span>
+        </div>
+        <p className="text-sm text-luna-muted mb-4">
+          Share your referral link. When a new promoter signs up through it and gets approved,
+          you get <span className="text-luna-text font-medium">3 bonus check-ins</span> added to your monthly tier progress.
+        </p>
+        <CopyLink link={referralLink} />
+        <div className="grid grid-cols-3 gap-3 mt-6">
+          <Stat label="Referrals" value={refs?.total ?? 0} />
+          <Stat label="Approved" value={refs?.approved ?? 0} accent />
+          <Stat label="Bonus this month" value={`+${refs?.bonus_this_month ?? 0}`} />
+        </div>
       </div>
 
       {/* monthly leaderboard */}

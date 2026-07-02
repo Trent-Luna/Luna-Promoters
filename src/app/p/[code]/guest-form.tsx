@@ -127,6 +127,9 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
         Guestlist entry is subject to availability, venue capacity, dress code, valid 18+ ID and
         management discretion. Registering does not guarantee entry. Please arrive early to avoid disappointment.
       </p>
+      <p className="text-[11px] text-luna-muted text-center">
+        By registering you agree to our <a href="/terms" target="_blank" className="underline hover:text-white">Terms &amp; Conditions</a>.
+      </p>
     </form>
   )
 }

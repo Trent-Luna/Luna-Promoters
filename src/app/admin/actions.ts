@@ -195,3 +195,28 @@ export async function setPromoterCategory(id: string, category: 'promoter' | 'dj
   if (error) throw error
   revalidatePath('/admin/promoters')
 }
+
+// ---------- What's On (venue newsfeed) ----------
+export async function createPost(fd: FormData) {
+  const s = await ensureManager()
+  const supabase = await createClient()
+  const venueRaw = String(fd.get('venue_id') || '')
+  const venue_id = venueRaw === 'ALL' ? null : (venueRaw || null)
+  const title = String(fd.get('title') || '').trim()
+  const body = String(fd.get('body') || '').trim() || null
+  const image_url = String(fd.get('image_url') || '').trim() || null
+  if (!title) throw new Error('A title is required')
+  if (!s.roles.includes('admin') && !venue_id) throw new Error('Only admins can post to all venues')
+  const { error } = await supabase.from('venue_posts')
+    .insert({ venue_id, title, body, image_url, created_by: s.userId })
+  if (error) throw error
+  revalidatePath('/admin/whats-on')
+}
+
+export async function deletePost(id: string) {
+  await ensureManager()
+  const supabase = await createClient()
+  const { error } = await supabase.from('venue_posts').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/admin/whats-on')
+}
