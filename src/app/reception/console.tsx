@@ -247,6 +247,10 @@ function QRScanner({ onScan, onError }: { onScan: (token: string) => void; onErr
     let cancelled = false
     ;(async () => {
       try {
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          onError('Camera not available in this browser. Open the site in Safari or Chrome, or use search + manual check-in.')
+          return
+        }
         const { Html5Qrcode } = await import('html5-qrcode')
         if (cancelled || !ref.current) return
         scanner = new Html5Qrcode(ref.current.id)
