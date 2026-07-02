@@ -20,12 +20,24 @@ function LoginForm() {
     const supabase = createClient()
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        })
         if (error) throw error
-        setMsg('Account created. If you are an approved promoter you now have access — signing you in…')
+        setMsg('Account created! Please check your email and tap the confirmation link to activate your account, then come back here and sign in.')
+        setMode('signin')
+        setLoading(false)
+        return
       }
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      if (error) {
+        if ((error.message || '').toLowerCase().includes('confirm')) {
+          setErr('Please confirm your email first — check your inbox (and spam) for the confirmation link.')
+          setLoading(false); return
+        }
+        throw error
+      }
       router.push(params.get('next') || '/dashboard')
       router.refresh()
     } catch (e: any) {
@@ -44,7 +56,7 @@ function LoginForm() {
           <p className="text-sm text-luna-muted mb-5">
             {mode === 'signin'
               ? 'Admins, venue managers, reception and approved promoters.'
-              : 'Use the email address from your approved application.'}
+              : 'Use the email address from your approved application. You’ll get a confirmation email to activate your account.'}
           </p>
           <form onSubmit={submit} className="space-y-4">
             <div>
@@ -61,10 +73,10 @@ function LoginForm() {
             {msg && <p className="text-sm text-emerald-400">{msg}</p>}
             <button className="btn-gold w-full" disabled={loading}>
               {loading && <span className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />}
-              {loading ? 'Signing you in…' : mode === 'signin' ? 'Sign in' : 'Create account & sign in'}
+              {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
-          <button onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+          <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setErr(''); setMsg('') }}
             className="text-sm text-luna-muted hover:text-white mt-4 w-full text-center">
             {mode === 'signin' ? 'Approved promoter? Create your login' : 'Already have an account? Sign in'}
           </button>
