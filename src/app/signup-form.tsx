@@ -12,7 +12,7 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
   const router = useRouter()
   const [f, setF] = useState({
     full_name: '', mobile: '', email: '', dob: '',
-    instagram: '', tiktok: '', facebook: '', suburb: '',
+    instagram: '', tiktok: '', facebook: '', suburb: '', category: 'promoter',
   })
   const [agreed, setAgreed] = useState<boolean[]>(AGREEMENTS.map(() => false))
   const [err, setErr] = useState('')
@@ -35,6 +35,7 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
         p_dob: f.dob, p_instagram: f.instagram, p_tiktok: f.tiktok, p_facebook: f.facebook,
         p_suburb: f.suburb, p_preferred_venue: null,
         p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip, p_ref_code: refCode || null,
+        p_category: f.category,
       })
       if (error) throw error
       if (!data?.ok) {
@@ -56,6 +57,14 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
   return (
     <form onSubmit={submit} className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className="label">I'm signing up as *</label>
+          <select className="input" value={f.category} onChange={e => set('category', e.target.value)}>
+            <option value="promoter">Promoter</option>
+            <option value="dj">DJ</option>
+            <option value="staff">Staff</option>
+          </select>
+        </div>
         <div className="sm:col-span-2">
           <label className="label">Full name *</label>
           <input className="input" required value={f.full_name} onChange={e => set('full_name', e.target.value)} />

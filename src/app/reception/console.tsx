@@ -10,7 +10,7 @@ interface Row {
   promoter_name: string; promoter_code: string
   checked_in_at: string | null; notes: string | null; special_occasion: string | null
 }
-type ScanResult = { kind: 'ok' | 'err'; title: string; sub?: string } | null
+type ScanResult = { kind: 'ok' | 'err' | 'warn'; title: string; sub?: string } | null
 
 function localToday() {
   const d = new Date()
@@ -20,7 +20,7 @@ function localToday() {
 export function ReceptionConsole({ venues }: { venues: Venue[] }) {
   const supabase = useMemo(() => createClient(), [])
   const [venueId, setVenueId] = useState(venues[0]?.id ?? '')
-  const [date, setDate] = useState(localToday())
+  const [date, setDate] = useState('')
   const [rows, setRows] = useState<Row[]>([])
   const [q, setQ] = useState('')
   const [toast, setToast] = useState<{ kind: 'ok' | 'warn' | 'err'; msg: string } | null>(null)
@@ -37,6 +37,9 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
     const t = setTimeout(() => setScanResult(null), 2400)
     return () => clearTimeout(t)
   }, [scanResult])
+
+  // set "today" on the client to avoid SSR/client timezone hydration mismatch
+  useEffect(() => { setDate(localToday()) }, [])
 
   const load = useCallback(async () => {
     if (!venueId || !date) { setRows([]); return }
@@ -109,11 +112,15 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
   }
 
   async function checkInByToken(token: string) {
-    const { data, error } = await supabase.rpc('check_in_by_token', { p_token: token, p_no_entry: false, p_notes: null })
+    const { data, error } = await supabase.rpc('check_in_by_token', {
+      p_token: token, p_no_entry: false, p_notes: null, p_expected_date: date,
+    })
     if (error) { setScanResult({ kind: 'err', title: 'ERROR', sub: error.message }); return }
     if (!data?.ok) {
       if (data?.error === 'already_checked_in')
         setScanResult({ kind: 'err', title: 'ALREADY CHECKED IN', sub: data.guest_name || '' })
+      else if (data?.error === 'wrong_date')
+        setScanResult({ kind: 'warn', title: 'WRONG DATE', sub: data.event_date ? `This QR is for ${fmtDate(data.event_date)}` : 'Not for tonight' })
       else if (data?.error === 'not_found')
         setScanResult({ kind: 'err', title: 'NOT RECOGNISED', sub: 'QR not in this system' })
       else if (data?.error === 'not_authorised')
@@ -222,9 +229,9 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
 
           {scanResult && (
             <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-8 ${
-              scanResult.kind === 'ok' ? 'bg-emerald-500' : 'bg-red-600'}`}>
+              scanResult.kind === 'ok' ? 'bg-emerald-500' : scanResult.kind === 'warn' ? 'bg-amber-500' : 'bg-red-600'}`}>
               <div className="text-white" style={{ fontSize: '7rem', lineHeight: 1 }}>
-                {scanResult.kind === 'ok' ? '✓' : '✕'}
+                {scanResult.kind === 'ok' ? '✓' : scanResult.kind === 'warn' ? '⚠' : '✕'}
               </div>
               <div className="text-white font-extrabold mt-4" style={{ fontSize: '3rem', lineHeight: 1.05 }}>
                 {scanResult.title}
