@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Stat, TierBadge } from '@/components/ui'
 import { pct, fmtDate } from '@/lib/format'
+import { downloadWeeklyReport } from '@/lib/report-pdf'
 
 const BRIS_OFFSET_MS = 10 * 3600 * 1000 // Brisbane = UTC+10 (no DST)
 const WEEK_MS = 7 * 24 * 3600 * 1000
@@ -112,6 +113,8 @@ export function WeeklySummary() {
   const [weeksAgo, setWeeksAgo] = useState(0)
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfErr, setPdfErr] = useState('')
 
   const weeks = useMemo(() => Array.from({ length: 13 }, (_, i) => {
     const start = weekStartUTC(i)
@@ -132,6 +135,15 @@ export function WeeklySummary() {
 
   const sel = weeks[weeksAgo]
 
+  async function exportPdf() {
+    setPdfErr(''); setPdfBusy(true)
+    try {
+      await downloadWeeklyReport(range.from, range.to, sel?.label ?? '')
+    } catch (e: any) {
+      setPdfErr(e?.message || 'Could not generate the report.')
+    } finally { setPdfBusy(false) }
+  }
+
   const house = data ? {
     id: data.house_id, full_name: 'Luna Group', sublabel: 'public guestlist',
     checked_in: data.house_checked_in ?? 0,
@@ -148,14 +160,13 @@ export function WeeklySummary() {
         <span className="text-sm text-luna-muted">
           Week runs Monday 5:00am → Monday 5:00am (Brisbane). {sel && `Showing ${sel.label}.`}
         </span>
-        <a
-          href={`/admin/summary/report?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}&label=${encodeURIComponent(sel?.label ?? '')}`}
-          target="_blank" rel="noopener noreferrer"
-          className="btn-gold !py-2 !px-4 text-sm ml-auto"
-        >
-          Export PDF report
-        </a>
+        <button onClick={exportPdf} disabled={pdfBusy || loading}
+          className="btn-gold !py-2 !px-4 text-sm ml-auto disabled:opacity-60">
+          {pdfBusy ? 'Preparing…' : 'Download PDF report'}
+        </button>
       </div>
+
+      {pdfErr && <p className="text-sm text-red-400">Report error: {pdfErr}</p>}
 
       {loading && <div className="card p-8 text-center text-luna-muted">Loading…</div>}
 
