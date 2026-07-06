@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Stat, TierBadge } from '@/components/ui'
-import { pct } from '@/lib/format'
+import { pct, fmtDate } from '@/lib/format'
 
 const BRIS_OFFSET_MS = 10 * 3600 * 1000 // Brisbane = UTC+10 (no DST)
 const WEEK_MS = 7 * 24 * 3600 * 1000
@@ -26,20 +26,83 @@ function label(startUTC: Date) {
   return `${f(brisStart)} – ${f(brisEnd)}`
 }
 
-function List({ title, empty, rows, withTier = false }:
-  { title: string; empty: string; rows: any[]; withTier?: boolean }) {
+type Range = { from: string; to: string }
+type Guest = {
+  first_name: string; last_name: string; venue_name: string
+  event_date: string; checked_in_at: string; no_entry: boolean; special_occasion: string | null
+}
+
+// A single clickable person row that expands to reveal the guests they checked in.
+function PersonRow({ rank, person, range, withTier = false, icon }:
+  { rank: number | null; person: any; range: Range; withTier?: boolean; icon?: string }) {
+  const supabase = useMemo(() => createClient(), [])
+  const [open, setOpen] = useState(false)
+  const [guests, setGuests] = useState<Guest[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function toggle() {
+    const next = !open
+    setOpen(next)
+    if (next && guests === null && person.id) {
+      setLoading(true)
+      const { data } = await supabase.rpc('get_week_guests', {
+        p_promoter: person.id, p_from: range.from, p_to: range.to,
+      })
+      setGuests((data ?? []) as Guest[])
+      setLoading(false)
+    }
+  }
+
+  const clickable = !!person.id
+  return (
+    <div className="border-b border-luna-border/40 last:border-0">
+      <button type="button" onClick={toggle} disabled={!clickable}
+        className={`w-full flex items-center gap-3 py-2 px-1 rounded-lg text-left ${clickable ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}`}>
+        <span className="w-6 text-center font-bold text-white/80">{icon ?? (rank != null ? `#${rank}` : '')}</span>
+        <span className="flex-1 font-medium">
+          {person.full_name}
+          {person.promoter_code
+            ? <span className="text-luna-muted text-xs"> ({person.promoter_code})</span>
+            : person.sublabel ? <span className="text-luna-muted text-xs"> ({person.sublabel})</span> : null}
+        </span>
+        {withTier && person.current_tier && <TierBadge tier={person.current_tier} />}
+        <span className="w-10 text-right font-semibold text-emerald-400">{person.checked_in}</span>
+        {clickable && <span className="w-4 text-luna-muted text-xs">{open ? '▾' : '▸'}</span>}
+      </button>
+
+      {open && (
+        <div className="pl-9 pr-2 pb-3">
+          {loading && <p className="text-xs text-luna-muted py-1">Loading…</p>}
+          {!loading && guests && guests.length === 0 &&
+            <p className="text-xs text-luna-muted py-1">No individual check-ins found for this week.</p>}
+          {!loading && guests && guests.map((g, i) => (
+            <div key={i} className="flex items-center gap-2 py-1 text-sm border-b border-luna-border/20 last:border-0">
+              <span className="flex-1">
+                {g.first_name} {g.last_name}
+                {g.special_occasion && <span className="ml-2 pill bg-luna-purple/25 text-white text-[10px]">🎉 {g.special_occasion}</span>}
+                {g.no_entry && <span className="ml-2 pill bg-red-500/15 text-red-400 text-[10px]">No entry</span>}
+              </span>
+              <span className="text-luna-muted text-xs text-right whitespace-nowrap">
+                {g.venue_name} · {fmtDate(g.event_date)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PersonList({ title, empty, rows, range, withTier = false }:
+  { title: string; empty: string; rows: any[]; range: Range; withTier?: boolean }) {
   return (
     <div className="card p-5">
       <h2 className="font-bold mb-3">{title}</h2>
       {rows.length === 0 && <p className="text-sm text-luna-muted">{empty}</p>}
       {rows.map((r: any, i: number) => (
-        <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
-          <span className="w-6 font-bold text-white/80">#{i + 1}</span>
-          <span className="flex-1 font-medium">{r.full_name} <span className="text-luna-muted text-xs">({r.promoter_code})</span></span>
-          {withTier && <TierBadge tier={r.current_tier} />}
-          <span className="w-10 text-right font-semibold text-emerald-400">{r.checked_in}</span>
-        </div>
+        <PersonRow key={r.id ?? i} rank={i + 1} person={r} range={range} withTier={withTier} />
       ))}
+      {rows.length > 0 && <p className="text-[11px] text-luna-muted mt-3">Tap a name to see who they checked in.</p>}
     </div>
   )
 }
@@ -55,15 +118,24 @@ export function WeeklySummary() {
     return { i, start, label: label(start), current: i === 0 }
   }), [])
 
-  useEffect(() => {
-    setLoading(true)
+  const range = useMemo<Range>(() => {
     const from = weekStartUTC(weeksAgo)
     const to = new Date(from.getTime() + WEEK_MS)
-    supabase.rpc('get_weekly_summary', { p_from: from.toISOString(), p_to: to.toISOString() })
+    return { from: from.toISOString(), to: to.toISOString() }
+  }, [weeksAgo])
+
+  useEffect(() => {
+    setLoading(true)
+    supabase.rpc('get_weekly_summary', { p_from: range.from, p_to: range.to })
       .then(({ data }) => { setData(data); setLoading(false) })
-  }, [weeksAgo, supabase])
+  }, [range, supabase])
 
   const sel = weeks[weeksAgo]
+
+  const house = data ? {
+    id: data.house_id, full_name: 'Luna Group', sublabel: 'public guestlist',
+    checked_in: data.house_checked_in ?? 0,
+  } : null
 
   return (
     <div className="space-y-5">
@@ -96,28 +168,30 @@ export function WeeklySummary() {
           <div className="grid lg:grid-cols-2 gap-5">
             <div className="card p-5">
               <h2 className="font-bold mb-3">Top promoters</h2>
-              <div className="flex items-center gap-3 py-2 mb-1 rounded-lg bg-luna-purple/10 px-2">
-                <span className="w-6 text-center">🏠</span>
-                <span className="flex-1 font-medium">Luna Group <span className="text-luna-muted text-xs">(public guestlist)</span></span>
-                <span className="w-10 text-right font-semibold text-emerald-400">{data.house_checked_in ?? 0}</span>
-              </div>
+              {house && <PersonRow rank={null} person={house} range={range} icon="🏠" />}
               {(data.top_promoters ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
               {(data.top_promoters ?? []).map((r: any, i: number) => (
+                <PersonRow key={r.id ?? i} rank={i + 1} person={r} range={range} withTier />
+              ))}
+              <p className="text-[11px] text-luna-muted mt-3">Tap a name to see who they checked in.</p>
+            </div>
+
+            <div className="card p-5">
+              <h2 className="font-bold mb-3">Top venues</h2>
+              {(data.top_venues ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
+              {(data.top_venues ?? []).map((v: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
                   <span className="w-6 font-bold text-white/80">#{i + 1}</span>
-                  <span className="flex-1 font-medium">{r.full_name} <span className="text-luna-muted text-xs">({r.promoter_code})</span></span>
-                  <TierBadge tier={r.current_tier} />
-                  <span className="w-10 text-right font-semibold text-emerald-400">{r.checked_in}</span>
+                  <span className="flex-1 font-medium">{v.name}</span>
+                  <span className="w-10 text-right font-semibold text-emerald-400">{v.checked_in}</span>
                 </div>
               ))}
             </div>
-            <List title="Top venues" empty="No check-ins this week."
-              rows={(data.top_venues ?? []).map((v: any) => ({ full_name: v.name, promoter_code: '', checked_in: v.checked_in }))} />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-5">
-            <List title="Top DJs" empty="No DJ check-ins this week." rows={data.top_djs ?? []} />
-            <List title="Top staff" empty="No staff check-ins this week." rows={data.top_staff ?? []} />
+            <PersonList title="Top DJs" empty="No DJ check-ins this week." rows={data.top_djs ?? []} range={range} withTier />
+            <PersonList title="Top staff" empty="No staff check-ins this week." rows={data.top_staff ?? []} range={range} withTier />
           </div>
         </>
       )}
