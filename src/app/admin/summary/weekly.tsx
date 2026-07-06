@@ -148,6 +148,13 @@ export function WeeklySummary() {
         <span className="text-sm text-luna-muted">
           Week runs Monday 5:00am → Monday 5:00am (Brisbane). {sel && `Showing ${sel.label}.`}
         </span>
+        <a
+          href={`/admin/summary/report?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}&label=${encodeURIComponent(sel?.label ?? '')}`}
+          target="_blank" rel="noopener noreferrer"
+          className="btn-gold !py-2 !px-4 text-sm ml-auto"
+        >
+          Export PDF report
+        </a>
       </div>
 
       {loading && <div className="card p-8 text-center text-luna-muted">Loading…</div>}
