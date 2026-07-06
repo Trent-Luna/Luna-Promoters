@@ -2144,3 +2144,360 @@ returns json language sql stable security definer set search_path = public as $$
   ) x;
 $$;
 grant execute on function public.get_week_breakdown(timestamptz, timestamptz) to authenticated;
+
+
+-- =====================================================================
+-- Luna Promoters :: 0029 Proper-case display names
+-- Names are stored title-cased ("john smith" / "JOHN SMITH" -> "John Smith")
+-- via a trigger on insert/update, and existing rows are backfilled once.
+-- initcap() capitalises the first letter of each word (handles spaces,
+-- hyphens and apostrophes: "o'brien" -> "O'Brien", "mary-jane" -> "Mary-Jane").
+-- =====================================================================
+
+create or replace function public.tg_proper_name()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if TG_TABLE_NAME = 'guests' then
+    if NEW.first_name is not null then NEW.first_name := initcap(btrim(NEW.first_name)); end if;
+    if NEW.last_name  is not null then NEW.last_name  := initcap(btrim(NEW.last_name));  end if;
+  elsif TG_TABLE_NAME = 'promoters' then
+    if NEW.full_name is not null then NEW.full_name := initcap(btrim(NEW.full_name)); end if;
+  end if;
+  return NEW;
+end $$;
+
+drop trigger if exists proper_name_guests on public.guests;
+create trigger proper_name_guests
+  before insert or update of first_name, last_name on public.guests
+  for each row execute function public.tg_proper_name();
+
+drop trigger if exists proper_name_promoters on public.promoters;
+create trigger proper_name_promoters
+  before insert or update of full_name on public.promoters
+  for each row execute function public.tg_proper_name();
+
+-- One-time backfill of existing names.
+update public.guests
+  set first_name = initcap(btrim(first_name)),
+      last_name  = initcap(btrim(last_name))
+  where first_name is not null or last_name is not null;
+
+update public.promoters
+  set full_name = initcap(btrim(full_name))
+  where full_name is not null;
+
+
+-- =====================================================================
+-- Luna Promoters :: 0030 Sync staff display names from their profile
+-- Staff promoter records were auto-created with an email-prefix name and
+-- never refreshed. Re-sync them from public.users.full_name (which the
+-- admin "Add staff" form populates), and keep them in sync afterwards.
+-- (Trigger 0029 title-cases the result.)
+-- =====================================================================
+
+-- One-time backfill: pull the real name from the linked user profile.
+update public.promoters p
+set full_name = btrim(u.full_name)
+from public.users u
+where p.user_id = u.id
+  and u.full_name is not null
+  and btrim(u.full_name) <> ''
+  and p.is_staff = true;
+
+-- ensure_staff_promoter: refresh the name from the profile on every call.
+create or replace function public.ensure_staff_promoter()
+returns uuid language plpgsql security definer set search_path = public as $$
+declare pid uuid; u record; nm text; existing record;
+begin
+  select * into existing from public.promoters where user_id = auth.uid() limit 1;
+  select * into u from public.users where id = auth.uid();
+
+  if existing.id is not null then
+    update public.promoters
+      set promoter_code = coalesce(promoter_code,
+            public.generate_promoter_code(coalesce(nullif(full_name, ''), 'promo'))),
+          status = 'approved',
+          approved_at = coalesce(approved_at, now()),
+          full_name = case when u.full_name is not null and btrim(u.full_name) <> ''
+                           then btrim(u.full_name) else full_name end
+      where id = existing.id;
+    return existing.id;
+  end if;
+
+  nm := coalesce(nullif(u.full_name, ''), split_part(u.email, '@', 1));
+  insert into public.promoters(user_id, full_name, email, mobile, date_of_birth, status,
+    promoter_code, is_staff, agreement_accepted, approved_at, category)
+  values (auth.uid(), nm, u.email, 'staff:' || substr(auth.uid()::text, 1, 12), '2000-01-01',
+    'approved', public.generate_promoter_code(nm), true, true, now(), 'staff')
+  returning id into pid;
+  return pid;
+end $$;
+grant execute on function public.ensure_staff_promoter() to authenticated;
+
+
+-- =====================================================================
+-- Luna Promoters :: 0031 Recover staff names from auth signup metadata
+-- Some staff profiles (public.users.full_name) are blank even though the
+-- name was entered at "Add staff" time — it lives in auth.users metadata.
+-- Backfill profile names from there, then re-sync staff promoter names.
+-- =====================================================================
+
+-- 1) Fill blank profile names from the auth signup metadata.
+update public.users u
+set full_name = btrim(au.raw_user_meta_data->>'full_name')
+from auth.users au
+where u.id = au.id
+  and coalesce(btrim(u.full_name), '') = ''
+  and coalesce(btrim(au.raw_user_meta_data->>'full_name'), '') <> '';
+
+-- 2) Re-sync staff promoter display names from the (now-filled) profile.
+update public.promoters p
+set full_name = btrim(u.full_name)
+from public.users u
+where p.user_id = u.id
+  and coalesce(btrim(u.full_name), '') <> ''
+  and (p.is_staff = true or p.category = 'staff');
+
+
+-- =====================================================================
+-- Luna Promoters :: 0032 Track how a guest was checked in
+-- method = 'scan' (QR scanned) or 'manual' (checked in from the list).
+-- Existing rows stay null (shown as "—").
+-- =====================================================================
+
+alter table public.check_ins add column if not exists method text;
+
+-- check_in_guest records the method (defaults to manual).
+create or replace function public.check_in_guest(
+  p_registration uuid, p_no_entry boolean default false, p_notes text default null,
+  p_method text default 'manual'
+) returns json language plpgsql security definer set search_path = public as $$
+declare reg record; already boolean;
+begin
+  select gr.*, e.venue_id as ev_venue, (g.first_name || ' ' || g.last_name) as guest_name
+    into reg
+    from public.guest_registrations gr
+    join public.events e on e.id = gr.event_id
+    join public.guests g on g.id = gr.guest_id
+    where gr.id = p_registration;
+  if reg is null then return json_build_object('ok',false,'error','registration_not_found'); end if;
+  if not public.manages_venue(reg.venue_id) then
+    return json_build_object('ok',false,'error','not_authorised'); end if;
+
+  select exists(select 1 from public.check_ins c where c.registration_id = p_registration) into already;
+  if already then
+    return json_build_object('ok',false,'error','already_checked_in','guest_name',reg.guest_name,
+      'checked_in_at',(select checked_in_at from public.check_ins where registration_id = p_registration));
+  end if;
+
+  insert into public.check_ins(registration_id,checked_in_by,no_entry,notes,method)
+    values (p_registration, auth.uid(), p_no_entry, p_notes, coalesce(nullif(p_method,''),'manual'));
+  update public.guest_registrations
+    set status = case when p_no_entry then 'no_entry'::guest_status else 'checked_in'::guest_status end
+    where id = p_registration;
+  perform public.log_action(case when p_no_entry then 'guest_no_entry' else 'guest_checked_in' end,
+    auth.uid(), reg.venue_id, reg.event_id, reg.promoter_id, reg.guest_id, p_notes);
+  return json_build_object('ok',true,'no_entry',p_no_entry,'guest_name',reg.guest_name);
+end $$;
+grant execute on function public.check_in_guest(uuid,boolean,text,text) to authenticated;
+
+-- Scans go through check_in_by_token -> mark them as 'scan'.
+drop function if exists public.check_in_by_token(text,boolean,text);
+create or replace function public.check_in_by_token(
+  p_token text, p_no_entry boolean default false, p_notes text default null,
+  p_expected_date date default null
+) returns json language plpgsql security definer set search_path = public as $$
+declare rid uuid; ev_date date; gname text;
+begin
+  select gr.id, e.event_date, (g.first_name || ' ' || g.last_name)
+    into rid, ev_date, gname
+    from public.guest_registrations gr
+    join public.events e on e.id = gr.event_id
+    join public.guests g on g.id = gr.guest_id
+    where gr.qr_token = p_token;
+  if rid is null then return json_build_object('ok',false,'error','not_found'); end if;
+  if p_expected_date is not null and ev_date <> p_expected_date then
+    return json_build_object('ok',false,'error','wrong_date','guest_name',gname,'event_date',ev_date);
+  end if;
+  return public.check_in_guest(rid, p_no_entry, p_notes, 'scan');
+end $$;
+grant execute on function public.check_in_by_token(text,boolean,text,date) to authenticated;
+
+
+-- =====================================================================
+-- Luna Promoters :: 0033 "+1s" on manually-added guests
+-- plus_ones = number of EXTRA people in the party (party size = 1 + plus_ones).
+-- Only set via the manual guestlist add; public sign-ups stay at 0.
+-- =====================================================================
+
+alter table public.guest_registrations
+  add column if not exists plus_ones int not null default 0;
+
+-- manual staff add now accepts p_plus_ones
+drop function if exists public.add_guest_manual_vd(uuid,date,text,text,text,text,date,text,text);
+create or replace function public.add_guest_manual_vd(
+  p_venue uuid, p_date date, p_first text, p_last text, p_mobile text,
+  p_email text, p_dob date, p_instagram text, p_occasion text default null,
+  p_plus_ones int default 0
+) returns json language plpgsql security definer set search_path = public as $$
+declare ven record; eid uuid; pid uuid; g_id uuid; existing uuid; reg record; extras int;
+begin
+  select * into ven from public.venues where id = p_venue;
+  if ven is null then return json_build_object('ok',false,'error','venue_not_found'); end if;
+  if not public.manages_venue(p_venue) then return json_build_object('ok',false,'error','not_authorised'); end if;
+  if p_date is null or p_date < (current_date - interval '1 day') or p_date > (current_date + interval '1 year') then
+    return json_build_object('ok',false,'error','bad_date'); end if;
+
+  extras := greatest(0, least(coalesce(p_plus_ones,0), 50));
+  eid := public.ensure_event(p_venue, p_date);
+  pid := public.ensure_staff_promoter();
+
+  select id into g_id from public.guests
+    where mobile = p_mobile or (p_email is not null and p_email <> '' and email = p_email::citext) limit 1;
+  if g_id is null then
+    insert into public.guests(first_name,last_name,mobile,email,date_of_birth,instagram)
+      values (p_first,p_last,p_mobile,nullif(p_email,''),p_dob,nullif(p_instagram,''))
+      returning id into g_id;
+  end if;
+  select id into existing from public.guest_registrations where event_id = eid and guest_id = g_id;
+  if existing is not null then return json_build_object('ok',false,'error','duplicate'); end if;
+
+  insert into public.guest_registrations(guest_id,promoter_id,event_id,venue_id,marketing_consent,special_occasion,plus_ones)
+    values (g_id, pid, eid, p_venue, false, nullif(p_occasion,''), extras) returning * into reg;
+  perform public.log_action('guest_registered', auth.uid(), p_venue, eid, pid, g_id,
+    'manual add' || case when extras > 0 then ' +' || extras else '' end);
+  return json_build_object('ok',true,'registration_id',reg.id,'plus_ones',extras);
+end $$;
+grant execute on function public.add_guest_manual_vd(uuid,date,text,text,text,text,date,text,text,int) to authenticated;
+
+
+-- =====================================================================
+-- Luna Promoters :: 0034
+--  * Reports count "+1s" as real heads (1 + plus_ones).
+--  * Guest drill-downs show method (scan/manual) and who checked them in.
+--  * New guest directory for the "Guests" tab.
+-- =====================================================================
+
+-- --------------------------- weekly summary (heads) ---------------------------
+create or replace function public.get_weekly_summary(p_from timestamptz, p_to timestamptz)
+returns json language sql stable security definer set search_path = public as $$
+  with ci as (
+    select c.no_entry, gr.promoter_id, gr.venue_id, coalesce(gr.plus_ones,0) as extra
+    from public.check_ins c
+    join public.guest_registrations gr on gr.id = c.registration_id
+    where c.checked_in_at >= p_from and c.checked_in_at < p_to
+  ),
+  ranked as (
+    select p.id, p.full_name, p.promoter_code, p.current_tier, p.category,
+           sum(case when ci.no_entry = false then 1 + ci.extra else 0 end) as checked_in
+    from ci join public.promoters p on p.id = ci.promoter_id
+    where not p.is_house
+    group by p.id, p.full_name, p.promoter_code, p.current_tier, p.category
+  )
+  select json_build_object(
+    'registered',       (select count(*) + coalesce(sum(plus_ones),0) from public.guest_registrations gr where gr.created_at >= p_from and gr.created_at < p_to),
+    'checked_in',       (select coalesce(sum(case when no_entry = false then 1 + extra else 0 end),0) from ci),
+    'no_entry',         (select coalesce(sum(case when no_entry = true  then 1 + extra else 0 end),0) from ci),
+    'new_applications', (select count(*) from public.promoters p where p.created_at >= p_from and p.created_at < p_to and not p.is_house and not p.is_staff),
+    'approved',         (select count(*) from public.promoters p where p.approved_at >= p_from and p.approved_at < p_to and not p.is_house and not p.is_staff),
+    'events',           (select count(*) from public.events e where e.event_date >= p_from::date and e.event_date < p_to::date),
+    'active_promoters', (select count(*) from ranked where checked_in > 0),
+    'house_checked_in', (select coalesce(sum(case when ci.no_entry = false then 1 + ci.extra else 0 end),0) from ci join public.promoters p on p.id = ci.promoter_id where p.is_house),
+    'house_id',         (select id from public.promoters where is_house order by created_at limit 1),
+    'top_promoters', (select coalesce(json_agg(t),'[]') from (select id,full_name,promoter_code,current_tier,checked_in from ranked where category='promoter' order by checked_in desc limit 10) t),
+    'top_djs',       (select coalesce(json_agg(t),'[]') from (select id,full_name,promoter_code,current_tier,checked_in from ranked where category='dj' order by checked_in desc limit 5) t),
+    'top_staff',     (select coalesce(json_agg(t),'[]') from (select id,full_name,promoter_code,current_tier,checked_in from ranked where category='staff' order by checked_in desc limit 5) t),
+    'top_venues', (select coalesce(json_agg(t),'[]') from (select v.name, sum(case when ci.no_entry=false then 1 + ci.extra else 0 end) as checked_in from ci join public.venues v on v.id = ci.venue_id group by v.id,v.name order by checked_in desc) t)
+  );
+$$;
+grant execute on function public.get_weekly_summary(timestamptz, timestamptz) to authenticated;
+
+-- --------------------------- per-person guest list ---------------------------
+create or replace function public.get_week_guests(p_promoter uuid, p_from timestamptz, p_to timestamptz)
+returns json language sql stable security definer set search_path = public as $$
+  select coalesce(json_agg(row_to_json(t) order by t.checked_in_at), '[]'::json)
+  from (
+    select g.first_name, g.last_name, v.name as venue_name,
+           e.event_date, c.checked_in_at, c.no_entry, gr.special_occasion,
+           coalesce(gr.plus_ones,0) as plus_ones, c.method,
+           cu.full_name as checked_in_by
+    from public.check_ins c
+    join public.guest_registrations gr on gr.id = c.registration_id
+    join public.guests g on g.id = gr.guest_id
+    join public.venues v on v.id = gr.venue_id
+    join public.events e on e.id = gr.event_id
+    left join public.users cu on cu.id = c.checked_in_by
+    where gr.promoter_id = p_promoter
+      and c.checked_in_at >= p_from and c.checked_in_at < p_to
+  ) t;
+$$;
+grant execute on function public.get_week_guests(uuid, timestamptz, timestamptz) to authenticated;
+
+-- --------------------------- full breakdown (PDF) ---------------------------
+create or replace function public.get_week_breakdown(p_from timestamptz, p_to timestamptz)
+returns json language sql stable security definer set search_path = public as $$
+  with ci as (
+    select c.no_entry, gr.promoter_id, coalesce(gr.plus_ones,0) as extra
+    from public.check_ins c
+    join public.guest_registrations gr on gr.id = c.registration_id
+    where c.checked_in_at >= p_from and c.checked_in_at < p_to
+  ),
+  people as (
+    select p.id, p.full_name, p.promoter_code,
+           case when p.is_house then 'house' else coalesce(p.category,'promoter') end as category,
+           sum(case when ci.no_entry = false then 1 + ci.extra else 0 end) as checked_in,
+           sum(case when ci.no_entry = true  then 1 + ci.extra else 0 end) as no_entry
+    from ci join public.promoters p on p.id = ci.promoter_id
+    group by p.id, p.full_name, p.promoter_code, category
+  )
+  select coalesce(
+    json_agg(row_to_json(x) order by
+      (case x.category when 'house' then 0 when 'promoter' then 1 when 'dj' then 2 else 3 end),
+      x.checked_in desc),
+    '[]'::json)
+  from (
+    select pe.id, pe.full_name, pe.promoter_code, pe.category, pe.checked_in, pe.no_entry,
+      (select coalesce(json_agg(row_to_json(gd) order by gd.checked_in_at), '[]'::json)
+       from (
+         select g.first_name, g.last_name, v.name as venue_name,
+                e.event_date, c.checked_in_at, c.no_entry, gr.special_occasion,
+                coalesce(gr.plus_ones,0) as plus_ones, c.method,
+                cu.full_name as checked_in_by
+         from public.check_ins c
+         join public.guest_registrations gr on gr.id = c.registration_id
+         join public.guests g on g.id = gr.guest_id
+         join public.venues v on v.id = gr.venue_id
+         join public.events e on e.id = gr.event_id
+         left join public.users cu on cu.id = c.checked_in_by
+         where gr.promoter_id = pe.id
+           and c.checked_in_at >= p_from and c.checked_in_at < p_to
+       ) gd) as guests
+    from people pe
+  ) x;
+$$;
+grant execute on function public.get_week_breakdown(timestamptz, timestamptz) to authenticated;
+
+-- --------------------------- guest directory (Guests tab) ---------------------------
+create or replace function public.get_guest_directory()
+returns json language sql stable security definer set search_path = public as $$
+  select case when public.is_admin() then coalesce(
+    (select json_agg(row_to_json(x) order by x.last_seen desc nulls last)
+     from (
+       select g.id, g.first_name, g.last_name, g.mobile, g.email, g.instagram,
+              count(gr.id) as registrations,
+              count(gr.id) filter (where gr.status = 'checked_in') as attended,
+              max(e.event_date) as last_seen,
+              coalesce(array_agg(distinct v.name) filter (where v.name is not null), '{}') as venues
+       from public.guests g
+       left join public.guest_registrations gr on gr.guest_id = g.id
+       left join public.events e on e.id = gr.event_id
+       left join public.venues v on v.id = gr.venue_id
+       group by g.id
+     ) x), '[]'::json)
+  else '[]'::json end;
+$$;
+grant execute on function public.get_guest_directory() to authenticated;
+
+
+-- 0032 fix: remove the stale 3-arg check_in_guest so the manual button records method
+drop function if exists public.check_in_guest(uuid,boolean,text);

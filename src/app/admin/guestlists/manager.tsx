@@ -7,7 +7,7 @@ interface Venue { id: string; name: string }
 interface Row {
   id: string; status: string
   first_name: string; last_name: string; mobile: string
-  promoter_name: string; promoter_code: string
+  promoter_name: string; promoter_code: string; plus_ones: number
 }
 
 export function GuestlistManager({ venues }: { venues: Venue[] }) {
@@ -20,7 +20,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(false)
   const [q, setQ] = useState('')
-  const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
+  const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0' })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setF(p => ({ ...p, [k]: v }))
@@ -29,14 +29,14 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
     if (!venueId || !date) { setRows([]); return }
     setLoading(true)
     const { data } = await supabase.from('guest_registrations')
-      .select('id,status,guests(first_name,last_name,mobile),promoters(full_name,promoter_code),events!inner(event_date)')
+      .select('id,status,plus_ones,guests(first_name,last_name,mobile),promoters(full_name,promoter_code),events!inner(event_date)')
       .eq('venue_id', venueId).eq('events.event_date', date)
       .order('created_at', { ascending: false })
     setRows((data ?? []).map((r: any) => ({
       id: r.id, status: r.status,
       first_name: r.guests?.first_name ?? '', last_name: r.guests?.last_name ?? '',
       mobile: r.guests?.mobile ?? '', promoter_name: r.promoters?.full_name ?? '',
-      promoter_code: r.promoters?.promoter_code ?? '',
+      promoter_code: r.promoters?.promoter_code ?? '', plus_ones: r.plus_ones ?? 0,
     })))
     setLoading(false)
   }, [venueId, date, supabase])
@@ -50,7 +50,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
     const { data, error } = await supabase.rpc('add_guest_manual_vd', {
       p_venue: venueId, p_date: date, p_first: f.first.trim(), p_last: f.last.trim(),
       p_mobile: f.mobile.trim(), p_email: f.email.trim(), p_dob: f.dob || null,
-      p_instagram: f.instagram.trim(),
+      p_instagram: f.instagram.trim(), p_plus_ones: Math.max(0, parseInt(f.plus || '0', 10) || 0),
     })
     setSaving(false)
     if (error) { setMsg({ ok: false, text: error.message }); return }
@@ -59,7 +59,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
       return
     }
     setMsg({ ok: true, text: `${f.first} ${f.last} added.` })
-    setF({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
+    setF({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0' })
     load()
   }
 
@@ -70,7 +70,8 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
       || r.mobile.includes(t) || r.promoter_name.toLowerCase().includes(t))
   }, [rows, q])
 
-  const checked = rows.filter(r => r.status === 'checked_in').length
+  const checked = rows.filter(r => r.status === 'checked_in').reduce((s, r) => s + 1 + (r.plus_ones || 0), 0)
+  const heads = rows.reduce((s, r) => s + 1 + (r.plus_ones || 0), 0)
 
   return (
     <div className="grid lg:grid-cols-3 gap-5">
@@ -87,6 +88,10 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
           <div><label className="label">DOB</label><input type="date" max={today} className="input" value={f.dob} onChange={e => set('dob', e.target.value)} /></div>
         </div>
         <div><label className="label">Instagram</label><input className="input" placeholder="@handle" value={f.instagram} onChange={e => set('instagram', e.target.value)} /></div>
+        <div>
+          <label className="label">Plus ones <span className="text-luna-muted font-normal">(extra guests in their party)</span></label>
+          <input type="number" min={0} max={50} className="input" value={f.plus} onChange={e => set('plus', e.target.value)} />
+        </div>
         {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</p>}
         <button className="btn-gold w-full" disabled={saving || !venueId || !date}>{saving ? 'Adding…' : 'Add to guestlist'}</button>
       </form>
@@ -102,7 +107,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
         </div>
         <div className="flex items-center gap-3">
           <input className="input flex-1" placeholder="Search this guestlist…" value={q} onChange={e => setQ(e.target.value)} />
-          <span className="text-sm text-luna-muted whitespace-nowrap">{rows.length} on list · {checked} in</span>
+          <span className="text-sm text-luna-muted whitespace-nowrap">{heads} on list · {checked} in</span>
         </div>
         <div className="space-y-2">
           {loading && <p className="text-sm text-luna-muted">Loading…</p>}
@@ -110,8 +115,14 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
           {filtered.map(r => (
             <div key={r.id} className="card p-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{r.first_name} {r.last_name}</div>
-                <div className="text-xs text-luna-muted truncate">{r.mobile} · {r.promoter_name} ({r.promoter_code})</div>
+                <div className="font-medium truncate flex items-center gap-2">
+                  {r.first_name} {r.last_name}
+                  {r.plus_ones > 0 && <span className="pill bg-luna-gold/20 text-luna-gold text-[11px]">+{r.plus_ones}</span>}
+                </div>
+                <div className="text-xs text-luna-muted truncate">
+                  {r.mobile} · {r.promoter_name} ({r.promoter_code})
+                  {r.plus_ones > 0 && <span> · party of {1 + r.plus_ones}</span>}
+                </div>
               </div>
               <StatusPill status={r.status} />
             </div>

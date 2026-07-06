@@ -5,6 +5,7 @@ import { fmtDate } from '@/lib/format'
 type Guest = {
   first_name: string; last_name: string; venue_name: string
   event_date: string; no_entry: boolean; special_occasion: string | null
+  plus_ones: number; method: string | null; checked_in_by: string | null
 }
 type Person = {
   id: string; full_name: string; promoter_code: string | null
@@ -37,6 +38,12 @@ export async function downloadWeeklyReport(from: string, to: string, label: stri
   const generatedAt = new Date().toLocaleString('en-AU', {
     day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
   })
+  let scanN = 0, manualN = 0
+  for (const p of people) for (const g of p.guests) {
+    if (g.no_entry) continue
+    if (g.method === 'scan') scanN++
+    else if (g.method === 'manual') manualN++
+  }
 
   // Header
   doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(17, 17, 17)
@@ -56,7 +63,10 @@ export async function downloadWeeklyReport(from: string, to: string, label: stri
   doc.text(`${checkedIn} checked in`, marginX, y)
   doc.text(`${active} active people`, marginX + 150, y)
   doc.text(`${noEntry} no entries`, marginX + 300, y)
-  y += 24
+  y += 18
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(110, 110, 110)
+  doc.text(`Scanned in: ${scanN}     Manually checked in: ${manualN}`, marginX, y)
+  y += 20
 
   if (people.length === 0) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(110, 110, 110)
@@ -90,17 +100,19 @@ export async function downloadWeeklyReport(from: string, to: string, label: stri
         autoTable(doc, {
           startY: y + 4,
           margin: { left: marginX, right: marginX },
-          head: [['#', 'Guest', 'Venue', 'Date', 'Status']],
+          head: [['#', 'Guest', 'Venue', 'Date', 'Method', 'By', 'Status']],
           body: p.guests.map((g, i) => [
             String(i + 1),
-            `${g.first_name} ${g.last_name}${g.special_occasion ? ` · ${g.special_occasion}` : ''}`,
+            `${g.first_name} ${g.last_name}${g.plus_ones > 0 ? ` (+${g.plus_ones})` : ''}${g.special_occasion ? ` · ${g.special_occasion}` : ''}`,
             g.venue_name,
             fmtDate(g.event_date),
+            g.method === 'scan' ? 'Scan' : g.method === 'manual' ? 'Manual' : '—',
+            g.checked_in_by || '—',
             g.no_entry ? 'No entry' : 'Checked in',
           ]),
-          styles: { fontSize: 9, cellPadding: 3, textColor: [30, 30, 30] },
+          styles: { fontSize: 8, cellPadding: 2.5, textColor: [30, 30, 30] },
           headStyles: { fillColor: [240, 240, 240], textColor: [80, 80, 80], fontStyle: 'bold' },
-          columnStyles: { 0: { cellWidth: 24 } },
+          columnStyles: { 0: { cellWidth: 18 }, 3: { cellWidth: 55 }, 4: { cellWidth: 46 }, 6: { cellWidth: 54 } },
           theme: 'grid',
         })
         y = (doc as any).lastAutoTable.finalY + 14

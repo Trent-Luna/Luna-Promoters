@@ -48,6 +48,15 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
         setErr(m[data?.error] || 'Could not register. Please check your details.')
         return
       }
+      // send the guest a confirmation email with their QR (non-blocking)
+      try {
+        fetch('/api/guest-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: data.qr_token }),
+          keepalive: true,
+        })
+      } catch {}
       router.push(`/g/${data.qr_token}`)
     } catch (e: any) {
       setErr(e.message || 'Something went wrong. Please try again.')

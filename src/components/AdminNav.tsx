@@ -3,6 +3,7 @@ export const ADMIN_NAV = [
   { href: '/admin/mylink', label: 'My Link' },
   { href: '/admin/summary', label: 'Weekly Summary' },
   { href: '/admin/promoters', label: 'Promoters' },
+  { href: '/admin/guests', label: 'Guests' },
   { href: '/admin/guestlists', label: 'Guestlists' },
   { href: '/admin/blackout', label: 'Blackout' },
   { href: '/admin/whats-on', label: "What's On" },

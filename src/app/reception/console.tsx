@@ -9,6 +9,7 @@ interface Row {
   first_name: string; last_name: string; mobile: string; email: string | null
   promoter_name: string; promoter_code: string
   checked_in_at: string | null; notes: string | null; special_occasion: string | null
+  method: string | null; plus_ones: number
 }
 type ScanResult = { kind: 'ok' | 'err' | 'warn'; title: string; sub?: string } | null
 
@@ -46,7 +47,7 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
     setLoading(true)
     const { data } = await supabase
       .from('guest_registrations')
-      .select('id,status,qr_token,special_occasion,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes),events!inner(event_date)')
+      .select('id,status,qr_token,special_occasion,plus_ones,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method),events!inner(event_date)')
       .eq('venue_id', venueId).eq('events.event_date', date)
       .order('created_at', { ascending: false })
     const mapped: Row[] = (data ?? []).map((r: any) => ({
@@ -57,6 +58,8 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
       checked_in_at: r.check_ins?.[0]?.checked_in_at ?? r.check_ins?.checked_in_at ?? null,
       special_occasion: r.special_occasion ?? null,
       notes: r.check_ins?.[0]?.notes ?? null,
+      method: r.check_ins?.[0]?.method ?? r.check_ins?.method ?? null,
+      plus_ones: r.plus_ones ?? 0,
     }))
     setRows(mapped); setLoading(false)
   }, [venueId, date, supabase])
@@ -73,9 +76,10 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
   }, [venueId, date, supabase, load])
 
   const stats = useMemo(() => {
-    const registered = rows.length
-    const checked = rows.filter(r => r.status === 'checked_in').length
-    const noEntry = rows.filter(r => r.status === 'no_entry').length
+    const heads = (r: Row) => 1 + (r.plus_ones || 0)
+    const registered = rows.reduce((s, r) => s + heads(r), 0)
+    const checked = rows.filter(r => r.status === 'checked_in').reduce((s, r) => s + heads(r), 0)
+    const noEntry = rows.filter(r => r.status === 'no_entry').reduce((s, r) => s + heads(r), 0)
     return { registered, checked, remaining: registered - checked - noEntry, noEntry }
   }, [rows])
 
@@ -188,11 +192,12 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-lg truncate flex items-center gap-2">
                 {r.first_name} {r.last_name}
+                {r.plus_ones > 0 && <span className="pill bg-luna-gold/20 text-luna-gold text-[11px]">+{r.plus_ones}</span>}
                 {r.special_occasion && <span className="pill bg-luna-purple/25 text-white text-[11px]">🎉 {r.special_occasion}</span>}
               </div>
               <div className="text-sm text-luna-muted truncate">
                 {r.mobile} · {r.promoter_name} ({r.promoter_code})
-                {r.checked_in_at && <span className="text-emerald-400"> · in {fmtDateTime(r.checked_in_at)}</span>}
+                {r.checked_in_at && <span className="text-emerald-400"> · in {fmtDateTime(r.checked_in_at)}{r.method ? ` (${r.method === 'scan' ? 'scanned' : 'manual'})` : ''}</span>}
               </div>
             </div>
             {r.status === 'checked_in' ? (
