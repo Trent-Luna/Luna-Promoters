@@ -46,6 +46,7 @@ create table if not exists public.users (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+drop trigger if exists trg_users_updated on public.users;
 create trigger trg_users_updated before update on public.users
   for each row execute function set_updated_at();
 
@@ -75,6 +76,7 @@ create table if not exists public.venues (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+drop trigger if exists trg_venues_updated on public.venues;
 create trigger trg_venues_updated before update on public.venues
   for each row execute function set_updated_at();
 
@@ -112,6 +114,7 @@ create table if not exists public.events (
 );
 create index if not exists idx_events_venue on public.events(venue_id);
 create index if not exists idx_events_date  on public.events(event_date);
+drop trigger if exists trg_events_updated on public.events;
 create trigger trg_events_updated before update on public.events
   for each row execute function set_updated_at();
 
@@ -149,6 +152,7 @@ create table if not exists public.promoters (
   constraint promoters_mobile_unique unique (mobile)
 );
 create index if not exists idx_promoters_status on public.promoters(status);
+drop trigger if exists trg_promoters_updated on public.promoters;
 create trigger trg_promoters_updated before update on public.promoters
   for each row execute function set_updated_at();
 
@@ -168,6 +172,7 @@ create table if not exists public.guests (
 );
 create index if not exists idx_guests_mobile on public.guests(mobile);
 create index if not exists idx_guests_email  on public.guests(email);
+drop trigger if exists trg_guests_updated on public.guests;
 create trigger trg_guests_updated before update on public.guests
   for each row execute function set_updated_at();
 
@@ -192,6 +197,7 @@ create index if not exists idx_reg_promoter on public.guest_registrations(promot
 create index if not exists idx_reg_event on public.guest_registrations(event_id);
 create index if not exists idx_reg_venue on public.guest_registrations(venue_id);
 create index if not exists idx_reg_status on public.guest_registrations(status);
+drop trigger if exists trg_reg_updated on public.guest_registrations;
 create trigger trg_reg_updated before update on public.guest_registrations
   for each row execute function set_updated_at();
 
@@ -223,6 +229,7 @@ create table if not exists public.tiers (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+drop trigger if exists trg_tiers_updated on public.tiers;
 create trigger trg_tiers_updated before update on public.tiers
   for each row execute function set_updated_at();
 
@@ -578,47 +585,65 @@ alter table public.admin_notes          enable row level security;
 alter table public.audit_logs           enable row level security;
 
 -- ---------- users ----------
+drop policy if exists users_self_read on public.users;
 create policy users_self_read   on public.users for select using (id = auth.uid() or public.is_admin());
+drop policy if exists users_self_update on public.users;
 create policy users_self_update on public.users for update using (id = auth.uid());
+drop policy if exists users_admin_all on public.users;
 create policy users_admin_all   on public.users for all using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- roles ----------
+drop policy if exists roles_self_read on public.roles;
 create policy roles_self_read on public.roles for select using (user_id = auth.uid() or public.is_admin());
+drop policy if exists roles_admin_all on public.roles;
 create policy roles_admin_all on public.roles for all using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- venues (readable by any authed staff; managed by admin) ----------
+drop policy if exists venues_read on public.venues;
 create policy venues_read      on public.venues for select using (auth.uid() is not null);
+drop policy if exists venues_admin_all on public.venues;
 create policy venues_admin_all on public.venues for all using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- venue_managers ----------
+drop policy if exists vm_read on public.venue_managers;
 create policy vm_read      on public.venue_managers for select using (user_id = auth.uid() or public.is_admin());
+drop policy if exists vm_admin_all on public.venue_managers;
 create policy vm_admin_all on public.venue_managers for all using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- events ----------
+drop policy if exists events_read on public.events;
 create policy events_read on public.events for select
   using (public.is_admin() or public.manages_venue(venue_id));
+drop policy if exists events_admin_all on public.events;
 create policy events_admin_all on public.events for all
   using (public.is_admin()) with check (public.is_admin());
 -- venue managers can create/edit events for their venues
+drop policy if exists events_vm_insert on public.events;
 create policy events_vm_insert on public.events for insert
   with check (public.manages_venue(venue_id) and public.has_role('venue_manager'));
+drop policy if exists events_vm_update on public.events;
 create policy events_vm_update on public.events for update
   using (public.manages_venue(venue_id) and public.has_role('venue_manager'))
   with check (public.manages_venue(venue_id));
 
 -- ---------- promoters ----------
 -- promoter sees own row; admin sees all; venue managers can read promoters (needed for guestlists)
+drop policy if exists promoters_self on public.promoters;
 create policy promoters_self on public.promoters for select
   using (user_id = auth.uid() or public.is_admin() or public.has_role('venue_manager') or public.has_role('reception'));
+drop policy if exists promoters_admin_all on public.promoters;
 create policy promoters_admin_all on public.promoters for all
   using (public.is_admin()) with check (public.is_admin());
+drop policy if exists promoters_self_update on public.promoters;
 create policy promoters_self_update on public.promoters for update
   using (user_id = auth.uid())
   with check (user_id = auth.uid());  -- promoter can edit own socials only (enforce columns in app)
 
 -- ---------- guests (PII: admin + venue staff for their venues + owning promoter) ----------
+drop policy if exists guests_admin on public.guests;
 create policy guests_admin on public.guests for all
   using (public.is_admin()) with check (public.is_admin());
+drop policy if exists guests_staff_read on public.guests;
 create policy guests_staff_read on public.guests for select using (
   exists (
     select 1 from public.guest_registrations gr
@@ -628,46 +653,58 @@ create policy guests_staff_read on public.guests for select using (
 );
 
 -- ---------- guest_registrations ----------
+drop policy if exists reg_admin on public.guest_registrations;
 create policy reg_admin on public.guest_registrations for all
   using (public.is_admin()) with check (public.is_admin());
+drop policy if exists reg_staff_read on public.guest_registrations;
 create policy reg_staff_read on public.guest_registrations for select using (
   public.manages_venue(venue_id) or promoter_id = public.my_promoter_id()
 );
 -- reception/venue staff may update status (check-in flows also go via RPC)
+drop policy if exists reg_staff_update on public.guest_registrations;
 create policy reg_staff_update on public.guest_registrations for update
   using (public.manages_venue(venue_id)) with check (public.manages_venue(venue_id));
 
 -- ---------- check_ins ----------
+drop policy if exists checkins_admin on public.check_ins;
 create policy checkins_admin on public.check_ins for all
   using (public.is_admin()) with check (public.is_admin());
+drop policy if exists checkins_staff_read on public.check_ins;
 create policy checkins_staff_read on public.check_ins for select using (
   exists (select 1 from public.guest_registrations gr
     where gr.id = check_ins.registration_id
       and (public.manages_venue(gr.venue_id) or gr.promoter_id = public.my_promoter_id()))
 );
+drop policy if exists checkins_staff_insert on public.check_ins;
 create policy checkins_staff_insert on public.check_ins for insert with check (
   exists (select 1 from public.guest_registrations gr
     where gr.id = check_ins.registration_id and public.manages_venue(gr.venue_id))
 );
 
 -- ---------- tiers (readable by all authed; editable by admin) ----------
+drop policy if exists tiers_read on public.tiers;
 create policy tiers_read on public.tiers for select using (auth.uid() is not null);
+drop policy if exists tiers_admin_all on public.tiers;
 create policy tiers_admin_all on public.tiers for all using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- promoter_performance ----------
+drop policy if exists perf_read on public.promoter_performance;
 create policy perf_read on public.promoter_performance for select using (
   public.is_admin() or promoter_id = public.my_promoter_id()
   or exists (select 1 from public.guest_registrations gr
              where gr.promoter_id = promoter_performance.promoter_id and public.manages_venue(gr.venue_id))
 );
+drop policy if exists perf_admin_all on public.promoter_performance;
 create policy perf_admin_all on public.promoter_performance for all
   using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- admin_notes (admin only; NEVER promoters) ----------
+drop policy if exists notes_admin on public.admin_notes;
 create policy notes_admin on public.admin_notes for all
   using (public.is_admin()) with check (public.is_admin());
 
 -- ---------- audit_logs (admin read; venue managers read their venue) ----------
+drop policy if exists audit_admin on public.audit_logs;
 create policy audit_admin on public.audit_logs for select
   using (public.is_admin() or (venue_id is not null and public.manages_venue(venue_id)));
 
@@ -760,6 +797,7 @@ grant execute on function public.check_in_by_token(text,boolean,text) to authent
 -- =====================================================================
 
 -- Leaderboard: checked-in guests drive ranking. Filter by event, venue, date range.
+drop function if exists public.get_leaderboard(uuid,uuid,date,date,int);
 create or replace function public.get_leaderboard(
   p_event uuid default null, p_venue uuid default null,
   p_from date default null, p_to date default null, p_limit int default 100
@@ -808,6 +846,7 @@ $$;
 grant execute on function public.get_admin_stats(uuid) to authenticated;
 
 -- A promoter's own event breakdown (RLS-safe: only own via my_promoter_id)
+drop function if exists public.get_promoter_events(uuid);
 create or replace function public.get_promoter_events(p_promoter uuid)
 returns table (
   event_id uuid, event_name text, venue_name text, event_date date,
@@ -1189,7 +1228,9 @@ insert into public.app_settings (id) values (1) on conflict (id) do nothing;
 alter table public.app_settings enable row level security;
 drop policy if exists settings_read on public.app_settings;
 drop policy if exists settings_admin on public.app_settings;
+drop policy if exists settings_read on public.app_settings;
 create policy settings_read  on public.app_settings for select using (auth.uid() is not null);
+drop policy if exists settings_admin on public.app_settings;
 create policy settings_admin on public.app_settings for all
   using (public.is_admin()) with check (public.is_admin());
 
@@ -1417,11 +1458,15 @@ drop policy if exists blackout_read on public.blackout_dates;
 drop policy if exists blackout_admin on public.blackout_dates;
 drop policy if exists blackout_vm_ins on public.blackout_dates;
 drop policy if exists blackout_vm_del on public.blackout_dates;
+drop policy if exists blackout_read on public.blackout_dates;
 create policy blackout_read  on public.blackout_dates for select using (auth.uid() is not null);
+drop policy if exists blackout_admin on public.blackout_dates;
 create policy blackout_admin on public.blackout_dates for all
   using (public.is_admin()) with check (public.is_admin());
+drop policy if exists blackout_vm_ins on public.blackout_dates;
 create policy blackout_vm_ins on public.blackout_dates for insert
   with check (public.has_role('venue_manager') and venue_id is not null and public.manages_venue(venue_id));
+drop policy if exists blackout_vm_del on public.blackout_dates;
 create policy blackout_vm_del on public.blackout_dates for delete
   using (public.has_role('venue_manager') and venue_id is not null and public.manages_venue(venue_id));
 
@@ -1553,6 +1598,7 @@ alter table public.promoters add column if not exists is_house boolean not null 
 update public.promoters set is_house = true where promoter_code = 'luna';
 
 -- leaderboard: exclude the house record from ranking
+drop function if exists public.get_leaderboard(uuid,uuid,date,date,int);
 create or replace function public.get_leaderboard(
   p_event uuid default null, p_venue uuid default null,
   p_from date default null, p_to date default null, p_limit int default 100
@@ -1942,11 +1988,14 @@ drop policy if exists posts_read on public.venue_posts;
 drop policy if exists posts_admin on public.venue_posts;
 drop policy if exists posts_vm on public.venue_posts;
 -- any signed-in user (incl. promoters) can read active posts
+drop policy if exists posts_read on public.venue_posts;
 create policy posts_read on public.venue_posts for select using (auth.uid() is not null);
 -- admins manage everything
+drop policy if exists posts_admin on public.venue_posts;
 create policy posts_admin on public.venue_posts for all
   using (public.is_admin()) with check (public.is_admin());
 -- venue managers manage posts for their venues (or all-venue posts they create)
+drop policy if exists posts_vm on public.venue_posts;
 create policy posts_vm on public.venue_posts for all
   using (public.has_role('venue_manager') and (venue_id is null or public.manages_venue(venue_id)))
   with check (public.has_role('venue_manager') and (venue_id is null or public.manages_venue(venue_id)));
@@ -2501,3 +2550,47 @@ grant execute on function public.get_guest_directory() to authenticated;
 
 -- 0032 fix: remove the stale 3-arg check_in_guest so the manual button records method
 drop function if exists public.check_in_guest(uuid,boolean,text);
+
+
+-- =====================================================================
+-- Luna Promoters :: 0035 Email is mandatory to join a guestlist
+-- Enforced server-side in the public registration RPC (manual staff adds
+-- are unchanged — staff may not have a guest email).
+-- =====================================================================
+
+create or replace function public.register_guest_vd(
+  p_promoter_code text, p_venue uuid, p_date date,
+  p_first text, p_last text, p_mobile text, p_email text,
+  p_dob date, p_instagram text, p_marketing boolean, p_occasion text default null
+) returns json language plpgsql security definer set search_path = public as $$
+declare prom record; ven record; eid uuid; g_id uuid; existing uuid; reg record;
+begin
+  select * into prom from public.promoters where promoter_code = p_promoter_code and status = 'approved';
+  if prom is null then return json_build_object('ok',false,'error','promoter_not_found'); end if;
+  select * into ven from public.venues where id = p_venue and active = true;
+  if ven is null then return json_build_object('ok',false,'error','venue_not_found'); end if;
+  if p_date is null or p_date < current_date or p_date > (current_date + interval '1 year') then
+    return json_build_object('ok',false,'error','bad_date'); end if;
+  if p_email is null or btrim(p_email) = '' or position('@' in p_email) = 0 then
+    return json_build_object('ok',false,'error','email_required'); end if;
+
+  eid := public.ensure_event(p_venue, p_date);
+
+  select id into g_id from public.guests
+    where mobile = p_mobile or (p_email is not null and p_email <> '' and email = p_email::citext) limit 1;
+  if g_id is null then
+    insert into public.guests(first_name,last_name,mobile,email,date_of_birth,instagram)
+      values (p_first,p_last,p_mobile,nullif(p_email,''),p_dob,nullif(p_instagram,''))
+      returning id into g_id;
+  end if;
+
+  select id into existing from public.guest_registrations where event_id = eid and guest_id = g_id;
+  if existing is not null then return json_build_object('ok',false,'error','duplicate'); end if;
+
+  insert into public.guest_registrations(guest_id,promoter_id,event_id,venue_id,marketing_consent,special_occasion)
+    values (g_id, prom.id, eid, p_venue, coalesce(p_marketing,false), nullif(p_occasion,''))
+    returning * into reg;
+  perform public.log_action('guest_registered', null, p_venue, eid, prom.id, g_id, nullif(p_occasion,''));
+  return json_build_object('ok',true,'registration_id',reg.id,'qr_token',reg.qr_token);
+end $$;
+grant execute on function public.register_guest_vd(text,uuid,date,text,text,text,text,date,text,boolean,text) to anon, authenticated;

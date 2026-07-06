@@ -28,6 +28,7 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
     if (!venueId) { setErr('Please choose a venue.'); return }
     if (!date) { setErr('Please choose a date.'); return }
     if (isBlackedOut) { setErr('The guestlist is not available for this venue on that date.'); return }
+    if (!f.email.trim() || !f.email.includes('@')) { setErr('Please enter a valid email address to get on the list.'); return }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -44,6 +45,7 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
           bad_date: 'Please choose a date within the next year.',
           venue_not_found: 'That venue is not available.',
           promoter_not_found: 'This promoter link is not active.',
+          email_required: 'Please enter a valid email address to get on the list.',
         }
         setErr(m[data?.error] || 'Could not register. Please check your details.')
         return
@@ -111,8 +113,8 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="label">Email</label>
-          <input className="input" type="email" value={f.email} onChange={e => set('email', e.target.value)} />
+          <label className="label">Email *</label>
+          <input className="input" type="email" required value={f.email} onChange={e => set('email', e.target.value)} />
         </div>
         <div>
           <label className="label">Date of birth</label>
