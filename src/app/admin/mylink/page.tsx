@@ -44,6 +44,10 @@ export default async function MyLink() {
           <div className="card p-6 lg:col-span-2">
             <p className="text-xs uppercase tracking-wide text-luna-muted mb-2">Your link</p>
             <CopyLink link={link} />
+            <a href="/promoter-guide.pdf" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl border border-luna-border bg-luna-surface text-sm text-luna-gold hover:border-luna-gold transition">
+              Open the Promoter Guide (PDF) →
+            </a>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
               <Stat label="Registered (mo)" value={data.registered_month ?? 0} />
               <Stat label="Checked in (mo)" value={data.checked_in_month ?? 0} accent />

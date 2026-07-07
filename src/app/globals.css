@@ -10,6 +10,9 @@ html, body {
     radial-gradient(900px 500px at 50% -12%, #17171a 0%, #000 60%) no-repeat #000;
   color: #ffffff;
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden; /* fallback for older browsers */
+  overflow-x: clip;   /* clip stray horizontal overflow without breaking sticky nav */
   -webkit-font-smoothing: antialiased;
 }
 

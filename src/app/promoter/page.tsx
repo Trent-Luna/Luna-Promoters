@@ -64,7 +64,7 @@ export default async function PromoterDashboard() {
           <CopyLink link={link} />
           <a href="/promoter-guide.pdf" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl border border-luna-border bg-luna-surface text-sm text-luna-gold hover:border-luna-gold transition">
-            <span aria-hidden>📄</span> New here? Open the Promoter Guide (PDF)
+            New here? Open the Promoter Guide (PDF)
           </a>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
             <Stat label="This month rank" value={`#${myRank}`} accent />
@@ -96,11 +96,11 @@ export default async function PromoterDashboard() {
       <div className="card p-6 mt-5">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
           <h2 className="text-lg font-bold">Refer a friend</h2>
-          <span className="text-xs text-luna-muted">Each approved referral = <span className="text-luna-gold font-semibold">+3</span> toward your tier</span>
+          <span className="text-xs text-luna-muted">Each approved referral = <span className="text-luna-gold font-semibold">+2</span> toward your tier</span>
         </div>
         <p className="text-sm text-luna-muted mb-4">
           Share your referral link. When a new promoter signs up through it and gets approved,
-          you get <span className="text-luna-text font-medium">3 bonus check-ins</span> added to your monthly tier progress.
+          you get <span className="text-luna-text font-medium">2 bonus check-ins</span> added to your monthly tier progress.
         </p>
         <CopyLink link={referralLink} />
         <div className="grid grid-cols-3 gap-3 mt-6">
