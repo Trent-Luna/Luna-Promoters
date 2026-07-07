@@ -12,7 +12,7 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
   const router = useRouter()
   const [f, setF] = useState({
     full_name: '', mobile: '', email: '', dob: '',
-    instagram: '', tiktok: '', facebook: '', suburb: '', category: 'promoter',
+    instagram: '', tiktok: '', facebook: '', suburb: '', category: 'promoter', ref: refCode,
   })
   const [agreed, setAgreed] = useState<boolean[]>(AGREEMENTS.map(() => false))
   const [err, setErr] = useState('')
@@ -34,7 +34,7 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
         p_full_name: f.full_name.trim(), p_mobile: f.mobile.trim(), p_email: f.email.trim(),
         p_dob: f.dob, p_instagram: f.instagram, p_tiktok: f.tiktok, p_facebook: f.facebook,
         p_suburb: f.suburb, p_preferred_venue: null,
-        p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip, p_ref_code: refCode || null,
+        p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip, p_ref_code: f.ref.trim() || null,
         p_category: f.category,
       })
       if (error) throw error
@@ -97,6 +97,10 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
         <div className="sm:col-span-2">
           <label className="label">Facebook profile</label>
           <input className="input" placeholder="facebook.com/…" value={f.facebook} onChange={e => set('facebook', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Referral code <span className="text-luna-muted font-normal">(optional — enter the code of the promoter who referred you)</span></label>
+          <input className="input" placeholder="e.g. GRACE" value={f.ref} onChange={e => set('ref', e.target.value.trim())} />
         </div>
       </div>
 
