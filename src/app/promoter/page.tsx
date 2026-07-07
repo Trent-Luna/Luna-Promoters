@@ -62,6 +62,10 @@ export default async function PromoterDashboard() {
         <div className="card p-6 lg:col-span-2">
           <p className="text-xs uppercase tracking-wide text-luna-muted mb-2">Your promoter link</p>
           <CopyLink link={link} />
+          <a href="/promoter-guide.pdf" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl border border-luna-border bg-luna-surface text-sm text-luna-gold hover:border-luna-gold transition">
+            <span aria-hidden>📄</span> New here? Open the Promoter Guide (PDF)
+          </a>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
             <Stat label="This month rank" value={`#${myRank}`} accent />
             <Stat label="Registered (mo)" value={perf?.registered_count ?? 0} />
