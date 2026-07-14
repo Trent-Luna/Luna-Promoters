@@ -1,30 +1,35 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { packageBlockHtml } from '@/lib/occasion-packages'
+import { occasionBlocksHtml } from '@/lib/occasion-packages'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function emailHtml(o: { first: string; venue: string; dateLabel: string; qrImg: string; pass: string; packageBlock: string }) {
-  return `<!doctype html><html><body style="margin:0;background:#0a0a0f;font-family:Helvetica,Arial,sans-serif;color:#ffffff">
-  <div style="max-width:480px;margin:0 auto;padding:32px 20px">
-    <div style="text-align:center;font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff">LUNA GROUP</div>
-    <div style="text-align:center;font-size:12px;letter-spacing:2px;color:#9ca3af;margin-top:2px">HOSPITALITY</div>
-    <div style="background:#14141c;border:1px solid #23232e;border-radius:16px;padding:28px;margin-top:24px;text-align:center">
-      <div style="display:inline-block;background:rgba(16,185,129,.15);color:#34d399;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px">YOU'RE ON THE LIST</div>
-      <h1 style="font-size:22px;margin:14px 0 4px">Hey ${o.first} 👋</h1>
-      <p style="color:#9ca3af;margin:0 0 2px">${o.venue}</p>
-      <p style="color:#9ca3af;font-size:14px;margin:0">${o.dateLabel}</p>
-      <div style="background:#ffffff;border-radius:14px;padding:16px;display:inline-block;margin:22px 0 8px">
-        <img src="${o.qrImg}" width="220" height="220" alt="Your QR code" style="display:block;width:220px;height:220px" />
-      </div>
-      <p style="color:#9ca3af;font-size:13px;margin:6px 0 18px">Show this QR at the door — it's personal to you.</p>
-      <a href="${o.pass}" style="display:inline-block;background:#d4af37;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">View &amp; save your QR</a>
-      <p style="color:#6b7280;font-size:12px;margin:20px 0 0">No screenshot? No problem — just give your name at the door and we'll find you.</p>
-    </div>
-    ${o.packageBlock}
-    <p style="text-align:center;color:#6b7280;font-size:11px;margin-top:18px">Everyone needs their own QR — only checked-in guests count toward rewards.</p>
-  </div></body></html>`
+function emailHtml(o: { first: string; venue: string; dateLabel: string; qrImg: string; pass: string; occasionBlocks: string }) {
+  const qrCard = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#14141c;border:1px solid #23232e;border-radius:16px;margin-top:24px"><tr><td align="center" style="padding:28px">
+        <span style="display:inline-block;background:rgba(16,185,129,.15);color:#34d399;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:999px">YOU'RE ON THE LIST</span>
+        <h1 style="font-size:22px;margin:14px 0 4px;color:#ffffff">Hey ${o.first} 👋</h1>
+        <p style="color:#9ca3af;margin:0 0 2px">${o.venue}</p>
+        <p style="color:#9ca3af;font-size:14px;margin:0">${o.dateLabel}</p>
+        <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:22px auto 8px"><tr><td style="background:#ffffff;border-radius:14px;padding:16px">
+          <img src="${o.qrImg}" width="200" height="200" alt="Your QR code" style="display:block;width:200px;height:200px" />
+        </td></tr></table>
+        <p style="color:#9ca3af;font-size:13px;margin:6px 0 18px">Show this QR at the door — it's personal to you.</p>
+        <a href="${o.pass}" style="display:inline-block;background:#d4af37;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">View &amp; save your QR</a>
+        <p style="color:#6b7280;font-size:12px;margin:20px 0 0">No screenshot? No problem — just give your name at the door and we'll find you.</p>
+      </td></tr></table>`
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  <body style="margin:0;padding:0;background:#0a0a0f;font-family:Helvetica,Arial,sans-serif;color:#ffffff">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f"><tr><td align="center" style="padding:28px 14px">
+      <table role="presentation" width="500" cellpadding="0" cellspacing="0" style="width:500px;max-width:500px;margin:0 auto">
+        <tr><td align="center" style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff">LUNA GROUP</td></tr>
+        <tr><td align="center" style="font-size:12px;letter-spacing:2px;color:#9ca3af;padding-top:2px">HOSPITALITY</td></tr>
+        <tr><td>${qrCard}</td></tr>
+        <tr><td>${o.occasionBlocks}</td></tr>
+        <tr><td align="center" style="color:#6b7280;font-size:11px;padding-top:18px">Everyone needs their own QR — only checked-in guests count toward rewards.</td></tr>
+      </table>
+    </td></tr></table>
+  </body></html>`
 }
 
 export async function POST(req: Request) {
@@ -52,7 +57,7 @@ export async function POST(req: Request) {
     const venue = (reg as any).venues?.name || 'Luna Group'
     const venueSlug = (reg as any).venues?.slug as string | undefined
     const occasion = (reg as any).special_occasion as string | undefined
-    const packageBlock = packageBlockHtml(venueSlug, occasion)
+    const occasionBlocks = occasionBlocksHtml(venueSlug, occasion)
     const eventDate = (reg as any).events?.event_date as string | undefined
     const dateLabel = eventDate
       ? new Date(eventDate + 'T00:00:00Z').toLocaleDateString('en-AU',
@@ -67,7 +72,7 @@ export async function POST(req: Request) {
         from: 'Luna Group <noreply@lunagroup.com.au>',
         to: [email],
         subject: `You're on the guestlist — ${venue}`,
-        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, packageBlock }),
+        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks }),
       }),
     })
     if (!res.ok) {
