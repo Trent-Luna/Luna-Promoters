@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { packageBlockHtml } from '@/lib/occasion-packages'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function emailHtml(o: { first: string; venue: string; dateLabel: string; qrImg: string; pass: string }) {
+function emailHtml(o: { first: string; venue: string; dateLabel: string; qrImg: string; pass: string; packageBlock: string }) {
   return `<!doctype html><html><body style="margin:0;background:#0a0a0f;font-family:Helvetica,Arial,sans-serif;color:#ffffff">
   <div style="max-width:480px;margin:0 auto;padding:32px 20px">
     <div style="text-align:center;font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff">LUNA GROUP</div>
@@ -21,6 +22,7 @@ function emailHtml(o: { first: string; venue: string; dateLabel: string; qrImg: 
       <a href="${o.pass}" style="display:inline-block;background:#d4af37;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">View &amp; save your QR</a>
       <p style="color:#6b7280;font-size:12px;margin:20px 0 0">No screenshot? No problem — just give your name at the door and we'll find you.</p>
     </div>
+    ${o.packageBlock}
     <p style="text-align:center;color:#6b7280;font-size:11px;margin-top:18px">Everyone needs their own QR — only checked-in guests count toward rewards.</p>
   </div></body></html>`
 }
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
     const svc = createServiceClient()
     const { data: reg } = await svc
       .from('guest_registrations')
-      .select('qr_token, guests(first_name,email), venues(name), events(event_date)')
+      .select('qr_token, special_occasion, guests(first_name,email), venues(name,slug), events(event_date)')
       .eq('qr_token', token)
       .maybeSingle()
     if (!reg) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 })
@@ -48,6 +50,9 @@ export async function POST(req: Request) {
     if (!email) return NextResponse.json({ ok: true, skipped: 'no_email' })
 
     const venue = (reg as any).venues?.name || 'Luna Group'
+    const venueSlug = (reg as any).venues?.slug as string | undefined
+    const occasion = (reg as any).special_occasion as string | undefined
+    const packageBlock = packageBlockHtml(venueSlug, occasion)
     const eventDate = (reg as any).events?.event_date as string | undefined
     const dateLabel = eventDate
       ? new Date(eventDate + 'T00:00:00Z').toLocaleDateString('en-AU',
@@ -62,7 +67,7 @@ export async function POST(req: Request) {
         from: 'Luna Group <noreply@lunagroup.com.au>',
         to: [email],
         subject: `You're on the guestlist — ${venue}`,
-        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}` }),
+        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, packageBlock }),
       }),
     })
     if (!res.ok) {
