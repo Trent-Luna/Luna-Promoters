@@ -34,7 +34,7 @@ function emailHtml(o: { first: string; venue: string; dateLabel: string; qrImg: 
 
 export async function POST(req: Request) {
   try {
-    const { token } = await req.json().catch(() => ({}))
+    const { token, force } = await req.json().catch(() => ({}))
     if (!token || typeof token !== 'string') {
       return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
     }
@@ -45,10 +45,15 @@ export async function POST(req: Request) {
     const svc = createServiceClient()
     const { data: reg } = await svc
       .from('guest_registrations')
-      .select('qr_token, special_occasion, guests(first_name,email), venues(name,slug), events(event_date)')
+      .select('qr_token, special_occasion, confirmation_sent_at, guests(first_name,email), venues(name,slug), events(event_date)')
       .eq('qr_token', token)
       .maybeSingle()
     if (!reg) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 })
+
+    // Idempotency: don't re-send a confirmation that already went out unless explicitly forced.
+    if ((reg as any).confirmation_sent_at && force !== true) {
+      return NextResponse.json({ ok: true, skipped: 'already_sent' })
+    }
 
     const g: any = (reg as any).guests
     const email: string | null = g?.email || null
@@ -79,6 +84,11 @@ export async function POST(req: Request) {
       const detail = await res.text().catch(() => '')
       return NextResponse.json({ ok: false, error: 'send_failed', detail }, { status: 502 })
     }
+    // Record the successful send so bulk runs are tracked and safely resumable.
+    await svc
+      .from('guest_registrations')
+      .update({ confirmation_sent_at: new Date().toISOString() })
+      .eq('qr_token', token)
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 })
