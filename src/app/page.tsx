@@ -37,4 +37,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <section className="max-w-2xl mx-auto px-5 pb-16">
         <div className="card p-6 sm:p-8">
           <h2 className="text-lg font-bold mb-1">Promoter application</h2>
-          <p className="t
+          <p className="text-sm text-luna-muted mb-6">
+            Applications are reviewed by the Luna Group team. You must be 18 or older.
+          </p>
+          <PromoterSignupForm refCode={ref ?? ''} />
+        </div>
+      </section>
+    </main>
+  )
+}
