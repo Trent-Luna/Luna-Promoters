@@ -62,10 +62,12 @@ export function UniversityDashboard() {
       reason = window.prompt(`Enter a reason to ${action} this member (required):`) || ''
       if (!reason.trim()) return
     }
-    const { data } = await supabase.rpc('review_university_member', {
-      p_membership: membershipId, p_action: action, p_reason: reason,
+    const res = await fetch('/api/university/review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ membership_id: membershipId, action, reason }),
     })
-    if (!data?.ok) { alert('Action failed: ' + (data?.error || 'error')); return }
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data?.ok) { alert('Action failed: ' + (data?.error || 'error')); return }
     loadQueue()
   }
 

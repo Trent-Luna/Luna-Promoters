@@ -18,9 +18,11 @@ const OPTIONS: Option[] = [
     blurb: 'Verified uni students get the Luna University Membership pass.',
     href: '/memberships/university' },
   { key: 'dj', label: 'DJ', icon: '🎧',
-    blurb: 'For resident and guest DJs across Luna Group venues.', comingSoon: true },
+    blurb: 'For resident and guest DJs across Luna Group venues.',
+    href: '/memberships/dj' },
   { key: 'staff', label: 'Luna Group Staff', icon: '🪩',
-    blurb: 'Team access for Luna Group staff members.', comingSoon: true },
+    blurb: 'Team sign-up for Luna Group staff members.',
+    href: '/memberships/staff' },
 ]
 
 /** Public membership picker — shared by the memberships.* home page and /memberships. */
