@@ -8,11 +8,13 @@ const AGREEMENTS = [
   'I consent to Luna Group contacting me about promoter opportunities.',
 ]
 
-export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
+export function PromoterSignupForm({
+  refCode = '', initialCategory = 'promoter', lockCategory = false,
+}: { refCode?: string; initialCategory?: string; lockCategory?: boolean }) {
   const router = useRouter()
   const [f, setF] = useState({
     full_name: '', mobile: '', email: '', dob: '',
-    instagram: '', tiktok: '', facebook: '', suburb: '', category: 'promoter', ref: refCode,
+    instagram: '', tiktok: '', facebook: '', suburb: '', category: initialCategory, ref: refCode,
   })
   const [agreed, setAgreed] = useState<boolean[]>(AGREEMENTS.map(() => false))
   const [err, setErr] = useState('')
@@ -57,14 +59,16 @@ export function PromoterSignupForm({ refCode = '' }: { refCode?: string }) {
   return (
     <form onSubmit={submit} className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2">
-          <label className="label">I'm signing up as *</label>
-          <select className="input" value={f.category} onChange={e => set('category', e.target.value)}>
-            <option value="promoter">Promoter</option>
-            <option value="dj">DJ</option>
-            <option value="staff">Staff</option>
-          </select>
-        </div>
+        {!lockCategory && (
+          <div className="sm:col-span-2">
+            <label className="label">I'm signing up as *</label>
+            <select className="input" value={f.category} onChange={e => set('category', e.target.value)}>
+              <option value="promoter">Promoter</option>
+              <option value="dj">DJ</option>
+              <option value="staff">Staff</option>
+            </select>
+          </div>
+        )}
         <div className="sm:col-span-2">
           <label className="label">Full name *</label>
           <input className="input" required value={f.full_name} onChange={e => set('full_name', e.target.value)} />
