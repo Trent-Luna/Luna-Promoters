@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { QRCode } from '@/components/QRCode'
+import { SaveQR } from '@/components/SaveQR'
 import { fmtDate } from '@/lib/format'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -67,6 +68,19 @@ export default async function MembershipPass({ params }: { params: Promise<{ tok
 
           <div className="flex justify-center my-6">
             <QRCode value={`/verify/${token}`} size={240} />
+          </div>
+
+          <div className="mb-6">
+            <SaveQR
+              qrValue={`/verify/${token}`}
+              title={data.full_name}
+              lines={['Luna University Membership', data.membership_number ? `Member ${data.membership_number}` : ''].filter(Boolean)}
+              fileName="luna-university-pass.png"
+              label="Save pass to photos"
+              subheader="U N I V E R S I T Y   M E M B E R S H I P"
+              footer="Show this at reception"
+              shareTitle="Luna University Membership"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-left mt-2">

@@ -102,10 +102,12 @@ export function PromoterSignupForm({
           <label className="label">Facebook profile</label>
           <input className="input" placeholder="facebook.com/…" value={f.facebook} onChange={e => set('facebook', e.target.value)} />
         </div>
-        <div className="sm:col-span-2">
-          <label className="label">Referral code <span className="text-luna-muted font-normal">(optional — enter the code of the promoter who referred you)</span></label>
-          <input className="input" placeholder="e.g. GRACE" value={f.ref} onChange={e => set('ref', e.target.value.trim())} />
-        </div>
+        {f.category === 'promoter' && (
+          <div className="sm:col-span-2">
+            <label className="label">Referral code <span className="text-luna-muted font-normal">(optional — enter the code of the promoter who referred you)</span></label>
+            <input className="input" placeholder="e.g. GRACE" value={f.ref} onChange={e => set('ref', e.target.value.trim())} />
+          </div>
+        )}
       </div>
 
       <div className="card bg-luna-surface p-4 space-y-3">
