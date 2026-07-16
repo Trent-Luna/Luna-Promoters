@@ -7,7 +7,7 @@ interface Venue { id: string; name: string }
 interface Row {
   id: string; status: string
   first_name: string; last_name: string; mobile: string
-  promoter_name: string; promoter_code: string; plus_ones: number
+  promoter_name: string; promoter_code: string; plus_ones: number; notes: string | null
 }
 
 export function GuestlistManager({ venues }: { venues: Venue[] }) {
@@ -20,7 +20,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(false)
   const [q, setQ] = useState('')
-  const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0' })
+  const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '' })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setF(p => ({ ...p, [k]: v }))
@@ -29,7 +29,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
     if (!venueId || !date) { setRows([]); return }
     setLoading(true)
     const { data } = await supabase.from('guest_registrations')
-      .select('id,status,plus_ones,guests(first_name,last_name,mobile),promoters(full_name,promoter_code),events!inner(event_date)')
+      .select('id,status,plus_ones,notes,guests(first_name,last_name,mobile),promoters(full_name,promoter_code),events!inner(event_date)')
       .eq('venue_id', venueId).eq('events.event_date', date)
       .order('created_at', { ascending: false })
     setRows((data ?? []).map((r: any) => ({
@@ -37,6 +37,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
       first_name: r.guests?.first_name ?? '', last_name: r.guests?.last_name ?? '',
       mobile: r.guests?.mobile ?? '', promoter_name: r.promoters?.full_name ?? '',
       promoter_code: r.promoters?.promoter_code ?? '', plus_ones: r.plus_ones ?? 0,
+      notes: r.notes ?? null,
     })))
     setLoading(false)
   }, [venueId, date, supabase])
@@ -51,6 +52,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
       p_venue: venueId, p_date: date, p_first: f.first.trim(), p_last: f.last.trim(),
       p_mobile: f.mobile.trim(), p_email: f.email.trim(), p_dob: f.dob || null,
       p_instagram: f.instagram.trim(), p_plus_ones: Math.max(0, parseInt(f.plus || '0', 10) || 0),
+      p_notes: f.notes.trim() || null,
     })
     setSaving(false)
     if (error) { setMsg({ ok: false, text: error.message }); return }
@@ -59,7 +61,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
       return
     }
     setMsg({ ok: true, text: `${f.first} ${f.last} added.` })
-    setF({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0' })
+    setF({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '' })
     load()
   }
 
@@ -92,6 +94,10 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
           <label className="label">Plus ones <span className="text-luna-muted font-normal">(extra guests in their party)</span></label>
           <input type="number" min={0} max={50} className="input" value={f.plus} onChange={e => set('plus', e.target.value)} />
         </div>
+        <div>
+          <label className="label">Notes <span className="text-luna-muted font-normal">(optional — e.g. VIP, allergy, special request)</span></label>
+          <textarea className="input" rows={2} value={f.notes} onChange={e => set('notes', e.target.value)} />
+        </div>
         {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</p>}
         <button className="btn-gold w-full" disabled={saving || !venueId || !date}>{saving ? 'Adding…' : 'Add to guestlist'}</button>
       </form>
@@ -123,6 +129,7 @@ export function GuestlistManager({ venues }: { venues: Venue[] }) {
                   {r.mobile} · {r.promoter_name} ({r.promoter_code})
                   {r.plus_ones > 0 && <span> · party of {1 + r.plus_ones}</span>}
                 </div>
+                {r.notes && <div className="text-xs text-luna-gold mt-0.5 truncate">📝 {r.notes}</div>}
               </div>
               <StatusPill status={r.status} />
             </div>
