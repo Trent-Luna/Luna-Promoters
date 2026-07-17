@@ -14,8 +14,8 @@ export function AppShell({
           <Logo size={24} />
           <div className="ml-auto flex items-center gap-2">{right}<SignOut /></div>
         </div>
-        {/* one scrollable tab bar — consistent on phone, iPad and desktop */}
-        <nav className="max-w-6xl mx-auto px-2 sm:px-3 pb-2 flex items-center gap-1 overflow-x-auto no-scrollbar">
+        {/* tab bar wraps onto multiple rows instead of scrolling horizontally */}
+        <nav className="max-w-6xl mx-auto px-2 sm:px-3 pb-2 flex flex-wrap items-center gap-1.5">
           {nav.map(n => <NavLink key={n.href} {...n} active={current === n.href} />)}
         </nav>
       </header>
