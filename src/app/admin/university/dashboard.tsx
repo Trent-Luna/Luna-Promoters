@@ -68,7 +68,7 @@ export function UniversityDashboard() {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok || !data?.ok) { alert('Action failed: ' + (data?.error || 'error')); return }
-    loadQueue()
+    loadQueue(); loadMembers()
   }
 
   return (
@@ -168,10 +168,18 @@ export function UniversityDashboard() {
                 </div>
                 <div className="text-xs text-luna-muted">Applied {fmtDateTime(m.created_at)}</div>
               </div>
-              <div className="text-right space-y-1">
+              <div className="text-right space-y-2 shrink-0">
                 <StatusPill status={m.status} />
-                <div><button className="text-xs text-luna-muted hover:text-white underline" onClick={() => viewId(m.id)}>View ID</button></div>
-                <a className="text-xs text-luna-muted hover:text-white underline" href={`/m/${m.pass_token}`} target="_blank">Pass ↗</a>
+                <div className="flex flex-col items-end gap-1.5">
+                  <button className="text-xs text-luna-muted hover:text-white underline" onClick={() => viewId(m.id)}>View ID</button>
+                  <a className="text-xs text-luna-muted hover:text-white underline" href={`/m/${m.pass_token}`} target="_blank">Pass ↗</a>
+                  {m.status === 'approved' && (
+                    <button className="btn-danger !py-1.5 !px-3 text-xs" onClick={() => review(m.id, 'suspend')}>Suspend</button>
+                  )}
+                  {m.status === 'suspended' && (
+                    <button className="btn-gold !py-1.5 !px-3 text-xs" onClick={() => review(m.id, 'approve')}>Reinstate</button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

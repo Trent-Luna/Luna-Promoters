@@ -13,11 +13,11 @@ const COPY: Record<Category, { pill: string; title: string; blurb: string; formT
     formNote: 'Applications are reviewed by the Luna Group team. You must be 18 or older.',
   },
   dj: {
-    pill: 'DJ',
-    title: 'Join Luna Group as a DJ',
-    blurb: 'Play across Luna Group venues — Eclipse, Eclipse AfterDark, Su Casa Brisbane and Pump Nightclub. Register your details and the team will be in touch.',
-    formTitle: 'DJ application',
-    formNote: 'Applications are reviewed by the Luna Group team. You must be 18 or older.',
+    pill: 'Luna Group DJ',
+    title: 'Luna Group DJ sign-up',
+    blurb: 'For Luna Group DJs. Register your details to get set up in the Luna Group system.',
+    formTitle: 'DJ sign-up',
+    formNote: 'Your details will be reviewed by the Luna Group team. You must be 18 or older.',
   },
   staff: {
     pill: 'Luna Group Staff',
