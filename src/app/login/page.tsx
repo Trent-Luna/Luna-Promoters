@@ -3,6 +3,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/Logo'
+import { safeNextPath } from '@/lib/safe-next'
 import Link from 'next/link'
 
 type Mode = 'signin' | 'signup' | 'reset'
@@ -49,7 +50,9 @@ function LoginForm() {
         }
         throw error
       }
-      router.push(params.get('next') || '/dashboard')
+      // Return to the intended destination (validated to an internal path — never
+      // an open redirect). Defaults to the role-router at /dashboard.
+      router.push(safeNextPath(params.get('next')))
       router.refresh()
     } catch (e: any) {
       setErr(e.message || 'Something went wrong'); setLoading(false)
