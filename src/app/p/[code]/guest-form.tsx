@@ -6,7 +6,22 @@ import { createClient } from '@/lib/supabase/client'
 interface Venue { id: string; name: string }
 interface Blackout { venue_id: string | null; date: string }
 
-const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniversary', 'Graduation', 'Corporate / work', 'Other']
+// Only the occasions the confirmation email can actually reward.
+//
+// `occasionBlocksHtml` in src/lib/occasion-packages.ts matches these three
+// exact strings and nothing else. Every other value fell through to the plain
+// "Want the VIP treatment?" booth CTA — so somebody told us it was their
+// engagement and got the identical email to a guest who picked "just vibes".
+// The picker was inviting people to tell us something we then ignored.
+//
+// Engagement, Anniversary, Graduation, Corporate / work and Other are removed
+// until there is a deal to attach to them. Existing registrations keep whatever
+// they were saved with, and the admin editor is a free-text field left
+// unchanged, so a venue can still record anything by hand.
+//
+// If you add one back, add it to PARTY in occasion-packages.ts in the SAME
+// change — otherwise it is silently a dead option again.
+const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party']
 
 export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: { promoterCode: string; venues: Venue[]; blackouts?: Blackout[] }) {
   const router = useRouter()
