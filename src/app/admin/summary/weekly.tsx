@@ -59,7 +59,7 @@ function PersonRow({ rank, person, range, withTier = false, icon }:
     <div className="border-b border-luna-border/40 last:border-0">
       <button type="button" onClick={toggle} disabled={!clickable}
         className={`w-full flex items-center gap-3 py-2 px-1 rounded-lg text-left ${clickable ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}`}>
-        <span className="w-6 text-center font-bold text-white/80">{icon ?? (rank != null ? `#${rank}` : '')}</span>
+        <span className="w-6 text-center font-bold text-luna-text">{icon ?? (rank != null ? `#${rank}` : '')}</span>
         <span className="flex-1 font-medium">
           {person.full_name}
           {person.promoter_code
@@ -199,7 +199,7 @@ export function WeeklySummary() {
               {(data.top_venues ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
               {(data.top_venues ?? []).map((v: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
-                  <span className="w-6 font-bold text-white/80">#{i + 1}</span>
+                  <span className="w-6 font-bold text-luna-text">#{i + 1}</span>
                   <span className="flex-1 font-medium">{v.name}</span>
                   <span className="w-10 text-right font-semibold text-emerald-400">{v.checked_in}</span>
                 </div>

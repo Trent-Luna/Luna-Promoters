@@ -72,7 +72,7 @@ export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[];
                   <span className="font-semibold text-lg">{p.full_name}</span>
                   <StatusPill status={p.status} />
                   {p.status === 'approved' && <TierBadge tier={p.current_tier} />}
-                  {p.promoter_code && <code className="text-xs text-white/80">/p/{p.promoter_code}</code>}
+                  {p.promoter_code && <code className="text-xs text-luna-text">/p/{p.promoter_code}</code>}
                   <CategorySelect id={p.id} value={p.category} />
                 </div>
                 <div className="text-sm text-luna-muted mt-1">

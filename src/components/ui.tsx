@@ -28,10 +28,16 @@ export function StatusPill({ status }: { status: string }) {
   return <span className={`pill ${map[status] ?? 'bg-luna-border text-luna-muted'}`}>{status.replace('_', ' ')}</span>
 }
 export function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+  // Active is a gold pill — how Atlas marks where you are, and the only place
+  // gold appears in its navigation. Both colours read through the tokens, so on
+  // guest-facing screens (where gold is still monochrome white) this stays the
+  // white pill it has always been.
   return (
     <Link href={href}
-      className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition ${
-        active ? 'bg-white/12 text-white' : 'text-luna-muted hover:text-luna-text'}`}>
+      className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-xl text-sm font-medium transition ${
+        active
+          ? 'bg-luna-gold/[0.12] text-luna-goldsoft'
+          : 'text-luna-muted hover:bg-white/[0.05] hover:text-luna-text'}`}>
       {label}
     </Link>
   )

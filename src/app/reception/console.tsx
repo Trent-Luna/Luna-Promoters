@@ -241,8 +241,8 @@ export function ReceptionConsole({ venues }: { venues: Venue[] }) {
               <div className="text-white font-extrabold mt-4" style={{ fontSize: '3rem', lineHeight: 1.05 }}>
                 {scanResult.title}
               </div>
-              {scanResult.sub && <div className="text-white/90 mt-4 text-2xl font-semibold">{scanResult.sub}</div>}
-              <div className="text-white/70 mt-8 text-base">Ready for the next guest…</div>
+              {scanResult.sub && <div className="text-luna-text mt-4 text-2xl font-semibold">{scanResult.sub}</div>}
+              <div className="text-luna-muted mt-8 text-base">Ready for the next guest…</div>
             </div>
           )}
         </div>

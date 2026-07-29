@@ -35,7 +35,7 @@ export default async function MyLink() {
             The database update for this feature may not be applied yet. Ask your admin to run the
             latest Supabase migration (0015), then refresh.
           </p>
-          <p className="text-xs text-luna-muted/70">Details: {error.message}</p>
+          <p className="text-xs text-luna-muted">Details: {error.message}</p>
         </div>
       ) : !code ? (
         <div className="card p-6 text-luna-muted">Preparing your link…</div>
