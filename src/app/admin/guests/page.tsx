@@ -11,7 +11,8 @@ export default async function AdminGuests() {
   if (!s) redirect('/login')
   if (!hasRole(s, 'admin')) redirect('/dashboard')
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/guests" title="Guests">
+    <AppShell nav={ADMIN_NAV} current="/admin/guests" title="Guests"
+      subtitle={"Everyone who has ever registered on a promoter link."}>
       <GuestDirectory />
     </AppShell>
   )

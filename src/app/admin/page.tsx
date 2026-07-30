@@ -57,7 +57,8 @@ export default async function AdminOverview() {
   const staff = all.filter(r => r.category === 'staff').slice(0, 10)
 
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin" title="Admin overview">
+    <AppShell nav={ADMIN_NAV} current="/admin" title="Admin overview"
+      subtitle={"Promoter performance across Luna Group this month."}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Total promoters" value={stats?.total_promoters ?? 0} />
         <Link href="/admin/promoters?status=pending"><Stat label="Pending approval" value={stats?.pending_promoters ?? 0} accent /></Link>

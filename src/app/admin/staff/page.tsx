@@ -27,7 +27,8 @@ export default async function AdminStaff() {
   }))
 
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/staff" title="Staff & door access">
+    <AppShell nav={ADMIN_NAV} current="/admin/staff" title="Staff & door access"
+      subtitle={"Admin, venue manager and reception access."}>
       <StaffManager venues={venues ?? []} staff={staff} />
     </AppShell>
   )

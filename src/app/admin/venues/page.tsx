@@ -5,6 +5,7 @@ import { AppShell } from '@/components/AppShell'
 import { ADMIN_NAV } from '@/components/AdminNav'
 import { createVenue } from '../actions'
 import { VenueToggle } from './toggle'
+import { Th, Td, CellStack, EmptyRow } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,8 @@ export default async function AdminVenues() {
   const { data: venues } = await supabase.from('venues').select('*').order('name')
 
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/venues" title="Venues">
+    <AppShell nav={ADMIN_NAV} current="/admin/venues" title="Venues"
+      subtitle={`${(venues ?? []).length} venue${(venues ?? []).length === 1 ? '' : 's'}`}>
       <div className="grid lg:grid-cols-3 gap-5">
         <form action={createVenue} className="card p-5 space-y-3 h-fit">
           <h2 className="font-bold">Add venue</h2>
@@ -25,14 +27,31 @@ export default async function AdminVenues() {
           <div><label className="label">Address</label><input name="address" className="input" /></div>
           <button className="btn-gold w-full">Create venue</button>
         </form>
-        <div className="lg:col-span-2 space-y-3">
-          {(venues ?? []).map((v: any) => (
-            <div key={v.id} className="card p-4 flex items-center gap-3">
-              <div className="flex-1"><div className="font-semibold">{v.name}</div>
-                <div className="text-sm text-luna-muted">/{v.slug}{v.address ? ` · ${v.address}` : ''}</div></div>
-              <VenueToggle id={v.id} active={v.active} />
-            </div>
-          ))}
+        <div className="lg:col-span-2">
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm min-w-[420px]">
+              <thead>
+                <tr className="border-b border-white/[0.07]">
+                  <Th className="pt-3">Venue</Th>
+                  <Th className="pt-3 text-right">Active</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(venues ?? []).length === 0 && <EmptyRow colSpan={2}>No venues yet.</EmptyRow>}
+                {(venues ?? []).map((v: any) => (
+                  <tr key={v.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
+                    <Td>
+                      <CellStack
+                        primary={v.name}
+                        secondary={`/${v.slug}${v.address ? ` · ${v.address}` : ''}`}
+                      />
+                    </Td>
+                    <Td className="text-right"><VenueToggle id={v.id} active={v.active} /></Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </AppShell>
