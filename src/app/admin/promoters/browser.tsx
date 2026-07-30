@@ -1,6 +1,8 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { StatusPill, TierBadge } from '@/components/ui'
+import {
+  StatusPill, TierBadge, FilterRow, ResultCount, Th, Td, CellStack, EmptyRow,
+} from '@/components/ui'
 import { fmtDate } from '@/lib/format'
 import { PromoterActions } from './actions-ui'
 import { CategorySelect } from './category-ui'
@@ -12,8 +14,19 @@ interface P {
   admin_notes: { note: string }[]
 }
 
-const TABS = ['', 'pending', 'approved', 'suspended', 'rejected']
-const CATS: { v: string; label: string }[] = [{ v: '', label: 'All types' }, { v: 'promoter', label: 'Promoters' }, { v: 'dj', label: 'DJs' }, { v: 'staff', label: 'Staff' }]
+const STATUSES = [
+  { v: '', label: 'All statuses' },
+  { v: 'pending', label: 'Pending' },
+  { v: 'approved', label: 'Approved' },
+  { v: 'suspended', label: 'Suspended' },
+  { v: 'rejected', label: 'Rejected' },
+]
+const CATS = [
+  { v: '', label: 'All types' },
+  { v: 'promoter', label: 'Promoters' },
+  { v: 'dj', label: 'DJs' },
+  { v: 'staff', label: 'Staff' },
+]
 
 export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[]; initialStatus: string }) {
   const [status, setStatus] = useState(initialStatus)
@@ -37,58 +50,94 @@ export function PromotersBrowser({ promoters, initialStatus }: { promoters: P[];
     })
   }, [promoters, status, cat, q])
 
-  const countFor = (st: string) => promoters.filter(p => !st || p.status === st).length
-
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <input className="input flex-1" placeholder="Search name, email, phone, code, suburb or Instagram…"
-          value={q} onChange={e => setQ(e.target.value)} />
-      </div>
-      <div className="flex gap-2 mb-3 flex-wrap">
-        {TABS.map(t => (
-          <button key={t || 'all'} onClick={() => setStatus(t)}
-            className={`pill border ${status === t ? 'bg-white/10 text-white border-white' : 'border-luna-border text-luna-muted'}`}>
-            {t ? t[0].toUpperCase() + t.slice(1) : 'All'} <span className="ml-1 opacity-60">{countFor(t)}</span>
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {CATS.map(c => (
-          <button key={c.v || 'allcat'} onClick={() => setCat(c.v)}
-            className={`pill border ${cat === c.v ? 'bg-luna-purple/25 text-white border-luna-purple' : 'border-luna-border text-luna-muted'}`}>
-            {c.label} <span className="ml-1 opacity-60">{promoters.filter(p => !c.v || p.category === c.v).length}</span>
-          </button>
-        ))}
-      </div>
-      <p className="text-xs text-luna-muted mb-3">{filtered.length} promoter{filtered.length === 1 ? '' : 's'}</p>
-      <div className="space-y-3">
-        {filtered.length === 0 && <div className="card p-6 text-center text-luna-muted">No promoters match.</div>}
-        {filtered.map(p => (
-          <div key={p.id} className="card p-5">
-            <div className="flex flex-wrap items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-lg">{p.full_name}</span>
-                  <StatusPill status={p.status} />
-                  {p.status === 'approved' && <TierBadge tier={p.current_tier} />}
-                  {p.promoter_code && <code className="text-xs text-white/80">/p/{p.promoter_code}</code>}
-                  <CategorySelect id={p.id} value={p.category} />
-                </div>
-                <div className="text-sm text-luna-muted mt-1">
-                  {p.email} · {p.mobile} · DOB {fmtDate(p.date_of_birth)}
-                  {p.suburb ? ` · ${p.suburb}` : ''}{p.instagram ? ` · ${p.instagram}` : ''}
-                </div>
-                {(p.admin_notes ?? []).length > 0 && (
-                  <div className="mt-2 text-xs text-luna-muted space-y-0.5">
-                    {p.admin_notes.map((n, i) => <div key={i}>📝 {n.note}</div>)}
-                  </div>
-                )}
-              </div>
-              <PromoterActions id={p.id} status={p.status} elite={p.elite_override} />
-            </div>
-          </div>
-        ))}
+      <FilterRow>
+        <input
+          className="input flex-1 min-w-[240px] py-2"
+          placeholder="Search name, email, phone, code, suburb or Instagram…"
+          value={q} onChange={e => setQ(e.target.value)}
+        />
+        <select className="input w-auto py-2" value={status} onChange={e => setStatus(e.target.value)}>
+          {STATUSES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
+        </select>
+        <select className="input w-auto py-2" value={cat} onChange={e => setCat(e.target.value)}>
+          {CATS.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
+        </select>
+      </FilterRow>
+
+      <ResultCount
+        shown={filtered.length}
+        total={promoters.length}
+        noun={promoters.length === 1 ? 'promoter' : 'promoters'}
+      />
+
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
+          <thead>
+            <tr className="border-b border-white/[0.07]">
+              <Th className="pt-3">Promoter</Th>
+              <Th className="pt-3">Type</Th>
+              <Th className="pt-3">Status</Th>
+              <Th className="pt-3">Tier</Th>
+              <Th className="pt-3">Code</Th>
+              <Th className="pt-3">DOB</Th>
+              <Th className="pt-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <EmptyRow colSpan={7}>No promoters match those filters.</EmptyRow>
+            )}
+            {filtered.map(p => {
+              const notes = p.admin_notes ?? []
+              return (
+                <tr key={p.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
+                  <Td>
+                    <CellStack
+                      primary={
+                        <span className="flex items-center gap-1.5">
+                          {p.full_name}
+                          {notes.length > 0 && (
+                            <span
+                              className="text-luna-muted text-xs font-normal"
+                              title={notes.map(n => n.note).join('\n')}
+                            >
+                              📝{notes.length > 1 ? notes.length : ''}
+                            </span>
+                          )}
+                        </span>
+                      }
+                      secondary={
+                        <>
+                          {p.email} · {p.mobile}
+                          {p.suburb ? ` · ${p.suburb}` : ''}
+                          {p.instagram ? ` · ${p.instagram}` : ''}
+                        </>
+                      }
+                    />
+                  </Td>
+                  <Td><CategorySelect id={p.id} value={p.category} /></Td>
+                  <Td><StatusPill status={p.status} /></Td>
+                  <Td>
+                    {p.status === 'approved'
+                      ? <TierBadge tier={p.current_tier} />
+                      : <span className="text-luna-muted">—</span>}
+                  </Td>
+                  <Td>
+                    {p.promoter_code
+                      ? <code className="text-xs text-luna-subtle">/p/{p.promoter_code}</code>
+                      : <span className="text-luna-muted">—</span>}
+                  </Td>
+                  <Td className="text-luna-muted whitespace-nowrap">{fmtDate(p.date_of_birth)}</Td>
+                  <Td className="text-right">
+                    <PromoterActions id={p.id} status={p.status} elite={p.elite_override} />
+                  </Td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )

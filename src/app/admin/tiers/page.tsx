@@ -16,8 +16,9 @@ export default async function AdminTiers() {
   const { data: tiers } = await supabase.from('tiers').select('*').order('sort_order')
 
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/tiers" title="Tier settings">
-      <p className="text-luna-muted text-sm mb-4">Monthly checked-in guests determine Bronze/Silver/Gold. Elite is invite-only (assign per promoter on the Promoters page).</p>
+    <AppShell nav={ADMIN_NAV} current="/admin/tiers" title="Tier settings"
+      subtitle={"Monthly checked-in guests determine Bronze, Silver and Gold."}>
+      <p className="text-luna-muted text-sm mb-4">Elite is invite-only — assign it per promoter on the Promoters page.</p>
       <div className="grid md:grid-cols-2 gap-4">
         {(tiers ?? []).map((t: any) => (
           <form key={t.name} action={updateTier} className="card p-5 space-y-3">

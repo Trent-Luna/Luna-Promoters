@@ -1,14 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root { color-scheme: dark; }
 
+/* Flat background to match Atlas — the previous radial vignette was tuned for
+   a centred, full-bleed layout and reads as off-centre next to a sidebar. */
 html, body {
-  background:
-    radial-gradient(900px 500px at 50% -12%, #17171a 0%, #000 60%) no-repeat #000;
-  color: #ffffff;
+  background: #09090b;
+  color: #fafafa;
   min-height: 100%;
   max-width: 100%;
   overflow-x: hidden; /* fallback for older browsers */
@@ -17,25 +17,28 @@ html, body {
 }
 
 @layer components {
-  .card { @apply bg-luna-card border border-luna-border rounded-2xl; }
+  /* Atlas panels: #17171a, 12px radius, hairline white border */
+  .card { @apply bg-luna-card border border-white/[0.07] rounded-xl; }
   .input {
-    @apply w-full bg-luna-surface border border-luna-border rounded-xl px-4 py-3 text-luna-text
-           placeholder:text-luna-muted focus:outline-none focus:border-white transition;
+    @apply w-full bg-luna-surface border border-white/[0.07] rounded-xl px-4 py-3 text-luna-text
+           placeholder:text-luna-muted focus:outline-none focus:border-luna-gold/60 transition;
   }
   .label { @apply block text-sm font-medium text-luna-muted mb-1.5; }
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold
            transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none;
   }
-  /* primary = solid white with black text (matches lunagroup.com.au) */
-  .btn-gold  { @apply btn bg-white text-black hover:bg-white/90; }
-  .btn-ghost { @apply btn bg-luna-surface border border-luna-border text-luna-text hover:border-white; }
+  /* primary = Atlas gold */
+  .btn-gold  { @apply btn bg-luna-gold text-black hover:bg-luna-goldsoft; }
+  .btn-ghost { @apply btn bg-luna-surface border border-white/[0.07] text-luna-text hover:border-luna-gold/40; }
   .btn-danger{ @apply btn bg-red-600/90 text-white hover:bg-red-600; }
   .btn-lg    { @apply text-lg px-6 py-4; }
   .pill      { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold; }
   .stat      { @apply card p-5; }
   .stat-num  { @apply text-3xl font-extrabold text-luna-text; }
   .stat-lbl  { @apply text-xs uppercase tracking-wide text-luna-muted mt-1; }
+  /* small uppercase eyebrow above a page title, as on Atlas */
+  .eyebrow   { @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-luna-muted; }
 }
 
 /* tier identity colours (independent of brand chrome) */

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format'
+import { Th, Td, CellStack, TagList } from '@/components/ui'
 
 type G = {
   id: string; first_name: string; last_name: string; mobile: string
@@ -62,31 +63,34 @@ export function GuestDirectory() {
       )}
 
       {filtered.length > 0 && (
-        <div className="card p-0 overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm min-w-[860px]">
             <thead>
-              <tr className="text-left text-luna-muted border-b border-luna-border/60">
-                <th className="p-3 font-semibold">Name</th>
-                <th className="p-3 font-semibold">Mobile</th>
-                <th className="p-3 font-semibold">Email</th>
-                <th className="p-3 font-semibold">Instagram</th>
-                <th className="p-3 font-semibold text-right">Signups</th>
-                <th className="p-3 font-semibold text-right">Attended</th>
-                <th className="p-3 font-semibold">Venues</th>
-                <th className="p-3 font-semibold">Last seen</th>
+              <tr className="border-b border-white/[0.07]">
+                <Th className="pt-3">Guest</Th>
+                <Th className="pt-3">Mobile</Th>
+                <Th className="pt-3">Instagram</Th>
+                <Th className="pt-3 text-right">Signups</Th>
+                <Th className="pt-3 text-right">Attended</Th>
+                <Th className="pt-3">Venues</Th>
+                <Th className="pt-3">Last seen</Th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(g => (
-                <tr key={g.id} className="border-b border-luna-border/30 last:border-0">
-                  <td className="p-3 font-medium whitespace-nowrap">{g.first_name} {g.last_name}</td>
-                  <td className="p-3 text-luna-muted whitespace-nowrap">{g.mobile}</td>
-                  <td className="p-3 text-luna-muted">{g.email || '—'}</td>
-                  <td className="p-3 text-luna-muted">{g.instagram || '—'}</td>
-                  <td className="p-3 text-right">{g.registrations}</td>
-                  <td className="p-3 text-right text-emerald-400">{g.attended}</td>
-                  <td className="p-3 text-luna-muted">{(g.venues || []).join(', ') || '—'}</td>
-                  <td className="p-3 text-luna-muted whitespace-nowrap">{g.last_seen ? fmtDate(g.last_seen) : '—'}</td>
+                <tr key={g.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
+                  <Td>
+                    <CellStack
+                      primary={`${g.first_name} ${g.last_name}`}
+                      secondary={g.email || undefined}
+                    />
+                  </Td>
+                  <Td className="text-luna-muted whitespace-nowrap">{g.mobile}</Td>
+                  <Td className="text-luna-muted">{g.instagram || '—'}</Td>
+                  <Td className="text-right">{g.registrations}</Td>
+                  <Td className="text-right text-emerald-400 font-semibold">{g.attended}</Td>
+                  <Td><TagList items={g.venues || []} max={2} /></Td>
+                  <Td className="text-luna-muted whitespace-nowrap">{g.last_seen ? fmtDate(g.last_seen) : '—'}</Td>
                 </tr>
               ))}
             </tbody>

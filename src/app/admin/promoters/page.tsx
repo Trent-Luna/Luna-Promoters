@@ -24,7 +24,8 @@ export default async function AdminPromoters({ searchParams }: { searchParams: P
   ])
 
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/promoters" title="Promoters">
+    <AppShell nav={ADMIN_NAV} current="/admin/promoters" title="Promoters"
+      subtitle={`${(promoters ?? []).length} profile${(promoters ?? []).length === 1 ? '' : 's'}`}>
       <AutoApproveToggle initial={settings?.auto_approve_promoters ?? false} />
       <PromotersBrowser promoters={(promoters ?? []) as any} initialStatus={status ?? ''} />
     </AppShell>
