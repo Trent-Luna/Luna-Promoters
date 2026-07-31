@@ -67,6 +67,49 @@ export async function toggleVenue(id: string, active: boolean) {
   revalidatePath('/admin/venues')
 }
 
+/**
+ * Permanently remove a venue — but only when nothing points at it.
+ *
+ * `venues` is the parent of six cascading foreign keys (events,
+ * guest_registrations, roles, blackout_dates, whats_on, and venue rooms), so an
+ * unguarded delete would take every historical guest and check-in for that venue
+ * with it, silently. This exists for the realistic case — a venue added by
+ * mistake or a typo — and refuses everything else, pointing at Disable instead,
+ * which already removes a venue from the public guestlist and every picker.
+ */
+export async function deleteVenue(id: string): Promise<{ ok: boolean; error?: string }> {
+  await ensureAdmin()
+  const supabase = await createClient()
+
+  // Count anything that would be destroyed by the cascade. head+exact gives a
+  // count without pulling rows back.
+  const [events, regs, roles, blackouts] = await Promise.all([
+    supabase.from('events').select('id', { count: 'exact', head: true }).eq('venue_id', id),
+    supabase.from('guest_registrations').select('id', { count: 'exact', head: true }).eq('venue_id', id),
+    supabase.from('roles').select('id', { count: 'exact', head: true }).eq('venue_id', id),
+    supabase.from('blackout_dates').select('id', { count: 'exact', head: true }).eq('venue_id', id),
+  ])
+
+  const blockers: string[] = []
+  if (events.count) blockers.push(`${events.count} event${events.count === 1 ? '' : 's'}`)
+  if (regs.count) blockers.push(`${regs.count} guest registration${regs.count === 1 ? '' : 's'}`)
+  if (roles.count) blockers.push(`${roles.count} staff role${roles.count === 1 ? '' : 's'}`)
+  if (blackouts.count) blockers.push(`${blackouts.count} blackout date${blackouts.count === 1 ? '' : 's'}`)
+
+  if (blockers.length > 0) {
+    return {
+      ok: false,
+      error: `This venue has ${blockers.join(', ')}. Deleting it would remove that history too. Disable it instead — it disappears from the guestlist and every picker, and the records stay.`,
+    }
+  }
+
+  const { error } = await supabase.from('venues').delete().eq('id', id)
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/admin/venues')
+  return { ok: true }
+}
+
 export async function createEvent(fd: FormData) {
   const s = await ensureManager()
   const supabase = await createClient()

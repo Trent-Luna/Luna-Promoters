@@ -5,6 +5,7 @@ import { AppShell } from '@/components/AppShell'
 import { ADMIN_NAV } from '@/components/AdminNav'
 import { createVenue } from '../actions'
 import { VenueToggle } from './toggle'
+import { VenueDelete } from './delete'
 import { Th, Td, CellStack, EmptyRow } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,12 @@ export default async function AdminVenues() {
                         secondary={`/${v.slug}${v.address ? ` · ${v.address}` : ''}`}
                       />
                     </Td>
-                    <Td className="text-right"><VenueToggle id={v.id} active={v.active} /></Td>
+                    <Td className="text-right">
+                      <span className="inline-flex items-center gap-3">
+                        <VenueDelete id={v.id} name={v.name} />
+                        <VenueToggle id={v.id} active={v.active} />
+                      </span>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
