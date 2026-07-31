@@ -13,7 +13,10 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
   const today = new Date().toISOString().slice(0, 10)
   const maxDate = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)
 
-  const [venueId, setVenueId] = useState(venues[0]?.id ?? '')
+  // No default: pre-selecting the first venue alphabetically meant guests who
+  // skipped the field silently registered for Eclipse. Empty forces a choice,
+  // and the submit handler already rejects a blank venue.
+  const [venueId, setVenueId] = useState('')
   const [date, setDate] = useState('')
   const [occasion, setOccasion] = useState('')
   const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
@@ -71,7 +74,9 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
         <div>
           <label className="label">Venue *</label>
           <select className="input" value={venueId} onChange={e => setVenueId(e.target.value)} required>
-            {venues.length === 0 && <option value="">No venues available</option>}
+            {venues.length === 0
+              ? <option value="">No venues available</option>
+              : <option value="" disabled>Choose your venue</option>}
             {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
         </div>
