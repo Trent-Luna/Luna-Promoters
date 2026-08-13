@@ -41,7 +41,7 @@ export default async function MyLink() {
         <div className="card p-6 text-luna-muted">Preparing your link…</div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-5">
-          <div className="card p-6 lg:col-span-2">
+          <div className="card p-6 min-w-0 lg:col-span-2">
             <p className="text-xs uppercase tracking-wide text-luna-muted mb-2">Your link</p>
             <CopyLink link={link} />
             <a href="/promoter-guide.pdf" target="_blank" rel="noopener noreferrer"

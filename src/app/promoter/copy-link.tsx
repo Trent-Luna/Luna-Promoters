@@ -34,9 +34,28 @@ export function CopyLink({ link }: { link: string }) {
   ]
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <code className="flex-1 min-w-0 bg-luna-surface border border-luna-border rounded-xl px-4 py-3 text-luna-gold text-sm truncate">{link}</code>
+    // `min-w-0` all the way down, and it is load-bearing rather than tidiness.
+    //
+    // The bug: the link below is `white-space: nowrap`, so its MIN-CONTENT width
+    // is the whole URL — about 446px for a real promoter link. Flex and grid
+    // items default to `min-width: auto`, which means an item refuses to shrink
+    // below its min-content. That refusal propagates up: the code element forced
+    // this div wide, which forced the card wide, which pushed the card ~100px
+    // off the right of a 390px phone screen, dragging the Copy/Share buttons,
+    // the share pills and the stats out with it. It reads as everything
+    // overlapping, because everything is hanging off the edge of the viewport.
+    //
+    // `min-w-0` on the code alone was not enough — the chain above it still had
+    // `auto` minimums, so the pressure just moved up one level.
+    <div className="min-w-0">
+      <div className="flex flex-col sm:flex-row gap-3 min-w-0">
+        {/* Wraps on a phone, truncates from `sm` up where the row layout gives
+            it a fixed share of the width. A promoter's own link is the thing
+            they came to this page for, so on the screen where there is no room
+            to truncate gracefully it is better to show all of it over two lines
+            than to hide half of it behind an ellipsis. `break-all` because a URL
+            has no spaces to break on. */}
+        <code className="flex-1 min-w-0 bg-luna-surface border border-luna-border rounded-xl px-4 py-3 text-luna-gold text-sm break-all sm:truncate">{link}</code>
         <div className="flex gap-2 shrink-0">
           <button onClick={() => copy('link')} className="btn-gold">{copied === 'link' ? 'Copied' : 'Copy'}</button>
           <button onClick={nativeShare} className="btn-ghost">Share</button>
