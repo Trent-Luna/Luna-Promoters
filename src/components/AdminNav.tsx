@@ -58,10 +58,22 @@ export const ADMIN_GROUPS: NavGroup[] = [
  */
 export const ADMIN_NAV: NavItem[] = ADMIN_GROUPS.flatMap(g => g.items)
 
-/** Condensed set for the mobile top bar, where the sidebar is hidden. */
-export const ADMIN_NAV_MOBILE: NavItem[] = [
-  { href: '/admin', label: 'Overview' },
-  { href: '/admin/promoters', label: 'Promoters' },
-  { href: '/admin/guests', label: 'Guests' },
-  { href: '/reception', label: 'Door' },
-]
+/**
+ * THERE IS NO SEPARATE MOBILE NAV, AND THAT IS DELIBERATE.
+ *
+ * There used to be: a hand-written `ADMIN_NAV_MOBILE` of four items — Overview,
+ * Promoters, Guests, Door. The sidebar is hidden below `lg`, so on a phone those
+ * four were the ONLY way to reach anything, and the other twelve admin pages —
+ * My Link, Weekly Summary, University, Guestlists, What's On, Blackout, Venues,
+ * Staff, Leaderboards, Exports, Tiers — were unreachable. Not hidden behind a
+ * menu: absent. An admin on their phone could not open them at all.
+ *
+ * The deeper problem was that it was a SECOND list. Every page added to
+ * ADMIN_GROUPS since it was written silently failed to appear on mobile, and
+ * nothing anywhere would have caught that. So the fix is not to lengthen the
+ * second list, it is to delete it: mobile now renders ADMIN_GROUPS, the same
+ * source the sidebar uses, and a new page appears in both by construction.
+ *
+ * If a condensed set is ever wanted again, derive it from ADMIN_GROUPS
+ * (e.g. `ADMIN_GROUPS[0].items`) rather than retyping hrefs.
+ */

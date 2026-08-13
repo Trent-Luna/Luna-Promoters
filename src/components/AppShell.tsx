@@ -1,9 +1,20 @@
 import { Logo } from './Logo'
 import { NavLink, SidebarLink } from './ui'
 import { SignOut } from './SignOut'
-import { ADMIN_NAV, ADMIN_GROUPS, ADMIN_NAV_MOBILE } from './AdminNav'
+import { ADMIN_NAV, ADMIN_GROUPS } from './AdminNav'
 
 export interface NavItem { href: string; label: string }
+
+/**
+ * The label for the page you are on, for the collapsed mobile menu.
+ *
+ * Falls back to "Admin" rather than to an empty string: a disclosure that reads
+ * just "Menu" with a blank beside it looks broken, and an href that is not in
+ * the nav (a detail page, say) is a normal thing to be looking at.
+ */
+function currentLabel(current: string): string {
+  return ADMIN_NAV.find(n => n.href === current)?.label ?? 'Admin'
+}
 
 // Configurable Atlas home; falls back to the production URL so it is never
 // missing in production. Same-tab navigation by default.
@@ -83,13 +94,50 @@ function AdminShell({
           </div>
         </header>
 
-        {/* condensed nav, mobile only */}
-        <nav className="lg:hidden px-2 py-2 flex flex-wrap items-center gap-1.5
-                        border-b border-white/[0.07]">
-          {ADMIN_NAV_MOBILE.map(n => (
-            <NavLink key={n.href} {...n} active={current === n.href} />
-          ))}
-        </nav>
+        {/* ---------- mobile nav ----------
+            The sidebar is hidden below `lg`, so this is the ONLY way to move
+            around on a phone. It renders ADMIN_GROUPS — the same source the
+            sidebar uses — rather than a second hand-maintained list, which is
+            what previously left twelve admin pages unreachable on mobile.
+
+            A <details> disclosure rather than a client-side drawer: this shell
+            is a server component, and native disclosure needs no JavaScript, no
+            hydration and no state. It also stays usable if JS fails to load,
+            which for a door team on a phone in a venue basement is not a
+            hypothetical.
+
+            Closed, it shows where you are. Open, it shows everywhere you can go,
+            grouped exactly as the sidebar groups them. */}
+        <details className="lg:hidden border-b border-white/[0.07] group">
+          <summary
+            className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm
+                       text-luna-text marker:hidden [&::-webkit-details-marker]:hidden"
+          >
+            <span className="text-luna-muted">Menu</span>
+            <span className="font-medium truncate">{currentLabel(current)}</span>
+            <span
+              aria-hidden
+              className="ml-auto text-luna-muted transition-transform group-open:rotate-180"
+            >
+              ▾
+            </span>
+          </summary>
+
+          <nav className="px-2 pb-3 space-y-4">
+            {ADMIN_GROUPS.map((group, i) => (
+              <div key={group.label ?? `m-group-${i}`} className="space-y-0.5">
+                {group.label && (
+                  <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-luna-muted/70">
+                    {group.label}
+                  </div>
+                )}
+                {group.items.map(item => (
+                  <SidebarLink key={item.href} {...item} active={current === item.href} />
+                ))}
+              </div>
+            ))}
+          </nav>
+        </details>
 
         {/* ---------- content (Atlas: max 1280px, 32/40 padding) ---------- */}
         <main className="min-w-0 w-full max-w-atlas mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
