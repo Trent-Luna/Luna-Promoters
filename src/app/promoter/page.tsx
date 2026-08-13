@@ -59,7 +59,7 @@ export default async function PromoterDashboard() {
       title={`Welcome, ${p.full_name.split(' ')[0]}`}>
       <div className="grid lg:grid-cols-3 gap-5">
         {/* link card */}
-        <div className="card p-6 lg:col-span-2">
+        <div className="card p-6 min-w-0 lg:col-span-2">
           <p className="text-xs uppercase tracking-wide text-luna-muted mb-2">Your promoter link</p>
           <CopyLink link={link} />
           <a href="/promoter-guide.pdf" target="_blank" rel="noopener noreferrer"
