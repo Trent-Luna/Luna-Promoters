@@ -8,16 +8,42 @@ interface Blackout { venue_id: string | null; date: string }
 
 const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniversary', 'Graduation', 'Corporate / work', 'Other']
 
-export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: { promoterCode: string; venues: Venue[]; blackouts?: Blackout[] }) {
+/**
+ * Three optional props, each hiding one question the link has already answered.
+ *
+ * They are INDEPENDENT. A venue with no date is a valid link (this venue, any
+ * night); a date with no venue is too (this night, any venue). Requiring both
+ * was the first version of this and it was wrong — it made a New Year's link
+ * across all six venues impossible to express.
+ *
+ * Defaults are the existing behaviour exactly: every caller that does not pass
+ * these renders the form it rendered before, field for field.
+ *
+ * The values are still validated on submit exactly as before. Hiding a question
+ * changes what is ASKED, never what is CHECKED.
+ */
+export function GuestRegistrationForm({
+  promoterCode, venues, blackouts = [],
+  lockedVenue = null, lockedDate = null, showOccasion = true,
+}: {
+  promoterCode: string
+  venues: Venue[]
+  blackouts?: Blackout[]
+  lockedVenue?: Venue | null
+  lockedDate?: string | null
+  showOccasion?: boolean
+}) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
   const maxDate = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)
 
   // No default: pre-selecting the first venue alphabetically meant guests who
   // skipped the field silently registered for Eclipse. Empty forces a choice,
-  // and the submit handler already rejects a blank venue.
-  const [venueId, setVenueId] = useState('')
-  const [date, setDate] = useState('')
+  // and the submit handler already rejects a blank venue. A LOCKED link is the
+  // one exception, and it is not the same thing — the venue was named in the
+  // URL the guest scanned, not guessed on their behalf.
+  const [venueId, setVenueId] = useState(lockedVenue?.id ?? '')
+  const [date, setDate] = useState(lockedDate ?? '')
   const [occasion, setOccasion] = useState('')
   const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
   const [consent, setConsent] = useState(false)
@@ -70,36 +96,49 @@ export function GuestRegistrationForm({ promoterCode, venues, blackouts = [] }: 
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="label">Venue *</label>
-          <select className="input" value={venueId} onChange={e => setVenueId(e.target.value)} required>
-            {venues.length === 0
-              ? <option value="">No venues available</option>
-              : <option value="" disabled>Choose your venue</option>}
-            {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
+      {(!lockedVenue || !lockedDate) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {!lockedVenue && (
+            <div>
+              <label className="label">Venue *</label>
+              <select className="input" value={venueId} onChange={e => setVenueId(e.target.value)} required>
+                {venues.length === 0
+                  ? <option value="">No venues available</option>
+                  : <option value="" disabled>Choose your venue</option>}
+                {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+          )}
+          {!lockedDate && (
+            <div>
+              <label className="label">Date *</label>
+              <input className="input" type="date" required min={today} max={maxDate}
+                value={date} onChange={e => setDate(e.target.value)} />
+            </div>
+          )}
         </div>
-        <div>
-          <label className="label">Date *</label>
-          <input className="input" type="date" required min={today} max={maxDate}
-            value={date} onChange={e => setDate(e.target.value)} />
-        </div>
-      </div>
-      {isBlackedOut && (
-        <p className="text-sm text-amber-400 -mt-2">
-          Sorry — the guestlist isn&apos;t available for this venue on the date you picked. Please choose another date.
-        </p>
       )}
 
-      <div>
-        <label className="label">Special occasion? <span className="text-luna-muted font-normal">(optional)</span></label>
-        <select className="input" value={occasion} onChange={e => setOccasion(e.target.value)}>
-          <option value="">No occasion — just vibes ✨</option>
-          {OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <p className="text-[11px] text-luna-muted mt-1">Let us know so the venue can look after you.</p>
-      </div>
+      {showOccasion && (
+        <div>
+          <label className="label">Special occasion? <span className="text-luna-muted font-normal">(optional)</span></label>
+          <select className="input" value={occasion} onChange={e => setOccasion(e.target.value)}>
+            <option value="">No occasion — just vibes ✨</option>
+            {OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          <p className="text-[11px] text-luna-muted mt-1">Let us know so the venue can look after you.</p>
+        </div>
+      )}
+
+      {/* Shown on a locked link too. A blacked-out night is the one case where
+          the guest must not be allowed to sail through a form that looks fine
+          and then be turned away at the door. */}
+      {isBlackedOut && (
+        <p className="text-sm text-amber-400">
+          Sorry — the guestlist isn&apos;t available for this venue on that date.
+          {!lockedDate && ' Please choose another date.'}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
