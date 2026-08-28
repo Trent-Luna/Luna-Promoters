@@ -36,6 +36,18 @@ export async function setUniversityAutoApprove(on: boolean) {
   revalidatePath('/admin/university')
 }
 
+// Approve-all override. Separate from the auto-approve switch because they
+// answer different questions: that one asks whether a PASSING check needs a
+// human, this one ignores the check's verdict entirely.
+export async function setUniversityApproveAll(on: boolean) {
+  await ensureAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase.from('app_settings')
+    .update({ university_approve_all: on, updated_at: new Date().toISOString() }).eq('id', 1)
+  if (error) throw error
+  revalidatePath('/admin/university')
+}
+
 export async function setPromoterStatus(id: string, status: 'rejected' | 'suspended' | 'approved') {
   const s = await ensureAdmin()
   const supabase = await createClient()

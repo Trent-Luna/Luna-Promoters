@@ -5,7 +5,7 @@ import { AppShell } from '@/components/AppShell'
 import { ADMIN_NAV } from '@/components/AdminNav'
 import { Stat } from '@/components/ui'
 import { UniversityDashboard } from './dashboard'
-import { UniversityAutoApproveToggle } from './auto-approve'
+import { UniversityAutoApproveToggle, UniversityApproveAllToggle } from './auto-approve'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,14 +17,17 @@ export default async function AdminUniversity() {
   const supabase = await createClient()
   const [{ data: stats }, { data: settings }] = await Promise.all([
     supabase.rpc('get_university_stats', {}),
-    supabase.from('app_settings').select('auto_approve_university').eq('id', 1).maybeSingle(),
+    supabase.from('app_settings').select('auto_approve_university, university_approve_all').eq('id', 1).maybeSingle(),
   ])
   const isAdmin = hasRole(s, 'admin')
 
   return (
     <AppShell nav={ADMIN_NAV} current="/admin/university" title="University Members">
       {isAdmin && (
-        <UniversityAutoApproveToggle initial={settings?.auto_approve_university ?? true} />
+        <>
+          <UniversityAutoApproveToggle initial={settings?.auto_approve_university ?? true} />
+          <UniversityApproveAllToggle initial={settings?.university_approve_all ?? false} />
+        </>
       )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Total members" value={stats?.total ?? 0} />
