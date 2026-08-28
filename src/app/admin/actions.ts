@@ -22,6 +22,20 @@ export async function approvePromoter(id: string) {
   revalidatePath('/admin/promoters')
 }
 
+// ---------- University auto-approve setting ----------
+// Separate from the promoter switch on purpose. The two queues are reviewed by
+// different people for different reasons — a promoter application is a business
+// decision, a university one is an identity check — and a venue that wants to
+// eyeball every student ID should not have to stop approving promoters to do it.
+export async function setUniversityAutoApprove(on: boolean) {
+  await ensureAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase.from('app_settings')
+    .update({ auto_approve_university: on, updated_at: new Date().toISOString() }).eq('id', 1)
+  if (error) throw error
+  revalidatePath('/admin/university')
+}
+
 export async function setPromoterStatus(id: string, status: 'rejected' | 'suspended' | 'approved') {
   const s = await ensureAdmin()
   const supabase = await createClient()
