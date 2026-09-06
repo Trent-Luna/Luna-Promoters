@@ -3,7 +3,7 @@ import { useState, useTransition, useRef } from 'react'
 import { createStaff, removeStaffRole } from '../actions'
 
 interface Venue { id: string; name: string }
-interface Staff { id: string; role: string; email: string; venue: string }
+interface Staff { id: string; role: string; email: string; venue: string; name?: string | null }
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', venue_manager: 'Venue Manager', reception: 'Reception / Door',
@@ -36,9 +36,32 @@ export function StaffManager({ venues, staff }: { venues: Venue[]; staff: Staff[
   }
 
   return (
-    <div className="grid lg:grid-cols-3 gap-5">
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
+      {/* existing staff */}
+      <div className="space-y-4">
+        {(['admin', 'venue_manager', 'reception'] as const).map(r => (
+          <div key={r} className="card px-5 py-4">
+            <div className="flex items-center gap-3">
+              <h3 className="font-bold">{ROLE_LABEL[r]}{r !== 'admin' ? ' staff' : 's'}</h3>
+              <span className="ml-auto text-xs text-luna-muted">{grouped[r].length}</span>
+            </div>
+            {grouped[r].length === 0 && <p className="text-sm text-luna-muted py-3">None yet.</p>}
+            {grouped[r].map(s => (
+              <div key={s.id} className="flex items-center gap-3 py-2.5 border-t border-white/[0.07]">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{s.name || s.email}</div>
+                  <div className="text-xs text-luna-muted truncate">{s.name ? `${s.email} · ` : ''}{s.venue}</div>
+                </div>
+                {r !== 'admin' && <span className="pill bg-white/[0.07] text-luna-text/90 font-medium hidden sm:inline-flex">{s.venue}</span>}
+                <RemoveBtn id={s.id} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
       {/* create form */}
-      <form ref={formRef} action={submit} className="card p-5 space-y-3 h-fit lg:col-span-1">
+      <form ref={formRef} action={submit} className="card p-5 space-y-3">
         <h2 className="font-bold">Add a staff account</h2>
         <p className="text-xs text-luna-muted">They log in at the normal login page and are taken straight to their screen.</p>
         <div><label className="label">Full name</label><input name="full_name" required className="input" placeholder="Jane Smith" /></div>
@@ -64,26 +87,6 @@ export function StaffManager({ venues, staff }: { venues: Venue[]; staff: Staff[
         <button className="btn-gold w-full" disabled={pending}>{pending ? 'Creating…' : 'Create account'}</button>
       </form>
 
-      {/* existing staff */}
-      <div className="lg:col-span-2 space-y-6">
-        {(['reception', 'venue_manager', 'admin'] as const).map(r => (
-          <div key={r}>
-            <h3 className="font-bold mb-2">{ROLE_LABEL[r]}{r !== 'admin' ? ' staff' : 's'}</h3>
-            {grouped[r].length === 0 && <p className="text-sm text-luna-muted mb-2">None yet.</p>}
-            <div className="space-y-2">
-              {grouped[r].map(s => (
-                <div key={s.id} className="card p-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{s.email}</div>
-                    <div className="text-xs text-luna-muted">{s.venue}</div>
-                  </div>
-                  <RemoveBtn id={s.id} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
@@ -93,7 +96,7 @@ function RemoveBtn({ id }: { id: string }) {
   return (
     <button disabled={pending}
       onClick={() => { if (confirm('Remove this access?')) start(() => removeStaffRole(id)) }}
-      className="pill bg-luna-surface border border-luna-border text-luna-muted hover:text-red-400 px-3 py-1.5">
+      className="btn-ghost !py-1.5 !px-3 text-xs !text-luna-muted hover:!text-red-400">
       Remove
     </button>
   )

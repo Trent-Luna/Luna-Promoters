@@ -6,6 +6,7 @@ import { navForRoles } from '@/components/nav'
 import { fmtDate } from '@/lib/format'
 import { addBlackout } from '../actions'
 import { RemoveBlackout } from './ui'
+import { Th, Td, EmptyRow } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,13 +27,10 @@ export default async function BlackoutPage() {
   ])
 
   return (
-    <AppShell nav={navForRoles(s.roles)} current="/admin/blackout" title="Blackout dates">
-      <p className="text-luna-muted text-sm mb-5 max-w-2xl">
-        Block guestlist registration on specific dates (e.g. ticketed or private events). Guests trying to
-        register for a blacked-out venue and date are told the guestlist isn&apos;t available.
-      </p>
-      <div className="grid lg:grid-cols-3 gap-5">
-        <form action={addBlackout} className="card p-5 space-y-3 h-fit">
+    <AppShell nav={navForRoles(s.roles)} current="/admin/blackout" title="Blackout dates"
+      subtitle="Nights the guestlist is closed — ticketed or private events. Guests see it on the sign-up form; promoters on What's On.">
+      <div className="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
+        <form action={addBlackout} className="card p-5 space-y-3">
           <h2 className="font-bold">Add a blackout</h2>
           <div><label className="label">Venue</label>
             <select name="venue_id" className="input" required>
@@ -45,19 +43,21 @@ export default async function BlackoutPage() {
           <button className="btn-gold w-full">Black out date</button>
         </form>
 
-        <div className="lg:col-span-2 space-y-2">
-          {(blackouts ?? []).length === 0 && <div className="card p-6 text-center text-luna-muted">No upcoming blackout dates.</div>}
-          {(blackouts ?? []).map((b: any) => (
-            <div key={b.id} className="card p-4 flex items-center gap-3">
-              <div className="flex-1">
-                <div className="font-semibold">{fmtDate(b.blackout_date)}</div>
-                <div className="text-sm text-luna-muted">
-                  {b.venue_id ? (b.venues?.name ?? 'Venue') : 'All venues'}{b.reason ? ` · ${b.reason}` : ''}
-                </div>
-              </div>
-              <RemoveBlackout id={b.id} />
-            </div>
-          ))}
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
+            <thead><tr className="border-b border-white/[0.07]"><Th className="pt-3">Date</Th><Th className="pt-3">Venue</Th><Th className="pt-3">Reason</Th><Th className="pt-3" /></tr></thead>
+            <tbody>
+              {(blackouts ?? []).length === 0 && <EmptyRow colSpan={4}>No upcoming blackout dates.</EmptyRow>}
+              {(blackouts ?? []).map((b: any) => (
+                <tr key={b.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
+                  <Td className="font-semibold whitespace-nowrap">{fmtDate(b.blackout_date)}</Td>
+                  <Td><span className="pill bg-white/[0.07] text-luna-text/90 font-medium">{b.venue_id ? (b.venues?.name ?? 'Venue') : 'All venues'}</span></Td>
+                  <Td className="text-luna-muted">{b.reason || '—'}</Td>
+                  <Td className="text-right"><RemoveBlackout id={b.id} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </AppShell>

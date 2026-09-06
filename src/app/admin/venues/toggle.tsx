@@ -1,12 +1,14 @@
 'use client'
 import { useTransition } from 'react'
 import { toggleVenue } from '../actions'
+import { Switch } from '@/components/Switch'
+
 export function VenueToggle({ id, active }: { id: string; active: boolean }) {
   const [p, start] = useTransition()
   return (
-    <button disabled={p} onClick={() => start(() => toggleVenue(id, !active))}
-      className={`pill border ${active ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40' : 'bg-luna-surface text-luna-muted border-luna-border'}`}>
-      {active ? 'Active' : 'Disabled'}
-    </button>
+    <span className="inline-flex items-center gap-2">
+      <Switch on={active} disabled={p} onChange={next => start(() => toggleVenue(id, next))} label="Venue active" />
+      <span className="text-xs text-luna-muted w-14 text-left">{active ? 'Active' : 'Off'}</span>
+    </span>
   )
 }

@@ -22,27 +22,26 @@ export default async function AdminUniversity() {
   const isAdmin = hasRole(s, 'admin')
 
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/university" title="University Members">
-      {isAdmin && (
-        <>
-          <UniversityAutoApproveToggle initial={settings?.auto_approve_university ?? true} />
-          <UniversityApproveAllToggle initial={settings?.university_approve_all ?? false} />
-        </>
-      )}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Total members" value={stats?.total ?? 0} />
-        <Stat label="Approved" value={stats?.approved ?? 0} accent />
-        <Stat label="Manual review" value={stats?.manual_review ?? 0} accent />
-        <Stat label="Pending" value={stats?.pending_verification ?? 0} />
-        <Stat label="Rejected" value={stats?.rejected ?? 0} />
-        <Stat label="Suspended" value={stats?.suspended ?? 0} />
+    <AppShell nav={ADMIN_NAV} current="/admin/university" title="University"
+      subtitle="Student memberships — verify IDs, approve members and issue wristbands at the door.">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Stat label="Members" value={stats?.total ?? 0} sub={`${stats?.approved ?? 0} approved · ${(stats?.recent ?? []).length ?? 0} new this week`} />
+        <Stat label="Manual review" value={stats?.manual_review ?? 0} accent={(stats?.manual_review ?? 0) > 0} sub="IDs waiting on you" />
+        <Stat label="Pending" value={stats?.pending_verification ?? 0} sub={`${stats?.rejected ?? 0} rejected · ${stats?.suspended ?? 0} suspended`} />
         <Stat label="Wristbands tonight" value={stats?.wristbands_tonight ?? 0} accent />
-        <Stat label="Recent (7d)" value={(stats?.recent ?? []).length ?? 0} />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <UniversityDashboard />
       </div>
+
+      {isAdmin && (
+        <div className="mt-6 space-y-0">
+          <div className="eyebrow mb-3">Approval settings</div>
+          <UniversityAutoApproveToggle initial={settings?.auto_approve_university ?? true} />
+          <UniversityApproveAllToggle initial={settings?.university_approve_all ?? false} />
+        </div>
+      )}
     </AppShell>
   )
 }

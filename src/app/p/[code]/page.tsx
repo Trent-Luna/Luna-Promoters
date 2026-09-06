@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { GuestRegistrationForm } from './guest-form'
 import { notFound } from 'next/navigation'
@@ -17,6 +17,9 @@ export const dynamic = 'force-dynamic'
  *   ?d=2026-08-14 one night: the date picker becomes a heading
  *   ?t=…          the heading text, for when "Eclipse" is not what to call it
  *   ?o=0          hide the special-occasion picker
+ *   ?src=ig-juju  which poster / story / SMS the guest came from — recorded on
+ *                 the registration and counted as a visit, so My Link can show
+ *                 visits → registered → checked in per source
  *
  * They are INDEPENDENT. One venue across many dates, one date across every
  * venue, or both — a New Year's link that spans all six venues is as valid as
@@ -37,14 +40,21 @@ export default async function PromoterLink({
   params, searchParams,
 }: {
   params: Promise<{ code: string }>
-  searchParams: Promise<{ v?: string; d?: string; t?: string; o?: string }>
+  searchParams: Promise<{ v?: string; d?: string; t?: string; o?: string; src?: string }>
 }) {
   const { code } = await params
-  const { v, d, t, o } = await searchParams
+  const { v, d, t, o, src } = await searchParams
   const supabase = await createClient()
 
   const { data } = await supabase.rpc('get_promoter_link', { p_code: code })
   if (!data) notFound()
+
+  // A named source is a short slug; anything else is ignored rather than stored.
+  const source = src && /^[a-z0-9][a-z0-9-]{0,39}$/i.test(src) ? src.toLowerCase() : null
+  if (source && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Fire-and-forget: a visit count must never slow or break the sign-up.
+    createServiceClient().rpc('record_source_visit', { p_code: code, p_key: source }).then(() => {}, () => {})
+  }
 
   const promoter = { full_name: data.full_name as string, promoter_code: data.promoter_code as string }
   const venues = (data.venues ?? []) as { id: string; name: string }[]
@@ -131,6 +141,7 @@ export default async function PromoterLink({
               lockedVenue={lockedVenue}
               lockedDate={lockedDate}
               showOccasion={showOccasion}
+              source={source}
             />
           )}
         </div>

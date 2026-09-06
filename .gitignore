@@ -7,3 +7,6 @@ node_modules
 npm-debug.log*
 .vercel
 next-env.d.ts
+
+# scratch drop zone for files written from the cloud session (cannot be deleted from there)
+_to_delete/

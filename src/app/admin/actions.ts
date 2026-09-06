@@ -289,3 +289,138 @@ export async function deletePost(id: string) {
   if (error) throw error
   revalidatePath('/admin/whats-on')
 }
+
+// ---------- Tonight board (overview) ----------
+/**
+ * Open or close a venue's guestlist for a night from the overview. If the night
+ * has no event row yet, `ensure_event` creates the same auto-named row a guest
+ * sign-up would, so "Open list" works before anyone has registered.
+ */
+export async function setNightList(venueId: string, date: string, open: boolean) {
+  const s = await ensureManager()
+  if (!s.roles.includes('admin') && !s.venueIds.includes(venueId)) throw new Error('Not authorised')
+  const supabase = await createClient()
+  const { data: eventId, error } = await supabase.rpc('ensure_event', { p_venue: venueId, p_date: date })
+  if (error || !eventId) throw error ?? new Error('Could not find the night')
+  const { error: upErr } = await supabase.from('events').update({ guestlist_open: open }).eq('id', eventId)
+  if (upErr) throw upErr
+  await supabase.rpc('log_action', { p_action: open ? 'guestlist_opened' : 'guestlist_closed', p_user: s.userId, p_venue: venueId, p_event: eventId })
+  revalidatePath('/admin'); revalidatePath('/admin/events'); revalidatePath('/venue')
+}
+
+// ---------- Dormant promoters ----------
+/**
+ * A re-engagement email to one promoter. Sent through Resend like the guest
+ * confirmation; records `nudged_at` so the same person is not nudged twice in a
+ * fortnight. Returns what happened rather than throwing, so a bulk run can
+ * report "12 sent, 3 skipped" instead of stopping at the first missing email.
+ */
+export async function nudgePromoter(id: string): Promise<{ ok: boolean; reason?: string }> {
+  await ensureAdmin()
+  const svc = createServiceClient()
+  const { data: p } = await svc.from('promoters')
+    .select('id,full_name,email,promoter_code,nudged_at,current_tier').eq('id', id).maybeSingle()
+  if (!p) return { ok: false, reason: 'not_found' }
+  if (!p.email) return { ok: false, reason: 'no_email' }
+  if (p.nudged_at && Date.now() - new Date(p.nudged_at).getTime() < 14 * 864e5) return { ok: false, reason: 'recently_nudged' }
+  const { sendPromoterNudge } = await import('@/lib/email/promoters')
+  const sent = await sendPromoterNudge(p.email, p.full_name, p.promoter_code ?? '')
+  if (!sent.ok) return { ok: false, reason: sent.reason }
+  await svc.from('promoters').update({ nudged_at: new Date().toISOString() }).eq('id', id)
+  revalidatePath('/admin/promoters')
+  return { ok: true }
+}
+
+export async function nudgeDormantPromoters(): Promise<{ sent: number; skipped: number }> {
+  await ensureAdmin()
+  const svc = createServiceClient()
+  const { data: rows } = await svc.from('promoters').select('id')
+    .eq('status', 'approved').not('dormant_since', 'is', null)
+    .or(`nudged_at.is.null,nudged_at.lt.${new Date(Date.now() - 14 * 864e5).toISOString()}`)
+    .limit(200)
+  let sent = 0, skipped = 0
+  for (const r of rows ?? []) {
+    const res = await nudgePromoter(r.id)
+    if (res.ok) sent++; else skipped++
+  }
+  revalidatePath('/admin/promoters')
+  return { sent, skipped }
+}
+
+export async function reactivatePromoter(id: string) {
+  const s = await ensureAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase.from('promoters').update({ dormant_since: null }).eq('id', id)
+  if (error) throw error
+  await supabase.rpc('log_action', { p_action: 'promoter_reactivated', p_user: s.userId, p_promoter: id })
+  revalidatePath('/admin/promoters')
+}
+
+export async function setDormantWeeks(weeks: number) {
+  await ensureAdmin()
+  const w = Math.min(52, Math.max(1, Math.round(weeks)))
+  const supabase = await createClient()
+  const { error } = await supabase.from('app_settings').update({ dormant_weeks: w, updated_at: new Date().toISOString() }).eq('id', 1)
+  if (error) throw error
+  await supabase.rpc('mark_dormant_promoters')
+  revalidatePath('/admin/tiers'); revalidatePath('/admin/promoters')
+}
+
+// ---------- Source links (My Link) ----------
+export async function createSourceLink(fd: FormData) {
+  const s = await ensureManager()
+  const supabase = await createClient()
+  const label = String(fd.get('label') || '').trim()
+  const key = String(fd.get('key') || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  const promoterId = String(fd.get('promoter_id') || '')
+  if (!label || !key) throw new Error('A label and a key are required')
+  // Admins may create links for the house promoter; everyone may for their own.
+  if (!s.roles.includes('admin')) {
+    const { data: mine } = await supabase.rpc('get_my_link')
+    if (!mine) throw new Error('Not authorised')
+  }
+  const { error } = await supabase.from('source_links').insert({ promoter_id: promoterId, key, label, created_by: s.userId })
+  if (error) throw error.message.includes('duplicate') ? new Error('That key is already in use on this link') : error
+  revalidatePath('/admin/mylink')
+}
+
+export async function deleteSourceLink(id: string) {
+  await ensureManager()
+  const supabase = await createClient()
+  const { error } = await supabase.from('source_links').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/admin/mylink')
+}
+
+// ---------- Occasion follow-through ----------
+/**
+ * Sends a birthday / hens / bucks guest the VIP booth offer for their venue —
+ * the same content the confirmation email carries, as a follow-up the venue
+ * can trigger when it wants the table. Stamped so it is not sent twice.
+ */
+export async function sendBoothOffer(registrationId: string): Promise<{ ok: boolean; reason?: string }> {
+  const s = await ensureManager()
+  const svc = createServiceClient()
+  const { data: reg } = await svc.from('guest_registrations')
+    .select('id,venue_id,special_occasion,booth_offer_sent_at,guests(first_name,email),venues(name,slug),events(event_date)')
+    .eq('id', registrationId).maybeSingle()
+  if (!reg) return { ok: false, reason: 'not_found' }
+  if (!s.roles.includes('admin') && !s.venueIds.includes((reg as any).venue_id)) return { ok: false, reason: 'not_authorised' }
+  const g: any = (reg as any).guests
+  if (!g?.email) return { ok: false, reason: 'no_email' }
+  const { sendBoothOfferEmail } = await import('@/lib/email/guests')
+  const sent = await sendBoothOfferEmail({
+    to: g.email, first: g.first_name || 'there',
+    venue: (reg as any).venues?.name || 'Luna Group', venueSlug: (reg as any).venues?.slug,
+    occasion: (reg as any).special_occasion, eventDate: (reg as any).events?.event_date,
+  })
+  if (!sent.ok) return { ok: false, reason: sent.reason }
+  await svc.from('guest_registrations').update({ booth_offer_sent_at: new Date().toISOString() }).eq('id', registrationId)
+  await svc.rpc('log_action', { p_action: 'booth_offer_sent', p_user: s.userId, p_venue: (reg as any).venue_id, p_notes: (reg as any).special_occasion ?? null })
+  revalidatePath('/admin/guestlists')
+  return { ok: true }
+}
+
+export async function deleteSourceLinkForm(fd: FormData) {
+  await deleteSourceLink(String(fd.get('id') || ''))
+}

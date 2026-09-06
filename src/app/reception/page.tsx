@@ -17,9 +17,10 @@ export default async function ReceptionPage() {
   if (!s.roles.includes('admin')) vq = vq.in('id', s.venueIds.length ? s.venueIds : ['00000000-0000-0000-0000-000000000000'])
   const { data: venues } = await vq
 
+  const nav = navForRoles(s.roles)
   return (
-    <AppShell nav={navForRoles(s.roles)} current="/reception">
-      <ReceptionConsole venues={venues ?? []} />
+    <AppShell nav={nav} current="/reception">
+      <ReceptionConsole venues={venues ?? []} hasTabBar={nav.length > 1} />
     </AppShell>
   )
 }

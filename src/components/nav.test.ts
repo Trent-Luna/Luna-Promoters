@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { ADMIN_GROUPS, ADMIN_NAV } from './AdminNav'
+import { ADMIN_GROUPS, ADMIN_NAV, groupLabelFor, groupsFor } from './AdminNav'
+import { VENUE_NAV } from './nav'
 
 /**
  * One nav, not two.
@@ -30,10 +31,13 @@ function codeOnly(source: string): string {
 
 describe('admin navigation', () => {
   it('renders the same groups on mobile as in the sidebar', () => {
-    // Two occurrences: the desktop sidebar and the mobile disclosure. If either
-    // stops mapping ADMIN_GROUPS, one of them is being fed from somewhere else.
-    const uses = codeOnly(shell).match(/ADMIN_GROUPS\.map/g) ?? []
+    // Two occurrences: the desktop sidebar and the mobile disclosure both
+    // render <NavGroups groups={groups}> from the one `groups` value. If either
+    // stops using it, one of them is being fed from somewhere else.
+    const uses = codeOnly(shell).match(/<NavGroups groups=\{groups\}/g) ?? []
     expect(uses.length).toBe(2)
+    // and there is exactly one place that decides what `groups` is
+    expect((codeOnly(shell).match(/groupsFor\(nav\)/g) ?? []).length).toBe(1)
   })
 
   it('has no second navigation list to fall out of step', () => {
@@ -55,7 +59,7 @@ describe('admin navigation', () => {
     // match" would still pass if somebody deleted a page from both lists.
     for (const href of [
       '/admin/mylink', '/admin/summary', '/admin/university', '/admin/guestlists',
-      '/admin/whats-on', '/admin/blackout', '/admin/venues', '/admin/staff',
+      '/admin/events', '/admin/whats-on', '/admin/blackout', '/admin/venues', '/admin/staff',
       '/admin/leaderboards', '/admin/exports', '/admin/tiers',
     ]) {
       expect(grouped).toContain(href)
@@ -81,5 +85,22 @@ describe('admin navigation', () => {
   it('has no duplicate hrefs', () => {
     const hrefs = ADMIN_NAV.map(i => i.href)
     expect(new Set(hrefs).size).toBe(hrefs.length)
+  })
+
+  it('gives every item an icon and a group label for the eyebrow', () => {
+    for (const i of ADMIN_NAV) expect(i.icon, i.href).toBeTruthy()
+    expect(groupLabelFor('/admin/promoters')).toBe('Manage')
+    expect(groupLabelFor('/admin')).toBeUndefined()
+  })
+
+  it('derives the venue-manager sidebar from the admin groups', () => {
+    const groups = groupsFor(VENUE_NAV)
+    const hrefs = groups.flatMap(g => g.items).map(i => i.href)
+    // every venue item is present, once, and /venue leads the first group
+    expect(hrefs.sort()).toEqual([...VENUE_NAV.map(i => i.href)].sort())
+    expect(groups[0].items[0].href).toBe('/venue')
+    expect(groups[0].label).toBeUndefined()
+    // labelled groups keep the admin order and labels
+    expect(groups.filter(g => g.label).map(g => g.label)).toEqual(['Manage', 'Operations', 'Reports'])
   })
 })

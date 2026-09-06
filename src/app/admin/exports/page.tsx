@@ -20,7 +20,7 @@ export default async function AdminExports() {
     supabase.from('promoters').select('id,full_name,promoter_code').eq('status', 'approved').order('full_name'),
   ])
   return (
-    <AppShell nav={navForRoles(s.roles)} current="/admin/exports" title="CSV exports for HubSpot">
+    <AppShell nav={navForRoles(s.roles)} current="/admin/exports" title="CSV exports for HubSpot" subtitle="Pick an export, narrow it, download. Guest exports respect marketing consent.">
       <ExportPanel venues={venues ?? []} events={events ?? []} promoters={promoters ?? []} />
     </AppShell>
   )

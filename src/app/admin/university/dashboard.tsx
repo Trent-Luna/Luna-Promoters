@@ -81,7 +81,7 @@ export function UniversityDashboard() {
       {tab === 'queue' && (
         <div className="space-y-3">
           {loading && <p className="text-luna-muted text-sm">Loading…</p>}
-          {!loading && queue.length === 0 && <p className="text-luna-muted text-sm py-6 text-center">Nothing awaiting manual review 🎉</p>}
+          {!loading && queue.length === 0 && <p className="text-luna-muted text-sm py-6 text-center">Nothing awaiting manual review.</p>}
           {queue.map(r => (
             <div key={r.membership_id} className="card p-4">
               <div className="flex items-start justify-between gap-3">

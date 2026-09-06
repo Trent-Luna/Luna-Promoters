@@ -24,10 +24,10 @@ export default async function AdminWhatsOn() {
   ])
 
   return (
-    <AppShell nav={navForRoles(s.roles)} current="/admin/whats-on" title="What's On">
-      <p className="text-luna-muted text-sm mb-5 max-w-2xl">Post updates that promoters see in their What&apos;s On feed. Choose a venue (or all venues).</p>
-      <div className="grid lg:grid-cols-3 gap-5">
-        <form action={createPost} className="card p-5 space-y-3 h-fit">
+    <AppShell nav={navForRoles(s.roles)} current="/admin/whats-on" title="What's On"
+      subtitle="Posts promoters see on their dashboard and What's On tab. Choose a venue, or all venues.">
+      <div className="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
+        <form action={createPost} className="card p-5 space-y-3">
           <h2 className="font-bold">New post</h2>
           <div><label className="label">Venue</label>
             <select name="venue_id" className="input" required>
@@ -40,21 +40,21 @@ export default async function AdminWhatsOn() {
           <button className="btn-gold w-full">Post update</button>
         </form>
 
-        <div className="lg:col-span-2 space-y-3">
-          {(posts ?? []).length === 0 && <div className="card p-6 text-center text-luna-muted">No posts yet.</div>}
+        <div className="card px-5 py-4">
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="font-bold">Posts</h2>
+            <span className="ml-auto text-xs text-luna-muted">{(posts ?? []).length} post{(posts ?? []).length === 1 ? '' : 's'}</span>
+          </div>
+          {(posts ?? []).length === 0 && <p className="py-6 text-center text-sm text-luna-muted">No posts yet.</p>}
           {(posts ?? []).map((p: any) => (
-            <div key={p.id} className="card p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{p.title}</span>
-                    <span className="pill bg-luna-purple/20 text-white text-[11px]">{p.venue_id ? (p.venues?.name ?? 'Venue') : 'All venues'}</span>
-                  </div>
-                  {p.body && <p className="text-sm text-luna-muted mt-1 whitespace-pre-wrap">{p.body}</p>}
-                  <p className="text-[11px] text-luna-muted mt-2">{fmtDateTime(p.created_at)}</p>
-                </div>
-                <DeletePost id={p.id} />
+            <div key={p.id} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[130px_minmax(0,1fr)_auto] gap-x-4 gap-y-1 items-center py-3 border-t border-white/[0.07]">
+              <span className="pill bg-white/[0.07] text-luna-text/90 font-medium justify-self-start">{p.venue_id ? (p.venues?.name ?? 'Venue') : 'All venues'}</span>
+              <div className="min-w-0 col-span-2 sm:col-span-1">
+                <div className="font-semibold">{p.title}</div>
+                {p.body && <p className="text-xs text-luna-muted mt-0.5 whitespace-pre-wrap">{p.body}</p>}
+                <p className="text-[11px] text-luna-muted mt-1">{fmtDateTime(p.created_at)}</p>
               </div>
+              <div className="justify-self-end"><DeletePost id={p.id} /></div>
             </div>
           ))}
         </div>

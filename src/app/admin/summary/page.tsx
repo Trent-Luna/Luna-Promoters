@@ -11,7 +11,8 @@ export default async function AdminSummary() {
   if (!s) redirect('/login')
   if (!hasRole(s, 'admin')) redirect('/dashboard')
   return (
-    <AppShell nav={ADMIN_NAV} current="/admin/summary" title="Weekly summary">
+    <AppShell nav={ADMIN_NAV} current="/admin/summary" title="Weekly summary"
+      subtitle="Monday 5am to Monday 5am, Brisbane time. Tap a name to see who they checked in.">
       <WeeklySummary />
     </AppShell>
   )

@@ -24,7 +24,7 @@ const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniv
  */
 export function GuestRegistrationForm({
   promoterCode, venues, blackouts = [],
-  lockedVenue = null, lockedDate = null, showOccasion = true,
+  lockedVenue = null, lockedDate = null, showOccasion = true, source = null,
 }: {
   promoterCode: string
   venues: Venue[]
@@ -32,6 +32,7 @@ export function GuestRegistrationForm({
   lockedVenue?: Venue | null
   lockedDate?: string | null
   showOccasion?: boolean
+  source?: string | null
 }) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
@@ -65,7 +66,7 @@ export function GuestRegistrationForm({
         p_promoter_code: promoterCode, p_venue: venueId, p_date: date,
         p_first: f.first.trim(), p_last: f.last.trim(), p_mobile: f.mobile.trim(),
         p_email: f.email.trim(), p_dob: f.dob || null, p_instagram: f.instagram,
-        p_marketing: consent, p_occasion: occasion || null,
+        p_marketing: consent, p_occasion: occasion || null, p_source: source,
       })
       if (error) throw error
       if (!data?.ok) {

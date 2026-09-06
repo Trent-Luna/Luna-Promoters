@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format'
-import { Th, Td, CellStack, TagList } from '@/components/ui'
+import { Th, Td, CellStack, TagList, SearchInput } from '@/components/ui'
+import { Icon } from '@/components/icons'
 
 type G = {
   id: string; first_name: string; last_name: string; mobile: string
@@ -10,10 +11,10 @@ type G = {
   registrations: number; attended: number; last_seen: string | null; venues: string[]
 }
 
-export function GuestDirectory() {
+export function GuestDirectory({ initialQuery = '' }: { initialQuery?: string }) {
   const supabase = useMemo(() => createClient(), [])
   const [rows, setRows] = useState<G[] | null>(null)
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(initialQuery)
 
   useEffect(() => {
     supabase.rpc('get_guest_directory').then(({ data }) => setRows((data ?? []) as G[]))
@@ -49,13 +50,12 @@ export function GuestDirectory() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <input className="input flex-1 min-w-[220px]" placeholder="Search name, phone, email or Instagram…"
-          value={q} onChange={e => setQ(e.target.value)} />
+        <SearchInput className="flex-1 min-w-[220px] max-w-md" placeholder="Search name, phone, email or Instagram…" value={q} onChange={setQ} />
         <span className="text-sm text-luna-muted whitespace-nowrap">
           {rows === null ? 'Loading…' : `${filtered.length} of ${rows.length} guests`}
         </span>
         <button onClick={exportCsv} disabled={!rows || filtered.length === 0}
-          className="btn-gold !py-2 !px-4 text-sm disabled:opacity-60">Download CSV</button>
+          className="btn-gold !py-2 !px-4 text-sm disabled:opacity-60"><Icon name="download" size={14} /> Download CSV</button>
       </div>
 
       {rows && rows.length === 0 && (
@@ -64,12 +64,10 @@ export function GuestDirectory() {
 
       {filtered.length > 0 && (
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[860px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="border-b border-white/[0.07]">
-                <Th className="pt-3">Guest</Th>
-                <Th className="pt-3">Mobile</Th>
-                <Th className="pt-3">Instagram</Th>
+                <Th className="pt-3">Guest · mobile · Instagram</Th>
                 <Th className="pt-3 text-right">Signups</Th>
                 <Th className="pt-3 text-right">Attended</Th>
                 <Th className="pt-3">Venues</Th>
@@ -82,13 +80,11 @@ export function GuestDirectory() {
                   <Td>
                     <CellStack
                       primary={`${g.first_name} ${g.last_name}`}
-                      secondary={g.email || undefined}
+                      secondary={[g.mobile, g.email, g.instagram].filter(Boolean).join(' · ') || undefined}
                     />
                   </Td>
-                  <Td className="text-luna-muted whitespace-nowrap">{g.mobile}</Td>
-                  <Td className="text-luna-muted">{g.instagram || '—'}</Td>
-                  <Td className="text-right">{g.registrations}</Td>
-                  <Td className="text-right text-emerald-400 font-semibold">{g.attended}</Td>
+                  <Td className="text-right tabular-nums">{g.registrations}</Td>
+                  <Td className="text-right text-luna-gold font-semibold tabular-nums">{g.attended}</Td>
                   <Td><TagList items={g.venues || []} max={2} /></Td>
                   <Td className="text-luna-muted whitespace-nowrap">{g.last_seen ? fmtDate(g.last_seen) : '—'}</Td>
                 </tr>

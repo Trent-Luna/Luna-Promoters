@@ -16,19 +16,19 @@ export default async function AdminStaff() {
   const [{ data: venues }, { data: roles }] = await Promise.all([
     supabase.from('venues').select('id,name').eq('active', true).order('name'),
     supabase.from('roles')
-      .select('id, role, venue_id, users(email), venues(name)')
+      .select('id, role, venue_id, users(email,full_name), venues(name)')
       .in('role', ['admin', 'venue_manager', 'reception'])
       .order('role'),
   ])
 
   const staff = (roles ?? []).map((r: any) => ({
-    id: r.id, role: r.role, email: r.users?.email ?? '—',
+    id: r.id, role: r.role, email: r.users?.email ?? '—', name: r.users?.full_name ?? null,
     venue: r.venues?.name ?? (r.role === 'admin' ? 'All venues' : '—'),
   }))
 
   return (
     <AppShell nav={ADMIN_NAV} current="/admin/staff" title="Staff & door access"
-      subtitle={"Admin, venue manager and reception access."}>
+      subtitle="Admin, venue manager and reception access. Atlas sign-ins pass straight through — accounts here are for door phones and non-Atlas staff.">
       <StaffManager venues={venues ?? []} staff={staff} />
     </AppShell>
   )

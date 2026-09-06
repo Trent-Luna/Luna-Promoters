@@ -17,7 +17,7 @@ export default async function AdminLeaderboards() {
   const { data: venues } = await vq
   const { data: events } = await supabase.from('events').select('id,name,event_date,venue_id').order('event_date', { ascending: false }).limit(60)
   return (
-    <AppShell nav={navForRoles(s.roles)} current="/admin/leaderboards" title="Leaderboards">
+    <AppShell nav={navForRoles(s.roles)} current="/admin/leaderboards" title="Leaderboards" subtitle="Ranked by guests checked in. Tier thresholds come from Settings → Tiers.">
       <LeaderboardView venues={venues ?? []} events={events ?? []} adminScope={s.roles.includes('admin')} />
     </AppShell>
   )

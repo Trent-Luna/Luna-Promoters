@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Stat, TierBadge } from '@/components/ui'
+import { Icon } from '@/components/icons'
 import { pct, fmtDate } from '@/lib/format'
 import { downloadWeeklyReport } from '@/lib/report-pdf'
 
@@ -59,7 +60,7 @@ function PersonRow({ rank, person, range, withTier = false, icon }:
     <div className="border-b border-luna-border/40 last:border-0">
       <button type="button" onClick={toggle} disabled={!clickable}
         className={`w-full flex items-center gap-3 py-2 px-1 rounded-lg text-left ${clickable ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}`}>
-        <span className="w-6 text-center font-bold text-white/80">{icon ?? (rank != null ? `#${rank}` : '')}</span>
+        <span className="w-6 text-center text-xs text-luna-muted">{icon === 'home' ? <Icon name="home" size={14} className="inline text-luna-muted" /> : (rank != null ? rank : '')}</span>
         <span className="flex-1 font-medium">
           {person.full_name}
           {person.promoter_code
@@ -67,8 +68,8 @@ function PersonRow({ rank, person, range, withTier = false, icon }:
             : person.sublabel ? <span className="text-luna-muted text-xs"> ({person.sublabel})</span> : null}
         </span>
         {withTier && person.current_tier && <TierBadge tier={person.current_tier} />}
-        <span className="w-10 text-right font-semibold text-emerald-400">{person.checked_in}</span>
-        {clickable && <span className="w-4 text-luna-muted text-xs">{open ? '▾' : '▸'}</span>}
+        <span className="w-10 text-right font-semibold text-luna-gold tabular-nums">{person.checked_in}</span>
+        {clickable && <span className="w-4 text-luna-muted"><Icon name={open ? 'chevd' : 'chev'} size={14} /></span>}
       </button>
 
       {open && (
@@ -80,7 +81,7 @@ function PersonRow({ rank, person, range, withTier = false, icon }:
             <div key={i} className="flex items-center gap-2 py-1 text-sm border-b border-luna-border/20 last:border-0">
               <span className="flex-1">
                 {g.first_name} {g.last_name}
-                {g.special_occasion && <span className="ml-2 pill bg-luna-purple/25 text-white text-[10px]">🎉 {g.special_occasion}</span>}
+                {g.special_occasion && <span className="ml-2 pill bg-luna-gold/15 text-luna-gold text-[10px]">{g.special_occasion}</span>}
                 {g.no_entry && <span className="ml-2 pill bg-red-500/15 text-red-400 text-[10px]">No entry</span>}
               </span>
               <span className="text-luna-muted text-xs text-right whitespace-nowrap">
@@ -162,7 +163,7 @@ export function WeeklySummary() {
         </span>
         <button onClick={exportPdf} disabled={pdfBusy || loading}
           className="btn-gold !py-2 !px-4 text-sm ml-auto disabled:opacity-60">
-          {pdfBusy ? 'Preparing…' : 'Download PDF report'}
+          <Icon name="download" size={14} /> {pdfBusy ? 'Preparing…' : 'PDF report'}
         </button>
       </div>
 
@@ -172,7 +173,7 @@ export function WeeklySummary() {
 
       {!loading && data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Stat label="Guests registered" value={data.registered ?? 0} />
             <Stat label="Guests checked in" value={data.checked_in ?? 0} accent />
             <Stat label="Attendance" value={`${pct(data.checked_in ?? 0, data.registered ?? 0)}%`} />
@@ -180,13 +181,13 @@ export function WeeklySummary() {
             <Stat label="Events held" value={data.events ?? 0} />
             <Stat label="Active promoters" value={data.active_promoters ?? 0} />
             <Stat label="New applications" value={data.new_applications ?? 0} />
-            <Stat label="Luna Group guestlist" value={data.house_checked_in ?? 0} />
+            <Stat label="Luna Group guestlist" value={data.house_checked_in ?? 0} sub="house link check-ins" />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-5">
             <div className="card p-5">
               <h2 className="font-bold mb-3">Top promoters</h2>
-              {house && <PersonRow rank={null} person={house} range={range} icon="🏠" />}
+              {house && <PersonRow rank={null} person={house} range={range} icon="home" />}
               {(data.top_promoters ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
               {(data.top_promoters ?? []).map((r: any, i: number) => (
                 <PersonRow key={r.id ?? i} rank={i + 1} person={r} range={range} withTier />
@@ -199,9 +200,9 @@ export function WeeklySummary() {
               {(data.top_venues ?? []).length === 0 && <p className="text-sm text-luna-muted">No check-ins this week.</p>}
               {(data.top_venues ?? []).map((v: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-luna-border/40 last:border-0">
-                  <span className="w-6 font-bold text-white/80">#{i + 1}</span>
+                  <span className="w-6 text-center text-xs text-luna-muted">{i + 1}</span>
                   <span className="flex-1 font-medium">{v.name}</span>
-                  <span className="w-10 text-right font-semibold text-emerald-400">{v.checked_in}</span>
+                  <span className="w-10 text-right font-semibold text-luna-gold tabular-nums">{v.checked_in}</span>
                 </div>
               ))}
             </div>

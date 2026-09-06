@@ -56,7 +56,8 @@ export default async function PromoterDashboard() {
 
   return (
     <AppShell nav={PROMOTER_NAV} current="/promoter"
-      title={`Welcome, ${p.full_name.split(' ')[0]}`}>
+      title={`Welcome, ${p.full_name.split(' ')[0]}`}
+      subtitle={`${p.current_tier.charAt(0).toUpperCase() + p.current_tier.slice(1)} tier · #${myRank} this month`}>
       <div className="grid lg:grid-cols-3 gap-5">
         {/* link card */}
         <div className="card p-6 min-w-0 lg:col-span-2">
