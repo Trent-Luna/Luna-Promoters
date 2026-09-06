@@ -96,6 +96,7 @@ export async function POST(req: Request) {
     p_instagram: (body.instagram ?? '').trim(),
     p_marketing: body.marketing_consent ?? false,
     p_occasion: (body.occasion ?? '').trim() || null,
+    p_source: 'crm-lead',   // shows on My Link as its own source
   })
 
   if (error) {
