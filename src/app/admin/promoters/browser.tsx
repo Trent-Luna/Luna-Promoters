@@ -45,12 +45,17 @@ function weeksSince(iso: string | null): number | null {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (7 * 864e5))
 }
 
-export function PromotersBrowser({ promoters, initialStatus, initialQuery = '', dormantWeeks }:
-  { promoters: P[]; initialStatus: string; initialQuery?: string; dormantWeeks: number }) {
+export function PromotersBrowser({ promoters, initialStatus, initialQuery = '', initialSort = '', dormantWeeks }:
+  { promoters: P[]; initialStatus: string; initialQuery?: string; initialSort?: string; dormantWeeks: number }) {
   const [status, setStatus] = useState(initialStatus)
   const [cat, setCat] = useState('')
   const [tier, setTier] = useState('')
-  const [sort, setSort] = useState('checked')
+  // The overview's "New this fortnight" card links here with ?sort=newest, so
+  // the list opens on the people it was just talking about rather than on the
+  // month's best performers.
+  const [sort, setSort] = useState(
+    SORTS.some(s => s.v === initialSort) ? initialSort : 'checked'
+  )
   const [q, setQ] = useState(initialQuery)
 
   const filtered = useMemo(() => {

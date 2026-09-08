@@ -11,11 +11,11 @@ import { QueueBanner } from './queue-banner'
 
 export const dynamic = 'force-dynamic'
 
-export default async function AdminPromoters({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+export default async function AdminPromoters({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; sort?: string }> }) {
   const s = await getSession()
   if (!s) redirect('/login')
   if (!hasRole(s, 'admin')) redirect('/dashboard')
-  const { status, q } = await searchParams
+  const { status, q, sort } = await searchParams
 
   const supabase = await createClient()
   const monthStart = new Date(); monthStart.setDate(1)
@@ -58,7 +58,7 @@ export default async function AdminPromoters({ searchParams }: { searchParams: P
           dormant={dormant.length} dormantWeeks={settings?.dormant_weeks ?? 8}
         />
       )}
-      <PromotersBrowser promoters={rows as any} initialStatus={status ?? ''} initialQuery={q ?? ''} dormantWeeks={settings?.dormant_weeks ?? 8} />
+      <PromotersBrowser promoters={rows as any} initialStatus={status ?? ''} initialQuery={q ?? ''} initialSort={sort ?? ''} dormantWeeks={settings?.dormant_weeks ?? 8} />
     </AppShell>
   )
 }

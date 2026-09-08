@@ -8,6 +8,8 @@ import { Icon } from '@/components/icons'
 import { pct } from '@/lib/format'
 import Link from 'next/link'
 import { TonightBoard, type NightVenue } from './tonight-board'
+import { NewPromoters } from './new-promoters'
+import { EMPTY_INTAKE, type NewPromoterIntake } from '@/lib/new-promoters'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,11 +55,12 @@ export default async function AdminOverview() {
   const monthStart = new Date(); monthStart.setDate(1)
   const mStr = monthStart.toISOString().slice(0, 10)
 
-  const [{ data: stats }, { data: board }, { data: house }, { data: tonight }] = await Promise.all([
+  const [{ data: stats }, { data: board }, { data: house }, { data: tonight }, { data: fresh }] = await Promise.all([
     supabase.rpc('get_admin_stats', {}),
     supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 500 }),
     supabase.rpc('get_house_stats', { p_from: mStr }),
     supabase.rpc('get_tonight_board', {}),
+    supabase.rpc('get_new_promoters', { p_days: 14, p_limit: 6 }),
   ])
 
   const all = (board ?? []) as any[]
@@ -65,6 +68,7 @@ export default async function AdminOverview() {
   const djs = all.filter(r => r.category === 'dj').slice(0, 5)
   const staff = all.filter(r => r.category === 'staff').slice(0, 5)
   const night = (tonight ?? { date: mStr, venues: [] }) as { date: string; venues: NightVenue[] }
+  const intake = (fresh ?? EMPTY_INTAKE) as NewPromoterIntake
   const pending = stats?.pending_promoters ?? 0
   const dormant = stats?.dormant_promoters ?? 0
 
@@ -93,12 +97,11 @@ export default async function AdminOverview() {
         <TopList title="Top promoters this month" rows={promoters} houseRow={house?.checked_in ?? 0} href="/admin/leaderboards" />
       </div>
 
-      {(djs.length > 0 || staff.length > 0) && (
-        <div className="grid lg:grid-cols-2 gap-4 mt-4 items-start">
-          <TopList title="Top DJs this month" rows={djs} href="/admin/leaderboards" />
-          <TopList title="Top staff this month" rows={staff} href="/admin/leaderboards" />
-        </div>
-      )}
+      <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-4 items-start">
+        <NewPromoters intake={intake} />
+        {djs.length > 0 && <TopList title="Top DJs this month" rows={djs} href="/admin/leaderboards" />}
+        {staff.length > 0 && <TopList title="Top staff this month" rows={staff} href="/admin/leaderboards" />}
+      </div>
     </AppShell>
   )
 }
