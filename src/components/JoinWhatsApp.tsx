@@ -12,11 +12,15 @@ export function JoinWhatsApp({
   label = 'Join the WhatsApp',
   hint,
   className = '',
+  full = false,
 }: {
   href: string | null
   label?: string
   hint?: string
   className?: string
+  /** Stretch to the container — for the signup screen, where following the
+   *  channel is a step in getting set up rather than a link on a page. */
+  full?: boolean
 }) {
   if (!href) return null
   return (
@@ -25,7 +29,7 @@ export function JoinWhatsApp({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-[#0a0a0f] bg-[#25D366] hover:bg-[#1eb855] transition"
+        className={`${full ? 'flex w-full justify-center py-3' : 'inline-flex px-4 py-2.5'} items-center gap-2 rounded-xl font-semibold text-sm text-[#0a0a0f] bg-[#25D366] hover:bg-[#1eb855] transition`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.48-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.28.17-1.41-.07-.13-.27-.2-.57-.35z" />

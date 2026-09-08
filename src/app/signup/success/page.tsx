@@ -30,8 +30,16 @@ export default async function SignupSuccess({ searchParams }: { searchParams: Pr
                 you just applied with, and you&apos;ll get your unique promoter link and dashboard.
               </p>
               <Link href="/login" className="btn-gold w-full mt-6">Create my login</Link>
-              <JoinWhatsApp href={whatsappInvite} className="mt-4"
-                hint="Guestlist cut-offs and table drops go out in the group first." />
+              {whatsappInvite && (
+                <div className="mt-6 pt-5 border-t border-white/[0.07] text-left">
+                  <p className="text-xs uppercase tracking-wide text-luna-muted mb-1">Then do this</p>
+                  <p className="text-sm text-luna-muted mb-3">
+                    Follow the promoter channel. Guestlist cut-offs, table drops and which rooms
+                    need numbers all go out there first — and your number stays private.
+                  </p>
+                  <JoinWhatsApp href={whatsappInvite} label="Follow the channel" full />
+                </div>
+              )}
             </>
           ) : (
             <>
