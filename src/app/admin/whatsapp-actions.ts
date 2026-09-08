@@ -29,7 +29,7 @@ export async function setWhatsappInviteUrl(url: string) {
   await ensureAdmin()
   const trimmed = (url ?? '').trim()
   if (trimmed && !isWhatsappInvite(trimmed)) {
-    throw new Error('That is not a WhatsApp invite link — it should start with https://chat.whatsapp.com/')
+    throw new Error('That is not a WhatsApp link — it should be a channel (https://whatsapp.com/channel/…) or a group invite (https://chat.whatsapp.com/…)')
   }
   const supabase = await createClient()
   const { error } = await supabase

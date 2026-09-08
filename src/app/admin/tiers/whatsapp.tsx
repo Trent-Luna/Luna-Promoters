@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import { setWhatsappInviteUrl, inviteExistingPromotersToWhatsApp } from '../whatsapp-actions'
 
 /**
- * Admin control for the promoter WhatsApp group.
+ * Admin control for the Luna Group WhatsApp channel.
  *
  * The catch-up send is deliberately a two-step confirm: it emails hundreds of
  * people at once, and there is no unsend.
@@ -19,16 +19,17 @@ export function WhatsappSettings({ inviteUrl, pendingCount }: { inviteUrl: strin
   return (
     <div className="card p-5 grid md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <div className="eyebrow">WhatsApp group</div>
+        <div className="eyebrow">WhatsApp channel</div>
         <input
           className="input !py-2.5"
-          placeholder="https://chat.whatsapp.com/…"
+          placeholder="https://whatsapp.com/channel/…"
           value={url}
           onChange={e => { setUrl(e.target.value); setErr(null) }}
         />
         <p className="text-xs text-luna-muted">
-          Paste the group&apos;s invite link (WhatsApp → group → Invite via link). Promoters see a
-          &ldquo;Join the WhatsApp&rdquo; button on their dashboard and after signing up. Leave it empty to hide it everywhere.
+          Paste the channel link (WhatsApp → the channel → Share → Copy link). A group invite
+          link works too. Promoters see a &ldquo;Join the WhatsApp&rdquo; button on their dashboard
+          and after signing up. Leave it empty to hide it everywhere.
         </p>
         {err && <p className="text-xs text-red-400">{err}</p>}
         <button
@@ -46,11 +47,12 @@ export function WhatsappSettings({ inviteUrl, pendingCount }: { inviteUrl: strin
       <div className="space-y-2">
         <div className="eyebrow">Invite existing promoters</div>
         <p className="text-sm text-luna-text">
-          {pendingCount} approved {pendingCount === 1 ? 'promoter has' : 'promoters have'} never been sent the group invite.
+          {pendingCount} approved {pendingCount === 1 ? 'promoter has' : 'promoters have'} never been sent the channel link.
         </p>
         <p className="text-xs text-luna-muted">
           Emails each of them the link once. Staff and house accounts are skipped, and anyone already
-          invited is never mailed twice — so running it again only catches new people.
+          invited is never mailed twice — so running it again only catches new people. WhatsApp tells
+          us nothing back, so this records that we sent it, never that they followed.
         </p>
         {!confirm ? (
           <button className="btn-ghost !py-1.5 !px-3 text-xs" disabled={!inviteUrl || pendingCount === 0}

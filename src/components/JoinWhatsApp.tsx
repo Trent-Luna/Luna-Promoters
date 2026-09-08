@@ -1,10 +1,11 @@
 /**
- * "Join the WhatsApp" — the one way into the promoter group.
+ * "Join the WhatsApp" — the way into the Luna Group channel.
  *
  * Renders nothing when no link is configured, so every caller can drop it in
- * unconditionally and the group simply doesn't exist in the UI until Trent sets
- * one up. WhatsApp green rather than Luna gold on purpose: promoters should
- * recognise it as WhatsApp at a glance, not read it as another Luna button.
+ * unconditionally and the channel simply doesn't exist in the UI until a link
+ * is set on Tier settings. WhatsApp green rather than Luna gold on purpose:
+ * people should recognise it as WhatsApp at a glance, not read it as another
+ * Luna button.
  */
 export function JoinWhatsApp({
   href,
