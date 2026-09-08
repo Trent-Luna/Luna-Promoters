@@ -18,3 +18,43 @@ export function sendPromoterNudge(to: string, fullName: string, code: string): P
   )
   return sendEmail(to, 'Your Luna Group guestlist link is still live', emailShell('PROMOTERS', inner))
 }
+
+/**
+ * The WhatsApp group invite.
+ *
+ * Sent on two occasions: once when someone is approved as a promoter, and as a
+ * one-off catch-up to promoters who signed up before the group existed. Email
+ * rather than a WhatsApp message because Resend is the only channel wired here,
+ * and because the invite is a link either way — WhatsApp's own API cannot add
+ * anyone to a group, they have to tap and accept.
+ */
+export function sendWhatsappInvite(
+  to: string,
+  fullName: string,
+  inviteUrl: string,
+  variant: 'welcome' | 'catch_up' = 'welcome',
+): Promise<SendResult> {
+  const site = (process.env.NEXT_PUBLIC_SITE_URL || 'https://promoter.lunagroup.com.au').replace(/\/$/, '')
+  const first = (fullName || '').split(' ')[0] || 'there'
+
+  const opening =
+    variant === 'welcome'
+      ? `<h1 style="font-size:20px;margin:0 0 12px;color:#ffffff">You're in, ${first} 👋</h1>
+         <p style="color:#9ca3af;line-height:1.6;margin:0 0 12px">One last thing: the promoter WhatsApp group. Guestlist cut-offs, table drops, which rooms need numbers on a given night — it all goes out there first.</p>`
+      : `<h1 style="font-size:20px;margin:0 0 12px;color:#ffffff">Come join the promoter group, ${first}</h1>
+         <p style="color:#9ca3af;line-height:1.6;margin:0 0 12px">We run the promoter WhatsApp group now — guestlist cut-offs, table drops and which rooms need numbers all go out there first. You signed up before it existed, so here's your invite.</p>`
+
+  const inner = emailCard(
+    `${opening}
+     <p style="color:#9ca3af;line-height:1.6;margin:0 0 14px">Tap below and WhatsApp will ask you to confirm. Nothing happens until you do.</p>
+     <a href="${inviteUrl}" style="display:inline-block;background:#25D366;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px;margin-top:4px">Join the WhatsApp →</a>
+     <p style="color:#9ca3af;line-height:1.6;margin:18px 0 0">Your dashboard and guestlist link live at <a href="${site}/promoter" style="color:#d4a24c">${site.replace(/^https?:\/\//, '')}/promoter</a>.</p>
+     <p style="color:#6b7280;font-size:12px;margin:16px 0 0">Not promoting any more? Ignore this and we will leave you be.</p>`,
+  )
+
+  return sendEmail(
+    to,
+    variant === 'welcome' ? 'Join the Luna promoter WhatsApp group' : "You're missing the promoter WhatsApp group",
+    emailShell('PROMOTERS', inner),
+  )
+}

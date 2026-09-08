@@ -7,6 +7,8 @@ import { QRCode } from '@/components/QRCode'
 import { SaveQR } from '@/components/SaveQR'
 import { Stat } from '@/components/ui'
 import { CopyLink } from '@/app/promoter/copy-link'
+import { JoinWhatsApp } from '@/components/JoinWhatsApp'
+import { getWhatsappInvite } from '@/lib/whatsapp'
 import { pct } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +20,7 @@ export default async function MyLink() {
 
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('get_my_link')
+  const whatsappInvite = await getWhatsappInvite()
   const code = data?.promoter_code as string | undefined
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
   const link = code ? `${site}/p/${code}` : ''
@@ -48,6 +51,9 @@ export default async function MyLink() {
                 <SaveQR qrValue={link} title={data.full_name ?? 'Luna Group'} lines={[`Guestlist · /p/${code}`]} fileName="luna-guestlist-qr.png" label="Save QR" />
                 <a href="/promoter-guide.pdf" target="_blank" rel="noopener noreferrer" className="text-xs text-luna-gold hover:text-luna-goldsoft">Promoter Guide (PDF) →</a>
               </div>
+              {/* Cut-offs and table drops go out in the group first, so anyone
+                  not in it is working from stale information. */}
+              <JoinWhatsApp href={whatsappInvite} />
             </div>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

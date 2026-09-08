@@ -1,11 +1,16 @@
 import { Logo } from '@/components/Logo'
 import Link from 'next/link'
+import { JoinWhatsApp } from '@/components/JoinWhatsApp'
+import { getWhatsappInvite } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SignupSuccess({ searchParams }: { searchParams: Promise<{ approved?: string }> }) {
   const { approved } = await searchParams
   const isApproved = approved === '1'
+  // The invite goes here as well as in the welcome email: this is the moment
+  // they are actually holding their phone, and it costs one tap.
+  const whatsappInvite = isApproved ? await getWhatsappInvite() : null
 
   return (
     <main className="min-h-screen flex items-center justify-center p-5">
@@ -25,6 +30,8 @@ export default async function SignupSuccess({ searchParams }: { searchParams: Pr
                 you just applied with, and you&apos;ll get your unique promoter link and dashboard.
               </p>
               <Link href="/login" className="btn-gold w-full mt-6">Create my login</Link>
+              <JoinWhatsApp href={whatsappInvite} className="mt-4"
+                hint="Guestlist cut-offs and table drops go out in the group first." />
             </>
           ) : (
             <>
