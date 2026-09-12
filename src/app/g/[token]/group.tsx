@@ -10,8 +10,9 @@ export interface Member { id: string; first_name: string; last_name: string; sta
 /**
  * Bring friends: the guest registers friends by name and mobile from their own
  * pass, and each friend gets their own QR — the door scans one person, one
- * code. A friend with an email gets the confirmation email; either way the host
- * can send the pass link straight from here.
+ * code. Mobile AND email are both required: a guest with only a mobile never
+ * reaches the CRM, so a group of ten used to yield one contact instead of ten.
+ * The host can also send the pass link straight from here.
  */
 export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
   { token: string; members: Member[]; site: string; venue: string; dateLabel: string; canAdd: boolean }) {
@@ -26,6 +27,7 @@ export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
   async function add(e: React.FormEvent) {
     e.preventDefault(); setErr(''); setAdded(null)
     if (!f.first.trim() || f.mobile.replace(/\D/g, '').length < 8) { setErr('A first name and a mobile number, please.'); return }
+    if (!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(f.email.trim())) { setErr('An email address for them, please — that is how they get their QR.'); return }
     setBusy(true)
     try {
       const supabase = createClient()
@@ -39,10 +41,12 @@ export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
           group_full: 'Your group is at the limit of 10.',
           past_event: 'This night has already happened.',
           bad_input: 'A first name and a mobile number, please.',
+          email_required: 'An email address for them, please — that is how they get their QR.',
+          bad_email: 'That email does not look right — check it and try again.',
         }
         setErr(m[data?.error] || 'Could not add them — please try again.'); return
       }
-      if (f.email.trim()) {
+      {
         try { fetch('/api/guest-confirmation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: data.qr_token }), keepalive: true }) } catch {}
       }
       setAdded({ name: f.first.trim(), token: data.qr_token })
@@ -101,7 +105,7 @@ export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
             <div><label className="label">Last name</label><input className="input" value={f.last} onChange={e => set('last', e.target.value)} /></div>
           </div>
           <div><label className="label">Mobile *</label><input className="input" type="tel" required placeholder="04xx xxx xxx" value={f.mobile} onChange={e => set('mobile', e.target.value)} /></div>
-          <div><label className="label">Email <span className="font-normal">(optional — we'll email them their QR)</span></label><input className="input" type="email" value={f.email} onChange={e => set('email', e.target.value)} /></div>
+          <div><label className="label">Email * <span className="font-normal">(we&apos;ll email them their QR)</span></label><input className="input" type="email" required value={f.email} onChange={e => set('email', e.target.value)} /></div>
           {err && <p className="text-sm text-red-400">{err}</p>}
           {added && (
             <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm flex items-center gap-3">
