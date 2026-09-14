@@ -21,6 +21,7 @@ export const ADMIN_GROUPS: NavGroup[] = [
       { href: '/admin/university', label: 'University', icon: 'grad' },
       { href: '/admin/guests', label: 'Guests', icon: 'list' },
       { href: '/admin/guestlists', label: 'Guestlists', icon: 'cal' },
+      { href: '/admin/moved-nights', label: 'Moved nights', icon: 'cal' },
       { href: '/admin/events', label: 'Events', icon: 'clock' },
       { href: '/admin/whats-on', label: "What's On", icon: 'star' },
       { href: '/admin/blackout', label: 'Blackout', icon: 'ban' },

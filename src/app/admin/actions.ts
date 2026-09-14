@@ -424,3 +424,71 @@ export async function sendBoothOffer(registrationId: string): Promise<{ ok: bool
 export async function deleteSourceLinkForm(fd: FormData) {
   await deleteSourceLink(String(fd.get('id') || ''))
 }
+
+// ---------- Putting a moved guest right ----------
+/**
+ * Tell one guest their night changed.
+ *
+ * MOVING A ROW DOES NOT MOVE A GUEST. Twenty-seven people were holding a
+ * confirmation naming a night the venue is shut, and correcting the database
+ * changed nothing they could see. This is the half that actually puts it right.
+ *
+ * Keyed on GUEST + VENUE rather than on a registration, because a guest moved
+ * to a Friday AND given the Saturday is two rows and one message. Ryan Tankei
+ * was listed at two venues for the same birthday, which is two messages — hence
+ * the venue in the key.
+ *
+ * STAMPED ONLY AFTER THE PROVIDER ACCEPTS IT, so a failed send stays on the
+ * list and the next press retries it. Nothing has to be reconciled by hand.
+ */
+export async function sendMovedNightNotice(guestId: string, venueId: string): Promise<{ ok: boolean; reason?: string }> {
+  const s = await ensureManager()
+  if (!s.roles.includes('admin') && !s.venueIds.includes(venueId)) return { ok: false, reason: 'not_authorised' }
+
+  const svc = createServiceClient()
+  // Brisbane is UTC+10, fixed. Comparing against a UTC "today" would drop
+  // tonight's guest from the list any time after 2pm.
+  const today = new Date(Date.now() + 10 * 3600_000).toISOString().slice(0, 10)
+
+  const { data: rows } = await svc.from('guest_registrations')
+    .select('id,qr_token,moved_from,special_occasion,guests(first_name,email),venues(name),events!inner(event_date)')
+    .eq('guest_id', guestId).eq('venue_id', venueId)
+    .not('moved_from', 'is', null)
+    .is('moved_notice_sent_at', null)
+    .gte('events.event_date', today)
+
+  const list = (rows ?? []) as any[]
+  if (list.length === 0) return { ok: false, reason: 'nothing_to_send' }
+
+  const g = list[0].guests
+  if (!g?.email) return { ok: false, reason: 'no_email' }
+
+  const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-AU', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+  const sorted = list.sort((a, b) => String(a.events?.event_date).localeCompare(String(b.events?.event_date)))
+  const nights = sorted.map((r) => fmt(r.events.event_date))
+  const was = sorted.map((r) => r.moved_from).sort()[0]
+
+  const { sendMovedNightEmail } = await import('@/lib/email/moved-night')
+  const sent = await sendMovedNightEmail({
+    to: g.email,
+    first: g.first_name || 'there',
+    venue: sorted[0].venues?.name || 'Luna Group',
+    was: fmt(was),
+    nights,
+    occasion: sorted[0].special_occasion,
+    qrUrl: sorted[0].qr_token
+      ? `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://promoter.lunagroup.com.au').replace(/\/$/, '')}/g/${sorted[0].qr_token}`
+      : null,
+  })
+  if (!sent.ok) return { ok: false, reason: sent.reason }
+
+  await svc.from('guest_registrations')
+    .update({ moved_notice_sent_at: new Date().toISOString() })
+    .in('id', sorted.map((r) => r.id))
+  await svc.rpc('log_action', { p_action: 'moved_night_notice_sent', p_user: s.userId, p_venue: venueId,
+    p_notes: `${was} -> ${sorted.map((r) => r.events.event_date).join(' + ')}` })
+  revalidatePath('/admin/moved-nights')
+  return { ok: true }
+}
