@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/client'
 import { StatusPill, SearchInput, Th, Td, EmptyRow } from '@/components/ui'
 import { Icon } from '@/components/icons'
 import { setNightList, sendBoothOffer } from '../actions'
+import { tradesOn, nextTradingNight, prettyNight, tradingDaysLabel } from '@/lib/trading'
 
-interface Venue { id: string; name: string }
+interface Venue { id: string; name: string; trading_days?: number[] | null }
 interface Row {
   id: string; status: string
   first_name: string; last_name: string; mobile: string
@@ -16,7 +17,7 @@ interface Row {
   checked_in_at: string | null
 }
 
-const EMPTY_EDIT = { first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '', occasion: '' }
+const EMPTY_EDIT = { first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '', occasion: '', date: '' }
 const OCCASION_RE = /birthday|hens|bucks|engagement|anniversary|graduation/i
 
 function localToday() {
@@ -50,6 +51,20 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
   const [editErr, setEditErr] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const setE = (k: string, v: string) => setEf(p => ({ ...p, [k]: v }))
+
+  // ── the nights this venue actually opens ─────────────────────────────────
+  //
+  // Blackouts are deliberately NOT passed here. They live behind RLS and the
+  // server refuses a blacked-out night anyway, returning the next open one —
+  // so the worst case is a manager is told at save rather than at type, which
+  // is correct but slower. Trading days are the common case and they are free.
+  const [addOverride, setAddOverride] = useState(false)
+  const [editOverride, setEditOverride] = useState(false)
+  const venue = useMemo(() => venues.find(v => v.id === venueId) ?? null, [venues, venueId])
+  const tradingDays = venue?.trading_days ?? null
+  const nightClosed = !!date && !tradesOn(date, tradingDays, [], venueId)
+  const nextOpen = nightClosed ? nextTradingNight(date, tradingDays, [], venueId) : null
+  const editNightClosed = !!ef.date && !tradesOn(ef.date, tradingDays, [], venueId)
 
   const load = useCallback(async () => {
     if (!venueId || !date) { setRows([]); return }
@@ -94,11 +109,17 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       p_mobile: f.mobile.trim(), p_email: f.email.trim(), p_dob: f.dob || null,
       p_instagram: f.instagram.trim(), p_plus_ones: Math.max(0, parseInt(f.plus || '0', 10) || 0),
       p_notes: f.notes.trim() || null, p_occasion: f.occasion.trim() || null,
+      p_override: addOverride,
     })
     setSaving(false)
     if (error) { setMsg({ ok: false, text: error.message }); return }
     if (!data?.ok) {
-      setMsg({ ok: false, text: data?.error === 'duplicate' ? 'That guest is already on this list.' : 'Could not add guest.' })
+      const m: Record<string, string> = {
+        duplicate: 'That guest is already on this list.',
+        not_trading: `${venue?.name ?? 'This venue'} isn’t open on ${prettyNight(date)}. Tick “open anyway” if you are trading.`,
+        not_authorised: 'You don’t manage this venue.',
+      }
+      setMsg({ ok: false, text: m[data?.error] || 'Could not add guest.' })
       return
     }
     setMsg({ ok: true, text: `${f.first} ${f.last} added.` })
@@ -112,7 +133,11 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       first: r.first_name, last: r.last_name, mobile: r.mobile, email: r.email ?? '',
       dob: r.dob ?? '', instagram: r.instagram ?? '', plus: String(r.plus_ones ?? 0),
       notes: r.notes ?? '', occasion: r.special_occasion ?? '',
+      // Every row on screen belongs to the night being viewed, so the current
+      // date IS this registration's date — no per-row lookup needed.
+      date,
     })
+    setEditOverride(false)
   }
 
   async function saveEdit(id: string) {
@@ -124,12 +149,26 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       p_email: ef.email.trim(), p_dob: ef.dob || null, p_instagram: ef.instagram.trim(),
       p_plus_ones: Math.max(0, parseInt(ef.plus || '0', 10) || 0),
       p_notes: ef.notes.trim() || null, p_occasion: ef.occasion.trim() || null,
+      p_event_date: ef.date || null, p_override: editOverride,
     })
     setEditSaving(false)
     if (error || !data?.ok) {
-      setEditErr(data?.error === 'not_authorised' ? 'You don’t manage this venue.' : (data?.error || error?.message || 'Could not save.'))
+      if (data?.error === 'not_trading') {
+        setEditErr(`${venue?.name ?? 'This venue'} isn’t open on ${prettyNight(ef.date)}`
+          + (data.suggested ? ` — the next open night is ${prettyNight(data.suggested)}.` : '.')
+          + ' Tick “open anyway” if you are trading that night.')
+        return
+      }
+      const m: Record<string, string> = {
+        not_authorised: 'You don’t manage this venue.',
+        already_on_that_night: 'That guest is already on the list for that night.',
+        bad_date: 'Pick a date within the next year.',
+      }
+      setEditErr(m[data?.error] || data?.error || error?.message || 'Could not save.')
       return
     }
+    // A moved guest is no longer on the night being viewed, so the reload is
+    // what makes the move visible: they vanish from this list, which is right.
     setEditing(null); load()
   }
 
@@ -179,7 +218,13 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
             {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select></div>
         <div><label className="label">Date</label>
-          <input type="date" className="input !py-2.5" min="2020-01-01" max={maxDate} value={date} onChange={e => setDate(e.target.value)} /></div>
+          <input type="date" className="input !py-2.5" min="2020-01-01" max={maxDate} value={date} onChange={e => setDate(e.target.value)} />
+          {nightClosed && (
+            <p className="text-[11px] text-amber-400 mt-1 leading-snug">
+              Closed — open {tradingDaysLabel(tradingDays)}.
+              {nextOpen && <> <button type="button" className="underline font-semibold" onClick={() => setDate(nextOpen)}>Go to {prettyNight(nextOpen)}</button></>}
+            </p>
+          )}</div>
         <div className="min-w-0">
           <div className="flex items-center text-xs text-luna-muted mb-1.5">
             <span>{heads} on list · <span className="text-luna-gold">{checked}</span> checked in · {waiting} waiting</span>
@@ -219,8 +264,18 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
             <div><label className="label">Plus ones</label><input type="number" min={0} max={50} className="input !py-2.5" value={f.plus} onChange={e => set('plus', e.target.value)} /></div>
           </div>
           <div><label className="label">Notes <span className="font-normal">(VIP, allergy, request)</span></label><textarea className="input !py-2.5" rows={2} value={f.notes} onChange={e => set('notes', e.target.value)} /></div>
+          {/* The override exists because venues DO open on odd nights — Melbourne
+              Cup, New Year's Eve, a private hire. It is a deliberate tick, not a
+              default, and the database logs the add as overridden. */}
+          {nightClosed && (
+            <label className="flex items-start gap-2 text-[12px] cursor-pointer text-amber-400">
+              <input type="checkbox" className="mt-0.5 accent-luna-gold w-4 h-4" checked={addOverride}
+                onChange={e => setAddOverride(e.target.checked)} />
+              <span>{venue?.name ?? 'This venue'} is closed on {prettyNight(date)} — open anyway</span>
+            </label>
+          )}
           {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</p>}
-          <button className="btn-gold w-full" disabled={saving || !venueId || !date}>{saving ? 'Adding…' : 'Add to guestlist'}</button>
+          <button className="btn-gold w-full" disabled={saving || !venueId || !date || (nightClosed && !addOverride)}>{saving ? 'Adding…' : 'Add to guestlist'}</button>
           <p className="text-[11px] text-luna-muted text-center">Credited to you. Guests with an email get their QR automatically.</p>
         </form>
 
@@ -264,6 +319,27 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                               <div><label className="label">DOB</label><input className="input !py-2" type="date" max={today} value={ef.dob} onChange={e => setE('dob', e.target.value)} /></div>
                               <div><label className="label">Instagram</label><input className="input !py-2" value={ef.instagram} onChange={e => setE('instagram', e.target.value)} /></div>
                               <div><label className="label">Plus ones</label><input className="input !py-2" type="number" min={0} max={50} value={ef.plus} onChange={e => setE('plus', e.target.value)} /></div>
+                            </div>
+                            {/* Moving the night. This is the field that did not exist,
+                                which is why 55 birthdays sat on closed nights with no
+                                way to shift them from the screen that showed them. */}
+                            <div>
+                              <label className="label">Date <span className="font-normal text-luna-muted">— change it to move this guest to another night</span></label>
+                              <input className="input !py-2" type="date" min={today} max={maxDate}
+                                value={ef.date} onChange={e => setE('date', e.target.value)} />
+                              {editNightClosed && (
+                                <label className="flex items-start gap-2 text-[12px] cursor-pointer text-amber-400 mt-1.5">
+                                  <input type="checkbox" className="mt-0.5 accent-luna-gold w-4 h-4" checked={editOverride}
+                                    onChange={e => setEditOverride(e.target.checked)} />
+                                  <span>Closed on {prettyNight(ef.date)} — open anyway</span>
+                                </label>
+                              )}
+                              {editNightClosed && !editOverride && nextTradingNight(ef.date, tradingDays, [], venueId) && (
+                                <button type="button" className="text-[11px] underline text-luna-muted hover:text-white mt-1"
+                                  onClick={() => setE('date', nextTradingNight(ef.date, tradingDays, [], venueId)!)}>
+                                  Use {prettyNight(nextTradingNight(ef.date, tradingDays, [], venueId)!)} instead
+                                </button>
+                              )}
                             </div>
                             <div><label className="label">Occasion</label><input className="input !py-2" placeholder="e.g. Birthday" value={ef.occasion} onChange={e => setE('occasion', e.target.value)} /></div>
                             <div><label className="label">Notes</label><textarea className="input !py-2" rows={2} value={ef.notes} onChange={e => setE('notes', e.target.value)} /></div>

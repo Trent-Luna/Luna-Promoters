@@ -15,7 +15,7 @@ export default async function AdminGuestlists({ searchParams }: { searchParams: 
   const { venue, date } = await searchParams
 
   const supabase = await createClient()
-  let vq = supabase.from('venues').select('id,name').eq('active', true).order('name')
+  let vq = supabase.from('venues').select('id,name,trading_days').eq('active', true).order('name')
   if (!s.roles.includes('admin'))
     vq = vq.in('id', s.venueIds.length ? s.venueIds : ['00000000-0000-0000-0000-000000000000'])
   const { data: venues } = await vq

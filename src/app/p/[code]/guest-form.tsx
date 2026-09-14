@@ -1,12 +1,19 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import {
+  tradesOn, tradingNightsBetween, nextTradingNight, birthdayWindow,
+  shortNight, prettyNight, venueToday, addDays, tradingDaysLabel,
+  type Blackout,
+} from '@/lib/trading'
 
-interface Venue { id: string; name: string }
-interface Blackout { venue_id: string | null; date: string }
+interface Venue { id: string; name: string; trading_days?: number[] | null }
 
 const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniversary', 'Graduation', 'Corporate / work', 'Other']
+
+/** How far ahead the ordinary picker looks. Ten weeks is three months of Saturdays. */
+const HORIZON_DAYS = 70
 
 /**
  * Three optional props, each hiding one question the link has already answered.
@@ -21,6 +28,37 @@ const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniv
  *
  * The values are still validated on submit exactly as before. Hiding a question
  * changes what is ASKED, never what is CHECKED.
+ *
+ * ── THE DATE FIELD IS NOW A LIST OF NIGHTS ──────────────────────────────────
+ *
+ * Trent, 14 Sep 2026: "theres birthdays going to guestlists on nights were not
+ * open."
+ *
+ * It used to be `<input type="date">` with min=today and max=+1 year, which
+ * accepted any of 365 days including the four or five a week the venue is shut.
+ * A guest picked their actual birthday, got a confirmation and a QR code, and
+ * arrived to a locked door. Fifty-five registrations were sitting on closed
+ * nights when this was found.
+ *
+ * So the field offers the nights the venue OPENS and nothing else. That is a
+ * smaller promise honestly kept, and it removes the error message entirely for
+ * the common case — you cannot pick wrong if wrong is not on the list.
+ *
+ * ── AND FOR A BIRTHDAY IT IS A FORTNIGHT ────────────────────────────────────
+ *
+ * "they should have a date picker within 14 days for them to choose for their
+ * birthdays."
+ *
+ * Anchored on the birthday itself when we know it, because the nights that
+ * matter are the ones AROUND it. Somebody turning 21 on a Tuesday wants the
+ * Friday after, not a date in November.
+ *
+ * ── AN ESCAPE HATCH, DELIBERATELY ───────────────────────────────────────────
+ *
+ * "Another date" reveals the old free input. Venues do open on odd nights, and
+ * a guest who knows about one should not be stopped by a dropdown. The server
+ * is still the authority: register_guest_vd refuses a closed night and hands
+ * back the next open one, which is shown rather than swallowed.
  */
 export function GuestRegistrationForm({
   promoterCode, venues, blackouts = [],
@@ -35,8 +73,8 @@ export function GuestRegistrationForm({
   source?: string | null
 }) {
   const router = useRouter()
-  const today = new Date().toISOString().slice(0, 10)
-  const maxDate = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)
+  const today = venueToday()
+  const maxDate = addDays(today, 365)
 
   // No default: pre-selecting the first venue alphabetically meant guests who
   // skipped the field silently registered for Eclipse. Empty forces a choice,
@@ -45,20 +83,42 @@ export function GuestRegistrationForm({
   // URL the guest scanned, not guessed on their behalf.
   const [venueId, setVenueId] = useState(lockedVenue?.id ?? '')
   const [date, setDate] = useState(lockedDate ?? '')
+  const [freeDate, setFreeDate] = useState(false)
   const [occasion, setOccasion] = useState('')
   const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
   const [consent, setConsent] = useState(false)
   const [err, setErr] = useState('')
+  const [suggested, setSuggested] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setF(p => ({ ...p, [k]: v }))
-  const isBlackedOut = !!date && blackouts.some(b => b.date === date && (b.venue_id === null || b.venue_id === venueId))
+
+  const venue = useMemo(() => venues.find(v => v.id === venueId) ?? null, [venues, venueId])
+  const tradingDays = venue?.trading_days ?? null
+  const isBirthday = occasion === 'Birthday'
+
+  // The window the guest chooses from. A birthday gets the fortnight around it;
+  // anything else gets the next ten weeks.
+  const window = useMemo(() => {
+    if (isBirthday) return birthdayWindow(f.dob || null, today)
+    return { from: today, to: addDays(today, HORIZON_DAYS) }
+  }, [isBirthday, f.dob, today])
+
+  const nights = useMemo(() => {
+    if (!venueId) return []
+    return tradingNightsBetween(window.from, window.to, tradingDays, blackouts, venueId)
+  }, [venueId, window.from, window.to, tradingDays, blackouts])
+
+  // A chosen date that the venue is shut on. Only reachable through the escape
+  // hatch or a hand-edited link, and said plainly rather than failing on submit.
+  const chosenIsClosed = !!date && !!venueId && !tradesOn(date, tradingDays, blackouts, venueId)
+  const closedAlternative = chosenIsClosed
+    ? nextTradingNight(date, tradingDays, blackouts, venueId)
+    : null
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setErr('')
+    e.preventDefault(); setErr(''); setSuggested(null)
     if (!venueId) { setErr('Please choose a venue.'); return }
     if (!date) { setErr('Please choose a date.'); return }
-    if (isBlackedOut) { setErr('The guestlist is not available for this venue on that date.'); return }
-    if (!f.email.trim() || !f.email.includes('@')) { setErr('Please enter a valid email address to get on the list.'); return }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -70,6 +130,13 @@ export function GuestRegistrationForm({
       })
       if (error) throw error
       if (!data?.ok) {
+        if (data?.error === 'not_trading') {
+          // The one error worth more than a sentence: it comes with somewhere
+          // to go, and a tap that goes there.
+          setSuggested(data.suggested ?? null)
+          setErr(`${venue?.name ?? 'This venue'} isn’t open on ${prettyNight(date)}.`)
+          return
+        }
         const m: Record<string, string> = {
           duplicate: 'This mobile number is already on the list for that venue and date.',
           bad_date: 'Please choose a date within the next year.',
@@ -102,7 +169,8 @@ export function GuestRegistrationForm({
           {!lockedVenue && (
             <div>
               <label className="label">Venue *</label>
-              <select className="input" value={venueId} onChange={e => setVenueId(e.target.value)} required>
+              <select className="input" value={venueId}
+                onChange={e => { setVenueId(e.target.value); setDate(''); setErr(''); setSuggested(null) }} required>
                 {venues.length === 0
                   ? <option value="">No venues available</option>
                   : <option value="" disabled>Choose your venue</option>}
@@ -113,11 +181,39 @@ export function GuestRegistrationForm({
           {!lockedDate && (
             <div>
               <label className="label">Date *</label>
-              <input className="input" type="date" required min={today} max={maxDate}
-                value={date} onChange={e => setDate(e.target.value)} />
+              {!venueId ? (
+                <select className="input" disabled value="">
+                  <option value="">Choose your venue first</option>
+                </select>
+              ) : freeDate ? (
+                <input className="input" type="date" required min={today} max={maxDate}
+                  value={date} onChange={e => { setDate(e.target.value); setSuggested(null) }} />
+              ) : (
+                <select className="input" value={date} required
+                  onChange={e => { setDate(e.target.value); setErr(''); setSuggested(null) }}>
+                  <option value="" disabled>
+                    {nights.length ? 'Choose your night' : 'No nights available'}
+                  </option>
+                  {nights.map(n => <option key={n} value={n}>{shortNight(n)}</option>)}
+                </select>
+              )}
+              <button type="button" className="text-[11px] text-luna-muted underline mt-1 hover:text-white"
+                onClick={() => { setFreeDate(v => !v); setDate(''); setErr(''); setSuggested(null) }}>
+                {freeDate ? 'Back to the list of nights' : 'Another date'}
+              </button>
             </div>
           )}
         </div>
+      )}
+
+      {/* What the list is showing, so a short list does not read as a broken one. */}
+      {!lockedDate && venueId && !freeDate && (
+        <p className="text-[11px] text-luna-muted -mt-3">
+          {isBirthday
+            ? `Birthday nights: ${venue?.name ?? 'this venue'} is open ${tradingDaysLabel(tradingDays)} — pick any night in the fortnight from ${prettyNight(window.from)}.`
+            : `${venue?.name ?? 'This venue'} is open ${tradingDaysLabel(tradingDays)}.`}
+          {nights.length === 0 && ' Nothing is open in that window — try “Another date”.'}
+        </p>
       )}
 
       {showOccasion && (
@@ -127,17 +223,29 @@ export function GuestRegistrationForm({
             <option value="">No occasion — just vibes ✨</option>
             {OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
-          <p className="text-[11px] text-luna-muted mt-1">Let us know so the venue can look after you.</p>
+          <p className="text-[11px] text-luna-muted mt-1">
+            {isBirthday
+              ? 'Add your date of birth below and we’ll show you the nights around it.'
+              : 'Let us know so the venue can look after you.'}
+          </p>
         </div>
       )}
 
-      {/* Shown on a locked link too. A blacked-out night is the one case where
-          the guest must not be allowed to sail through a form that looks fine
-          and then be turned away at the door. */}
-      {isBlackedOut && (
+      {/* A closed night is the one case where the guest must not be allowed to
+          sail through a form that looks fine and then be turned away at the
+          door. Reachable via a locked link or the free-date escape hatch. */}
+      {chosenIsClosed && (
         <p className="text-sm text-amber-400">
-          Sorry — the guestlist isn&apos;t available for this venue on that date.
-          {!lockedDate && ' Please choose another date.'}
+          {venue?.name ?? 'This venue'} isn’t open on {prettyNight(date)}.
+          {closedAlternative && (
+            <>
+              {' '}
+              <button type="button" className="underline font-semibold"
+                onClick={() => { setDate(closedAlternative); setFreeDate(false) }}>
+                Use {prettyNight(closedAlternative)} instead
+              </button>
+            </>
+          )}
         </p>
       )}
 
@@ -162,7 +270,7 @@ export function GuestRegistrationForm({
           <input className="input" type="email" required value={f.email} onChange={e => set('email', e.target.value)} />
         </div>
         <div>
-          <label className="label">Date of birth</label>
+          <label className="label">Date of birth {isBirthday && <span className="text-luna-gold font-normal">— sets your nights</span>}</label>
           <input className="input" type="date" max={today} value={f.dob} onChange={e => set('dob', e.target.value)} />
         </div>
       </div>
@@ -175,8 +283,21 @@ export function GuestRegistrationForm({
           onChange={e => setConsent(e.target.checked)} />
         <span className="text-luna-muted">I&apos;m happy for Luna Group to send me event updates and offers.</span>
       </label>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <button className="btn-gold w-full btn-lg" disabled={loading || isBlackedOut}>
+      {err && (
+        <p className="text-sm text-red-400">
+          {err}
+          {suggested && (
+            <>
+              {' '}
+              <button type="button" className="underline font-semibold"
+                onClick={() => { setDate(suggested); setFreeDate(false); setErr(''); setSuggested(null) }}>
+                Use {prettyNight(suggested)} instead
+              </button>
+            </>
+          )}
+        </p>
+      )}
+      <button className="btn-gold w-full btn-lg" disabled={loading || chosenIsClosed}>
         {loading ? 'Registering…' : 'Get my QR code'}
       </button>
       <p className="text-[11px] text-luna-muted text-center leading-relaxed">

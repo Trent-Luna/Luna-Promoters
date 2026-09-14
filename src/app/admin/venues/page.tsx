@@ -6,6 +6,7 @@ import { ADMIN_NAV } from '@/components/AdminNav'
 import { createVenue } from '../actions'
 import { VenueToggle } from './toggle'
 import { VenueDelete } from './delete'
+import { TradingDays } from './trading-days'
 import { Th, Td, CellStack, EmptyRow } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -27,17 +28,19 @@ export default async function AdminVenues() {
               <tr className="border-b border-white/[0.07]">
                 <Th className="pt-3">Venue</Th>
                 <Th className="pt-3">Slug</Th>
+                <Th className="pt-3">Trading nights</Th>
                 <Th className="pt-3">Atlas</Th>
                 <Th className="pt-3">Guestlist</Th>
                 <Th className="pt-3" />
               </tr>
             </thead>
             <tbody>
-              {(venues ?? []).length === 0 && <EmptyRow colSpan={5}>No venues yet.</EmptyRow>}
+              {(venues ?? []).length === 0 && <EmptyRow colSpan={6}>No venues yet.</EmptyRow>}
               {(venues ?? []).map((v: any) => (
                 <tr key={v.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
                   <Td><CellStack primary={v.name} secondary={v.address || undefined} /></Td>
                   <Td className="text-luna-muted">/{v.slug}</Td>
+                  <Td><TradingDays id={v.id} days={v.trading_days} /></Td>
                   <Td>{v.atlas_venue_id ? <span className="pill bg-white/[0.07] text-luna-text/90 font-medium">Linked</span> : <span className="pill bg-amber-500/15 text-amber-400">Not linked</span>}</Td>
                   <Td><VenueToggle id={v.id} active={v.active} /></Td>
                   <Td className="text-right"><VenueDelete id={v.id} name={v.name} /></Td>

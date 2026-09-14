@@ -57,7 +57,7 @@ export default async function PromoterLink({
   }
 
   const promoter = { full_name: data.full_name as string, promoter_code: data.promoter_code as string }
-  const venues = (data.venues ?? []) as { id: string; name: string }[]
+  const venues = (data.venues ?? []) as { id: string; name: string; trading_days?: number[] | null }[]
   const blackouts = (data.blackouts ?? []) as { venue_id: string | null; date: string }[]
 
   // Only a venue this link already offers. An unknown value falls through to
