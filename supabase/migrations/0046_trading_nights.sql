@@ -22,10 +22,13 @@
 --
 -- DAY NUMBERS are Postgres `extract(dow)`: 0 Sun, 1 Mon … 6 Sat.
 --
--- SEEDED ONLY WHERE CONFIRMED. Eclipse (Fri/Sat/Sun) and Su Casa (Wed–Sun) are
--- Trent's own words. Every other venue defaults to all seven days — the same
--- behaviour it has today — until somebody sets it in Settings. A wrong guess
--- here would turn away real guests, which is worse than the bug being fixed.
+-- EVERY VENUE IS TRENT'S OWN WORDS, 14 Sep 2026 — nothing here is inferred from
+-- booking history. The first cut of this migration left the four smaller venues
+-- permissive rather than guess, and the guess would have been wrong on all four:
+-- Pump reads as a Fri/Sat room in the data and trades Wednesdays; Silk reads as
+-- Fri/Sat and is one Saturday event. A wrong night here turns away real guests,
+-- which is worse than the bug being fixed. Changes from now belong in
+-- Admin › Venues, where a manager can make them, not in a migration.
 
 alter table public.venues
   add column if not exists trading_days smallint[] not null default '{0,1,2,3,4,5,6}';
@@ -36,8 +39,12 @@ alter table public.venues add constraint venues_trading_days_valid check (
   and trading_days <@ array[0,1,2,3,4,5,6]::smallint[]
 );
 
-update public.venues set trading_days = '{0,5,6}'     where slug = 'eclipse';
-update public.venues set trading_days = '{0,3,4,5,6}' where slug = 'su-casa-brisbane';
+update public.venues set trading_days = '{0,5,6}'     where slug = 'eclipse';            -- Fri, Sat, Sun
+update public.venues set trading_days = '{0,3,4,5,6}' where slug = 'su-casa-brisbane';   -- Wed–Sun
+update public.venues set trading_days = '{5,6}'       where slug = 'eclipse-afterdark';  -- Fri, Sat
+update public.venues set trading_days = '{3,5,6}'     where slug = 'pump-nightclub';     -- Wed, Fri, Sat
+-- Silk is a Saturday event on the Ember & Ash rooftop, carried on two venue rows.
+update public.venues set trading_days = '{6}'         where name in ('Silk','Silk Saturdays');
 
 -- Does this venue open on this date? Trading day AND not blacked out — a
 -- blackout is a one-off closure on a night the venue normally trades, so both
