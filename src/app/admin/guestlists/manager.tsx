@@ -20,6 +20,15 @@ interface Row {
 const EMPTY_EDIT = { first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '', occasion: '', date: '' }
 const OCCASION_RE = /birthday|hens|bucks|engagement|anniversary|graduation/i
 
+/** "20 seconds ago", "4 minutes ago", "yesterday" — enough to answer "when did I do that?". */
+function sinceLabel(iso: string): string {
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000))
+  if (s < 60) return `${s} second${s === 1 ? '' : 's'} ago`
+  const m = Math.round(s / 60); if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`
+  const h = Math.round(m / 60); if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`
+  const d = Math.round(h / 24); return d === 1 ? 'yesterday' : `${d} days ago`
+}
+
 function localToday() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -40,6 +49,17 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
   const [show, setShow] = useState<'all' | 'in' | 'waiting'>('all')
   const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '', occasion: '' })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  /*
+   * WHAT THE PHONE SHOWED TRENT ON 16 SEP. He added a guest for a closed night
+   * with the override ticked; it worked. The form emptied itself and a small
+   * green line appeared above a button he had just pressed, under a keyboard.
+   * He did not see it, pressed again, and was told the guest was "already on
+   * this list" -- true, and to him a lie. Two things fix that: a success you
+   * cannot miss (the new row lit up and scrolled into view, the button itself
+   * saying so), and a refusal that names the entry it found.
+   */
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+  const [dupe, setDupe] = useState<{ registration_id: string; name: string; added_at: string; promoter: string | null; same_mobile: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
   const [pending, start] = useTransition()
   const [offerMsg, setOfferMsg] = useState<Record<string, string>>({})
@@ -101,7 +121,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
   }, [venueId, date])
 
   async function addGuest(e: React.FormEvent) {
-    e.preventDefault(); setMsg(null)
+    e.preventDefault(); setMsg(null); setDupe(null)
     if (!venueId || !date) { setMsg({ ok: false, text: 'Pick a venue and date first.' }); return }
     setSaving(true)
     const { data, error } = await supabase.rpc('add_guest_manual_vd', {
@@ -114,6 +134,13 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
     setSaving(false)
     if (error) { setMsg({ ok: false, text: error.message }); return }
     if (!data?.ok) {
+      if (data?.error === 'duplicate' && data.existing) {
+        // Name it. "Already on this list" with no name reads as the app being
+        // wrong; "Jv Jv, added 20 seconds ago by you" reads as the app being right.
+        setDupe(data.existing)
+        setMsg({ ok: false, text: '' })
+        return
+      }
       const m: Record<string, string> = {
         duplicate: 'That guest is already on this list.',
         not_trading: `${venue?.name ?? 'This venue'} isn’t open on ${prettyNight(date)}. Tick “open anyway” if you are trading.`,
@@ -122,9 +149,14 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       setMsg({ ok: false, text: m[data?.error] || 'Could not add guest.' })
       return
     }
-    setMsg({ ok: true, text: `${f.first} ${f.last} added.` })
+    setMsg({ ok: true, text: `${f.first} ${f.last} is on the list${nightClosed ? ` for ${prettyNight(date)} (closed night, opened by you)` : ''}.` })
+    setJustAdded(data.registration_id ?? null)
     setF({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '', occasion: '' })
-    load()
+    await load()
+    // Show them the row. On a phone the list is below the form, so without
+    // this the proof of success is off the bottom of the screen.
+    requestAnimationFrame(() => document.getElementById(`reg-${data.registration_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    setTimeout(() => setJustAdded(null), 6000)
   }
 
   function startEdit(r: Row) {
@@ -274,8 +306,31 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
               <span>{venue?.name ?? 'This venue'} is closed on {prettyNight(date)} — open anyway</span>
             </label>
           )}
-          {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</p>}
-          <button className="btn-gold w-full" disabled={saving || !venueId || !date || (nightClosed && !addOverride)}>{saving ? 'Adding…' : 'Add to guestlist'}</button>
+          {msg && msg.text && (
+            <p className={`rounded-xl px-3 py-2 text-sm font-medium ${msg.ok ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'}`} role="status">
+              {msg.ok ? '✓ ' : ''}{msg.text}
+            </p>
+          )}
+          {dupe && (
+            <div className="rounded-xl bg-amber-500/15 px-3 py-2.5 text-sm text-amber-200 space-y-1.5" role="alert">
+              <p>
+                <span className="font-semibold">{dupe.name || 'That guest'}</span> is already on {venue?.name ?? 'this venue'}&rsquo;s list for {prettyNight(date)}
+                {dupe.added_at ? ` — added ${sinceLabel(dupe.added_at)}` : ''}{dupe.promoter ? ` by ${dupe.promoter}` : ''}.
+                {!dupe.same_mobile && ' Matched on email rather than mobile.'}
+              </p>
+              <button type="button" className="underline font-semibold"
+                onClick={() => {
+                  const r = rows.find(x => x.id === dupe.registration_id)
+                  if (r) { startEdit(r); setJustAdded(r.id); requestAnimationFrame(() => document.getElementById(`reg-${r.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })) }
+                  setDupe(null)
+                }}>
+                Show that entry
+              </button>
+            </div>
+          )}
+          <button className="btn-gold w-full" disabled={saving || !venueId || !date || (nightClosed && !addOverride)}>
+            {saving ? 'Adding…' : msg?.ok && justAdded ? '✓ Added' : 'Add to guestlist'}
+          </button>
           <p className="text-[11px] text-luna-muted text-center">Credited to you. Guests with an email get their QR automatically.</p>
         </form>
 
@@ -288,14 +343,20 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                 className={`pill !py-2 !px-3 ${show === k ? 'bg-luna-gold/15 text-luna-gold' : 'bg-white/[0.07] text-luna-text/90'}`}>{l}</button>
             ))}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[720px]">
-              <thead>
+          {/* ON A PHONE THE LIST IS A STACK, NOT A TABLE. Trent, 16 Sep 2026:
+              "things like putting people on the guest list doesnt line up well
+              on the phone." The table was 720px wide inside a 390px screen: the
+              Edit button was off the right edge and every row scrolled
+              sideways. Below md each cell becomes a block and the header row is
+              hidden; the table is unchanged on a laptop. */}
+          <div className="md:overflow-x-auto">
+            <table className="w-full text-sm md:min-w-[720px] block md:table">
+              <thead className="hidden md:table-header-group">
                 <tr className="border-b border-white/[0.07]">
                   <Th>Guest · mobile · group</Th><Th>Occasion</Th><Th>Promoter / source</Th><Th>Status</Th><Th />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block md:table-row-group">
                 {loading && <EmptyRow colSpan={5}>Loading…</EmptyRow>}
                 {!loading && filtered.length === 0 && <EmptyRow colSpan={5}>No guests for this venue &amp; date yet.</EmptyRow>}
                 {filtered.map(r => {
@@ -303,9 +364,10 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                   const party = size - 1 + (r.plus_ones || 0)
                   const occasion = !!r.special_occasion && OCCASION_RE.test(r.special_occasion)
                   return (
-                    <tr key={r.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02] align-top">
+                    <tr key={r.id} id={`reg-${r.id}`}
+                      className={`block md:table-row border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02] align-top transition-colors ${justAdded === r.id ? 'bg-luna-gold/[0.12] md:bg-luna-gold/[0.12]' : ''}`}>
                       {editing === r.id ? (
-                        <td colSpan={5} className="p-3">
+                        <td colSpan={5} className="block md:table-cell p-3">
                           <div className="space-y-3 max-w-xl">
                             <div className="grid grid-cols-2 gap-2">
                               <div><label className="label">First name *</label><input className="input !py-2" value={ef.first} onChange={e => setE('first', e.target.value)} /></div>
@@ -315,7 +377,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                               <div><label className="label">Mobile *</label><input className="input !py-2" type="tel" value={ef.mobile} onChange={e => setE('mobile', e.target.value)} /></div>
                               <div><label className="label">Email</label><input className="input !py-2" type="email" value={ef.email} onChange={e => setE('email', e.target.value)} /></div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               <div><label className="label">DOB</label><input className="input !py-2" type="date" max={today} value={ef.dob} onChange={e => setE('dob', e.target.value)} /></div>
                               <div><label className="label">Instagram</label><input className="input !py-2" value={ef.instagram} onChange={e => setE('instagram', e.target.value)} /></div>
                               <div><label className="label">Plus ones</label><input className="input !py-2" type="number" min={0} max={50} value={ef.plus} onChange={e => setE('plus', e.target.value)} /></div>
@@ -352,7 +414,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                         </td>
                       ) : (
                         <>
-                          <Td>
+                          <Td className="block md:table-cell !pb-1 md:!pb-2.5 pt-3 md:pt-2.5">
                             <div className="font-semibold">{r.first_name} {r.last_name}</div>
                             <div className="text-xs text-luna-muted">
                               {r.mobile}{r.email ? ` · ${r.email}` : ''}
@@ -360,12 +422,12 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                             </div>
                             {r.notes && <div className="text-xs text-luna-gold mt-0.5">{r.notes}</div>}
                           </Td>
-                          <Td>{r.special_occasion ? <span className="pill bg-luna-gold/15 text-luna-gold">{r.special_occasion}</span> : <span className="text-luna-muted">—</span>}</Td>
-                          <Td className="text-luna-muted">
-                            {r.promoter_name}{r.source ? <span className="block text-xs">src {r.source}</span> : null}
+                          <Td className={`md:table-cell ${r.special_occasion ? 'inline-block !py-1' : 'hidden'}`}>{r.special_occasion ? <span className="pill bg-luna-gold/15 text-luna-gold">{r.special_occasion}</span> : <span className="text-luna-muted">—</span>}</Td>
+                          <Td className="inline-block md:table-cell !py-1 md:!py-2.5 text-xs md:text-sm text-luna-muted">
+                            {r.promoter_name}{r.source ? <span className="md:block"> · src {r.source}</span> : null}
                           </Td>
-                          <Td><StatusPill status={r.status} /></Td>
-                          <Td className="text-right whitespace-nowrap">
+                          <Td className="inline-block md:table-cell !py-1 md:!py-2.5"><StatusPill status={r.status} /></Td>
+                          <Td className="block md:table-cell text-left md:text-right whitespace-nowrap !pt-1 !pb-3 md:!py-2.5">
                             <span className="inline-flex items-center gap-1.5">
                               {occasion && (
                                 r.booth_offer_sent_at
