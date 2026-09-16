@@ -41,21 +41,21 @@ export default async function AdminEvents({ searchParams }: { searchParams: Prom
   return (
     <AppShell nav={navForRoles(s.roles)} current="/admin/events" title="Events"
       subtitle="One row per night per venue. Open or close its guestlist here — the same control sits on Overview and Guestlists.">
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
         <div className="card">
           <div className="flex flex-wrap items-center gap-2 px-4 pt-4 pb-3">
             {tab('upcoming', 'Upcoming')}{tab('past', 'Past')}
-            <form className="ml-auto">
+            <form className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
               <input type="hidden" name="show" value={show} />
-              <select name="venue" defaultValue={venue} className="input !w-auto !py-2 text-sm">
+              <select name="venue" defaultValue={venue} className="input sm:!w-auto !py-2 text-sm min-w-0 flex-1">
                 <option value="">All venues</option>
                 {(venues ?? []).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
-              <button className="btn-ghost !py-2 !px-3 text-xs ml-2">Filter</button>
+              <button className="btn-ghost !py-2 !px-3 text-xs shrink-0">Filter</button>
             </form>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[720px]">
+          <div className="md:overflow-x-auto">
+            <table className="table-stack w-full text-sm md:min-w-[720px]">
               <thead>
                 <tr className="border-b border-white/[0.07]">
                   <Th>Date</Th><Th>Venue</Th><Th>Event</Th><Th className="text-right">Registered</Th><Th className="text-right">Checked in</Th><Th>Guestlist</Th><Th />
@@ -71,14 +71,14 @@ export default async function AdminEvents({ searchParams }: { searchParams: Prom
                     <tr key={e.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
                       <Td className="font-semibold whitespace-nowrap">{fmtDate(e.event_date)}</Td>
                       <Td><span className="pill bg-white/[0.07] text-luna-text/90 font-medium">{e.venues?.name}</span></Td>
-                      <Td>
+                      <Td lead>
                         <div className="font-semibold">{e.name}</div>
                         <div className="text-xs text-luna-muted">{e.start_time ? `${fmtTime(e.start_time)}${e.end_time ? `–${fmtTime(e.end_time)}` : ''}` : '—'}</div>
                       </Td>
-                      <Td className="text-right tabular-nums">{registered}</Td>
-                      <Td className="text-right tabular-nums text-luna-gold font-semibold">{checked}</Td>
+                      <Td label="Registered" className="text-right tabular-nums">{registered}</Td>
+                      <Td label="Checked in" className="text-right tabular-nums text-luna-gold font-semibold">{checked}</Td>
                       <Td><GuestlistToggle id={e.id} open={e.guestlist_open} /></Td>
-                      <Td className="text-right"><Link href={`/admin/guestlists?venue=${e.venue_id}&date=${e.event_date}`} className="btn-ghost !py-1.5 !px-3 text-xs">Guestlist</Link></Td>
+                      <Td end className="text-right"><Link href={`/admin/guestlists?venue=${e.venue_id}&date=${e.event_date}`} className="btn-ghost !py-1.5 !px-3 text-xs">Guestlist</Link></Td>
                     </tr>
                   )
                 })}

@@ -45,6 +45,31 @@ html, body {
 .tier-bronze { color:#cd7f32 } .tier-silver { color:#c0c0c0 }
 .tier-gold   { color:#d4af37 } .tier-elite  { color:#b28dff }
 
+/* A wide table becomes a stack of cards on a phone (under Tailwind's md,
+   768px). Nothing scrolls sideways: the header row goes, each <tr> becomes a
+   flex-wrapped card, and a cell that needs its column name carries it via
+   Td's `label` prop (shown only in the stacked view). Cells opt into a role:
+   .stack-lead takes the full width (the name), .stack-end floats right (the
+   action), .stack-grow fills the rest of its line, .stack-empty is the
+   "nothing here" row. */
+@media (max-width: 767.98px) {
+  .table-stack { display: block; min-width: 0 !important; }
+  .table-stack thead { display: none; }
+  .table-stack tbody { display: block; }
+  .table-stack tr {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 6px 14px; padding: 12px 14px;
+  }
+  .table-stack td { display: block; padding: 0; text-align: left; white-space: normal; min-width: 0; }
+  .table-stack td.stack-lead { flex-basis: 100%; }
+  .table-stack td.stack-end { margin-left: auto; }
+  .table-stack td.stack-grow { flex: 1 1 auto; }
+  .table-stack td.stack-empty { flex-basis: 100%; text-align: center; padding: 20px 0; }
+  .table-stack td:empty { display: none; }
+  .table-stack .stack-label { display: inline; }
+}
+.stack-label { display: none; font-size: 11px; color: #8a8a90; margin-right: 4px; }
+
 /* clean horizontal scroll for the tab bar (no visible scrollbar) */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

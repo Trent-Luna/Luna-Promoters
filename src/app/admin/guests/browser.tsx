@@ -63,8 +63,8 @@ export function GuestDirectory({ initialQuery = '' }: { initialQuery?: string })
       )}
 
       {filtered.length > 0 && (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+        <div className="card md:overflow-x-auto">
+          <table className="table-stack w-full text-sm md:min-w-[760px]">
             <thead>
               <tr className="border-b border-white/[0.07]">
                 <Th className="pt-3">Guest · mobile · Instagram</Th>
@@ -77,16 +77,16 @@ export function GuestDirectory({ initialQuery = '' }: { initialQuery?: string })
             <tbody>
               {filtered.map(g => (
                 <tr key={g.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
-                  <Td>
+                  <Td lead>
                     <CellStack
                       primary={`${g.first_name} ${g.last_name}`}
                       secondary={[g.mobile, g.email, g.instagram].filter(Boolean).join(' · ') || undefined}
                     />
                   </Td>
-                  <Td className="text-right tabular-nums">{g.registrations}</Td>
-                  <Td className="text-right text-luna-gold font-semibold tabular-nums">{g.attended}</Td>
+                  <Td label="Signups" className="text-right tabular-nums">{g.registrations}</Td>
+                  <Td label="Attended" className="text-right text-luna-gold font-semibold tabular-nums">{g.attended}</Td>
                   <Td><TagList items={g.venues || []} max={2} /></Td>
-                  <Td className="text-luna-muted whitespace-nowrap">{g.last_seen ? fmtDate(g.last_seen) : '—'}</Td>
+                  <Td label="Last seen" className="text-luna-muted whitespace-nowrap">{g.last_seen ? fmtDate(g.last_seen) : '—'}</Td>
                 </tr>
               ))}
             </tbody>

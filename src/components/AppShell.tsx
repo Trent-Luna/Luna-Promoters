@@ -148,13 +148,15 @@ async function SidebarShell({
         {/* ---------- content (Atlas: max 1280px, 32/40 padding) ---------- */}
         <main className="min-w-0 w-full max-w-atlas mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
           {(title || right) && (
-            <div className="flex items-start gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-6">
               <div className="min-w-0">
                 {eyebrowText && <div className="eyebrow mb-1">{eyebrowText}</div>}
                 {title && <h1 className="text-2xl font-bold leading-tight">{title}</h1>}
                 {subtitle && <p className="text-sm text-luna-muted mt-1">{subtitle}</p>}
               </div>
-              {right && <div className="ml-auto flex items-center gap-2 shrink-0 flex-wrap justify-end">{right}</div>}
+              {/* On a phone the actions wrap under the title at full width; shrink-0
+                  only applies from sm up, where the row has room for them. */}
+              {right && <div className="sm:ml-auto flex items-center gap-2 sm:shrink-0 flex-wrap sm:justify-end min-w-0">{right}</div>}
             </div>
           )}
           {children}

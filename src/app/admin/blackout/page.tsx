@@ -29,7 +29,7 @@ export default async function BlackoutPage() {
   return (
     <AppShell nav={navForRoles(s.roles)} current="/admin/blackout" title="Blackout dates"
       subtitle="Nights the guestlist is closed — ticketed or private events. Guests see it on the sign-up form; promoters on What's On.">
-      <div className="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
         <form action={addBlackout} className="card p-5 space-y-3">
           <h2 className="font-bold">Add a blackout</h2>
           <div><label className="label">Venue</label>
@@ -43,8 +43,8 @@ export default async function BlackoutPage() {
           <button className="btn-gold w-full">Black out date</button>
         </form>
 
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[480px]">
+        <div className="card md:overflow-x-auto">
+          <table className="table-stack w-full text-sm md:min-w-[480px]">
             <thead><tr className="border-b border-white/[0.07]"><Th className="pt-3">Date</Th><Th className="pt-3">Venue</Th><Th className="pt-3">Reason</Th><Th className="pt-3" /></tr></thead>
             <tbody>
               {(blackouts ?? []).length === 0 && <EmptyRow colSpan={4}>No upcoming blackout dates.</EmptyRow>}
@@ -53,7 +53,7 @@ export default async function BlackoutPage() {
                   <Td className="font-semibold whitespace-nowrap">{fmtDate(b.blackout_date)}</Td>
                   <Td><span className="pill bg-white/[0.07] text-luna-text/90 font-medium">{b.venue_id ? (b.venues?.name ?? 'Venue') : 'All venues'}</span></Td>
                   <Td className="text-luna-muted">{b.reason || '—'}</Td>
-                  <Td className="text-right"><RemoveBlackout id={b.id} /></Td>
+                  <Td end className="text-right"><RemoveBlackout id={b.id} /></Td>
                 </tr>
               ))}
             </tbody>

@@ -47,27 +47,27 @@ export default async function AdminSearch({ searchParams }: { searchParams: Prom
   return (
     <AppShell nav={ADMIN_NAV} current="/admin/search" eyebrow="Search" title={term ? `Results for “${term}”` : 'Search'}
       subtitle={term.length < 2 ? 'Type at least two characters — a name, phone, email, code or Instagram handle.' : `${promoters.length} promoter${promoters.length === 1 ? '' : 's'} · ${guests.length} guest${guests.length === 1 ? '' : 's'}`}>
-      <div className="grid lg:grid-cols-2 gap-5 items-start">
-        <div className="card overflow-x-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <div className="card md:overflow-x-auto">
           <div className="px-4 pt-4 pb-2 font-bold">Promoters</div>
-          <table className="w-full text-sm">
+          <table className="table-stack w-full text-sm">
             <thead><tr className="border-b border-white/[0.07]"><Th>Promoter</Th><Th>Status</Th><Th>Tier</Th><Th /></tr></thead>
             <tbody>
               {promoters.length === 0 && <EmptyRow colSpan={4}>{term.length < 2 ? 'Waiting for a search.' : 'No promoters match.'}</EmptyRow>}
               {promoters.map(p => (
                 <tr key={p.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
-                  <Td><CellStack primary={p.full_name} secondary={`${p.promoter_code ? `/p/${p.promoter_code} · ` : ''}${p.mobile} · ${p.email}`} /></Td>
+                  <Td lead><CellStack primary={p.full_name} secondary={`${p.promoter_code ? `/p/${p.promoter_code} · ` : ''}${p.mobile} · ${p.email}`} /></Td>
                   <Td><StatusPill status={p.status} /></Td>
                   <Td>{p.status === 'approved' ? <TierBadge tier={p.current_tier} /> : <span className="text-luna-muted">—</span>}</Td>
-                  <Td className="text-right"><Link className="text-xs text-luna-gold" href={`/admin/promoters?q=${encodeURIComponent(p.full_name)}`}>Open</Link></Td>
+                  <Td end className="text-right"><Link className="text-xs text-luna-gold" href={`/admin/promoters?q=${encodeURIComponent(p.full_name)}`}>Open</Link></Td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="card overflow-x-auto">
+        <div className="card md:overflow-x-auto">
           <div className="px-4 pt-4 pb-2 font-bold">Guests</div>
-          <table className="w-full text-sm">
+          <table className="table-stack w-full text-sm">
             <thead><tr className="border-b border-white/[0.07]"><Th>Guest</Th><Th>Last registration</Th><Th /></tr></thead>
             <tbody>
               {guests.length === 0 && <EmptyRow colSpan={3}>{term.length < 2 ? 'Waiting for a search.' : 'No guests match.'}</EmptyRow>}
@@ -76,7 +76,7 @@ export default async function AdminSearch({ searchParams }: { searchParams: Prom
                 const last = [...regs].sort((a, b) => (b.events?.event_date ?? '').localeCompare(a.events?.event_date ?? ''))[0]
                 return (
                   <tr key={g.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
-                    <Td><CellStack primary={`${g.first_name} ${g.last_name}`} secondary={`${g.mobile}${g.email ? ` · ${g.email}` : ''}${g.instagram ? ` · ${g.instagram}` : ''}`} /></Td>
+                    <Td lead><CellStack primary={`${g.first_name} ${g.last_name}`} secondary={`${g.mobile}${g.email ? ` · ${g.email}` : ''}${g.instagram ? ` · ${g.instagram}` : ''}`} /></Td>
                     <Td>
                       {last ? (
                         <span className="flex items-center gap-2 text-luna-muted">
@@ -84,7 +84,7 @@ export default async function AdminSearch({ searchParams }: { searchParams: Prom
                         </span>
                       ) : <span className="text-luna-muted">—</span>}
                     </Td>
-                    <Td className="text-right"><Link className="text-xs text-luna-gold" href={`/admin/guests?q=${encodeURIComponent(g.mobile)}`}>Open</Link></Td>
+                    <Td end className="text-right"><Link className="text-xs text-luna-gold" href={`/admin/guests?q=${encodeURIComponent(g.mobile)}`}>Open</Link></Td>
                   </tr>
                 )
               })}

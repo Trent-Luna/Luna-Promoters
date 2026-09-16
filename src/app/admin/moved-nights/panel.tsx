@@ -76,8 +76,8 @@ export function MovedNightsPanel({ groups }: { groups: MovedGroup[] }) {
           {busy ? 'Sending…' : pending.length === 0 ? 'All sent' : `Send all ${pending.length}`}
         </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[680px]">
+      <div className="md:overflow-x-auto">
+        <table className="table-stack w-full text-sm md:min-w-[680px]">
           <thead>
             <tr className="border-b border-white/[0.07]">
               <Th>Guest</Th><Th>Venue</Th><Th>Was</Th><Th>Now on</Th><Th /></tr>
@@ -90,16 +90,16 @@ export function MovedNightsPanel({ groups }: { groups: MovedGroup[] }) {
               const done = !g.pending || said === 'Sent'
               return (
                 <tr key={k} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02] align-top">
-                  <Td>
+                  <Td lead>
                     <div className="font-semibold">{g.name}</div>
                     <div className="text-xs text-luna-muted">{g.email ?? 'no email on file'}</div>
                   </Td>
                   <Td className="text-luna-muted">{g.venue}</Td>
-                  <Td className="text-luna-muted whitespace-nowrap">{prettyNight(g.was)}</Td>
-                  <Td className="whitespace-nowrap">
+                  <Td label="Was" className="text-luna-muted whitespace-nowrap">{prettyNight(g.was)}</Td>
+                  <Td label="Now" className="whitespace-nowrap">
                     {g.nights.map((n) => <div key={n} className="text-luna-gold">{prettyNight(n)}</div>)}
                   </Td>
-                  <Td className="text-right whitespace-nowrap">
+                  <Td end className="text-right whitespace-nowrap">
                     {done
                       ? <span className="text-xs text-emerald-400">Told</span>
                       : <button className="btn-ghost !py-1.5 !px-3 text-xs disabled:opacity-50"

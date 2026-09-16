@@ -52,8 +52,8 @@ export function LeaderboardView({ venues, events }: { venues: V[]; events: E[]; 
         </select>
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
+      <div className="card md:overflow-x-auto">
+        <table className="table-stack w-full text-sm md:min-w-[720px]">
           <thead>
             <tr className="border-b border-white/[0.07]">
               <Th className="pt-3">#</Th><Th className="pt-3">Promoter</Th>
@@ -68,15 +68,15 @@ export function LeaderboardView({ venues, events }: { venues: V[]; events: E[]; 
             {!loading && rows.length === 0 && <EmptyRow colSpan={9}>No data for this filter.</EmptyRow>}
             {rows.map((r: any) => (
               <tr key={r.promoter_id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
-                <Td className="text-luna-muted tabular-nums w-10">{r.rank}</Td>
-                <Td><div className="font-semibold">{r.promoter_name}</div><div className="text-xs text-luna-muted">/p/{r.promoter_code}</div></Td>
+                <Td label="#" className="text-luna-muted tabular-nums w-10">{r.rank}</Td>
+                <Td className="stack-grow"><div className="font-semibold">{r.promoter_name}</div><div className="text-xs text-luna-muted">/p/{r.promoter_code}</div></Td>
                 <Td><TierBadge tier={r.tier} /></Td>
                 <Td className="text-luna-muted">{r.venue_name ?? '—'}</Td>
-                <Td className="text-right tabular-nums">{r.registered}</Td>
-                <Td className="text-right tabular-nums text-luna-gold font-bold">{r.checked_in}</Td>
-                <Td className="text-right tabular-nums text-luna-muted">{r.no_shows}</Td>
-                <Td className="text-right tabular-nums text-luna-muted">{r.attendance_pct}%</Td>
-                <Td><div className="h-1.5 w-28 rounded-full bg-white/[0.07] overflow-hidden"><div className="h-full rounded-full bg-luna-gold" style={{ width: `${maxIn ? Math.round((r.checked_in / maxIn) * 100) : 0}%` }} /></div></Td>
+                <Td label="Reg" className="text-right tabular-nums">{r.registered}</Td>
+                <Td label="In" className="text-right tabular-nums text-luna-gold font-bold">{r.checked_in}</Td>
+                <Td label="No-show" className="text-right tabular-nums text-luna-muted">{r.no_shows}</Td>
+                <Td label="Attend" className="text-right tabular-nums text-luna-muted">{r.attendance_pct}%</Td>
+                <Td lead><div className="h-1.5 w-28 rounded-full bg-white/[0.07] overflow-hidden"><div className="h-full rounded-full bg-luna-gold" style={{ width: `${maxIn ? Math.round((r.checked_in / maxIn) * 100) : 0}%` }} /></div></Td>
               </tr>
             ))}
           </tbody>

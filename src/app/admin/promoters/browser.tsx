@@ -94,8 +94,8 @@ export function PromotersBrowser({ promoters, initialStatus, initialQuery = '', 
         <span className="ml-auto"><ResultCount shown={filtered.length} total={promoters.length} noun={promoters.length === 1 ? 'promoter' : 'promoters'} /></span>
       </FilterRow>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+      <div className="card md:overflow-x-auto">
+        <table className="table-stack w-full text-sm md:min-w-[900px]">
           <thead>
             <tr className="border-b border-white/[0.07]">
               <Th className="pt-3">Promoter · code · phone</Th>
@@ -118,7 +118,7 @@ export function PromotersBrowser({ promoters, initialStatus, initialQuery = '', 
               const wk = weeksSince(p.last_registration_at)
               return (
                 <tr key={p.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
-                  <Td>
+                  <Td lead>
                     <CellStack
                       primary={
                         <span className="flex items-center gap-1.5">
@@ -150,10 +150,10 @@ export function PromotersBrowser({ promoters, initialStatus, initialQuery = '', 
                       ? <span className="pill bg-zinc-500/20 text-luna-subtle" title={`No registrations in ${dormantWeeks}+ weeks`}>inactive{wk != null ? ` · ${wk} wks` : ''}</span>
                       : <StatusPill status={p.status} />}
                   </Td>
-                  <Td className="text-right tabular-nums">{p.status === 'approved' ? p.month_checked_in : <span className="text-luna-muted">—</span>}</Td>
-                  <Td className="text-right tabular-nums">{p.status === 'approved' && p.month_registered > 0 ? `${pct(p.month_checked_in, p.month_registered)}%` : <span className="text-luna-muted">—</span>}</Td>
-                  <Td className="text-luna-muted whitespace-nowrap">{p.last_registration_at ? fmtDate(p.last_registration_at) : 'Never'}</Td>
-                  <Td className="text-right">
+                  <Td label="In (mo)" className="text-right tabular-nums">{p.status === 'approved' ? p.month_checked_in : <span className="text-luna-muted">—</span>}</Td>
+                  <Td label="Attend" className="text-right tabular-nums">{p.status === 'approved' && p.month_registered > 0 ? `${pct(p.month_checked_in, p.month_registered)}%` : <span className="text-luna-muted">—</span>}</Td>
+                  <Td label="Last guest" className="text-luna-muted whitespace-nowrap">{p.last_registration_at ? fmtDate(p.last_registration_at) : 'Never'}</Td>
+                  <Td lead className="text-right">
                     <PromoterActions id={p.id} status={p.status} elite={p.elite_override} inactive={inactive} nudgedAt={p.nudged_at} hasEmail={!!p.email} />
                   </Td>
                 </tr>

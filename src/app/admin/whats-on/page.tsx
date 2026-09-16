@@ -26,7 +26,7 @@ export default async function AdminWhatsOn() {
   return (
     <AppShell nav={navForRoles(s.roles)} current="/admin/whats-on" title="What's On"
       subtitle="Posts promoters see on their dashboard and What's On tab. Choose a venue, or all venues.">
-      <div className="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
         <form action={createPost} className="card p-5 space-y-3">
           <h2 className="font-bold">New post</h2>
           <div><label className="label">Venue</label>

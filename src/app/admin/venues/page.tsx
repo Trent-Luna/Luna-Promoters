@@ -21,9 +21,9 @@ export default async function AdminVenues() {
   return (
     <AppShell nav={ADMIN_NAV} current="/admin/venues" title="Venues"
       subtitle={`${(venues ?? []).length} venue${(venues ?? []).length === 1 ? '' : 's'} · guest sign-up offers the active ones.`}>
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
+        <div className="card md:overflow-x-auto">
+          <table className="table-stack w-full text-sm md:min-w-[560px]">
             <thead>
               <tr className="border-b border-white/[0.07]">
                 <Th className="pt-3">Venue</Th>
@@ -38,12 +38,12 @@ export default async function AdminVenues() {
               {(venues ?? []).length === 0 && <EmptyRow colSpan={6}>No venues yet.</EmptyRow>}
               {(venues ?? []).map((v: any) => (
                 <tr key={v.id} className="border-b border-white/[0.045] last:border-0 hover:bg-white/[0.02]">
-                  <Td><CellStack primary={v.name} secondary={v.address || undefined} /></Td>
+                  <Td lead><CellStack primary={v.name} secondary={v.address || undefined} /></Td>
                   <Td className="text-luna-muted">/{v.slug}</Td>
-                  <Td><TradingDays id={v.id} days={v.trading_days} /></Td>
-                  <Td>{v.atlas_venue_id ? <span className="pill bg-white/[0.07] text-luna-text/90 font-medium">Linked</span> : <span className="pill bg-amber-500/15 text-amber-400">Not linked</span>}</Td>
-                  <Td><VenueToggle id={v.id} active={v.active} /></Td>
-                  <Td className="text-right"><VenueDelete id={v.id} name={v.name} /></Td>
+                  <Td lead label="Trading"><TradingDays id={v.id} days={v.trading_days} /></Td>
+                  <Td label="Atlas">{v.atlas_venue_id ? <span className="pill bg-white/[0.07] text-luna-text/90 font-medium">Linked</span> : <span className="pill bg-amber-500/15 text-amber-400">Not linked</span>}</Td>
+                  <Td label="Guestlist"><VenueToggle id={v.id} active={v.active} /></Td>
+                  <Td end className="text-right"><VenueDelete id={v.id} name={v.name} /></Td>
                 </tr>
               ))}
             </tbody>

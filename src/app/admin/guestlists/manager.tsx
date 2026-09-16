@@ -277,7 +277,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
         {/* ---- add a guest ---- */}
         <form onSubmit={addGuest} className="card p-5 space-y-3">
           <h2 className="font-bold">Add a guest</h2>

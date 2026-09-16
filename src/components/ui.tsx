@@ -98,10 +98,12 @@ export function Banner({ children, tone = 'gold' }:
   return <div className={`card px-5 py-4 flex flex-wrap items-center gap-4 ${cls}`}>{children}</div>
 }
 
-/** Title + one-line description inside a Banner. */
+/** Title + one-line description inside a Banner. On a phone it takes the whole
+ *  first line so the buttons wrap underneath instead of squeezing the words
+ *  into a two-word column beside them. */
 export function BannerText({ title, sub }: { title: React.ReactNode; sub?: React.ReactNode }) {
   return (
-    <div className="min-w-0 flex-1">
+    <div className="min-w-0 grow basis-full sm:basis-0">
       <div className="font-bold">{title}</div>
       {sub && <div className="text-xs text-luna-muted mt-0.5">{sub}</div>}
     </div>
@@ -181,10 +183,19 @@ export function Th({ children, className = '' }:
   )
 }
 
-/** Table body cell. */
-export function Td({ children, className = '' }:
-  { children?: React.ReactNode; className?: string }) {
-  return <td className={`py-2.5 px-3 align-middle ${className}`}>{children}</td>
+/** Table body cell. In a `.table-stack` table on a phone the cell becomes a
+ *  chip in a card: `label` is the column name shown beside the value there
+ *  (and nowhere else), `lead` makes it the full-width first line, `end`
+ *  pushes it to the right edge (the action). */
+export function Td({ children, className = '', label, lead, end }:
+  { children?: React.ReactNode; className?: string; label?: string; lead?: boolean; end?: boolean }) {
+  const role = `${lead ? ' stack-lead' : ''}${end ? ' stack-end' : ''}`
+  return (
+    <td className={`py-2.5 px-3 align-middle${role} ${className}`}>
+      {label && <span className="stack-label">{label}</span>}
+      {children}
+    </td>
+  )
 }
 
 /** Bold primary value with a muted secondary line underneath. */
@@ -221,7 +232,7 @@ export function EmptyRow({ colSpan, children }:
   { colSpan: number; children: React.ReactNode }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="py-8 text-center text-sm text-luna-muted">{children}</td>
+      <td colSpan={colSpan} className="stack-empty py-8 text-center text-sm text-luna-muted">{children}</td>
     </tr>
   )
 }
