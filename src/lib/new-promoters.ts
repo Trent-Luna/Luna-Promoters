@@ -22,7 +22,7 @@ export interface NewPromoterRow {
   id: string
   full_name: string
   promoter_code: string | null
-  category: 'promoter' | 'dj' | 'staff' | string
+  category: 'promoter' | 'dj' | 'staff' | 'close_friend' | string
   status: string
   current_tier: string
   created_at: string
@@ -151,6 +151,7 @@ export function activityLabel(r: Pick<NewPromoterRow, 'registered' | 'checked_in
 
 /** Category shown against a name, only where it is not the ordinary case. */
 export function categoryLabel(category: string): string | null {
+  if (category === 'close_friend') return 'Close Friend'
   if (category === 'dj') return 'DJ'
   if (category === 'staff') return 'Staff'
   return null

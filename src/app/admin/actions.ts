@@ -257,7 +257,7 @@ export async function removeBlackout(id: string) {
 }
 
 // ---------- Promoter category (promoter / dj / staff) ----------
-export async function setPromoterCategory(id: string, category: 'promoter' | 'dj' | 'staff') {
+export async function setPromoterCategory(id: string, category: 'promoter' | 'dj' | 'staff' | 'close_friend') {
   await ensureAdmin()
   const supabase = await createClient()
   const { error } = await supabase.from('promoters').update({ category }).eq('id', id)

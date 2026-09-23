@@ -11,6 +11,7 @@ export const VENUE_NAV: NavItem[] = [
   { href: '/admin/whats-on', label: "What's On", icon: 'star' },
   { href: '/reception', label: 'Door Check-in', icon: 'door' },
   { href: '/admin/leaderboards', label: 'Leaderboards', icon: 'trophy' },
+  { href: '/admin/close-friends', label: 'Close Friends', icon: 'star' },
   { href: '/admin/exports', label: 'Exports', icon: 'download' },
 ]
 

@@ -10,7 +10,7 @@ import { CategorySelect } from './category-ui'
 interface P {
   id: string; full_name: string; email: string; mobile: string; date_of_birth: string
   instagram: string | null; suburb: string | null; status: string; promoter_code: string | null
-  current_tier: string; elite_override: boolean; category: 'promoter' | 'dj' | 'staff'
+  current_tier: string; elite_override: boolean; category: 'promoter' | 'dj' | 'staff' | 'close_friend'
   dormant_since: string | null; last_registration_at: string | null; nudged_at: string | null
   month_registered: number; month_checked_in: number
   admin_notes: { note: string }[]

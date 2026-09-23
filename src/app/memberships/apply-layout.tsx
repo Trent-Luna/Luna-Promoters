@@ -2,7 +2,7 @@ import { Logo } from '@/components/Logo'
 import { PromoterSignupForm } from '../signup-form'
 import Link from 'next/link'
 
-type Category = 'promoter' | 'dj' | 'staff'
+type Category = 'promoter' | 'dj' | 'staff' | 'close_friend'
 
 const COPY: Record<Category, { pill: string; title: string; blurb: string; formTitle: string; formNote: string }> = {
   promoter: {
@@ -18,6 +18,13 @@ const COPY: Record<Category, { pill: string; title: string; blurb: string; formT
     blurb: 'For Luna Group DJs. Register your details to get set up in the Luna Group system.',
     formTitle: 'DJ sign-up',
     formNote: 'Your details will be reviewed by the Luna Group team. You must be 18 or older.',
+  },
+  close_friend: {
+    pill: 'Close Friends',
+    title: 'Become a Close Friend',
+    blurb: 'Wednesday nights at Su Casa Rooftop. Bring your people, get them through the door, and the week\u2019s top Close Friends get looked after.',
+    formTitle: 'Close Friends sign-up',
+    formNote: 'Applications are reviewed by the Luna Group team. You must be 18 or older.',
   },
   staff: {
     pill: 'Luna Group Staff',

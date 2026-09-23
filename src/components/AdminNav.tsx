@@ -39,6 +39,7 @@ export const ADMIN_GROUPS: NavGroup[] = [
     label: 'Reports',
     items: [
       { href: '/admin/leaderboards', label: 'Leaderboards', icon: 'trophy' },
+      { href: '/admin/close-friends', label: 'Close Friends', icon: 'star' },
       { href: '/admin/exports', label: 'Exports', icon: 'download' },
     ],
   },
