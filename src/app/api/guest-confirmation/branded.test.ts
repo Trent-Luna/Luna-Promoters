@@ -29,6 +29,15 @@ describe('venue-branded confirmation', () => {
     expect(html).toContain('Guest of Jess M.')
     expect(html).toContain('/brand/email/logo-pump.png')
   })
+  it('gives Outlook desktop real images for the header and booth', () => {
+    for (const [slug, t] of Object.entries(THEMES)) {
+      const html = brandedHtml({ ...base, theme: t })
+      expect(html, slug).toContain(`<!--[if mso]><img src="https://promoter.lunagroup.com.au${t.booth}"`)
+      expect(html, slug).toContain(`<v:fill type="frame" src="https://promoter.lunagroup.com.au${t.outlookHero}"`)
+      expect(html.match(/<v:rect/g)?.length, slug).toBe(1)
+      expect(html.match(/<\/v:rect>/g)?.length, slug).toBe(1)
+    }
+  })
   it('says arrive early where there is no cut-off', () => {
     const html = brandedHtml({ ...base, venueName: 'Eclipse', theme: THEMES['eclipse'] })
     expect(html).toContain('Arrive early')

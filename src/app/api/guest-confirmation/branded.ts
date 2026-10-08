@@ -78,14 +78,16 @@ export function brandedHtml(i: BrandedInput): string {
   const heroOpen = v.hero
     ? `<td background="${img(v.hero)}" bgcolor="${v.bg}" style="background:${v.bg} url('${img(v.hero)}') ${v.heroPos || 'center'} / cover no-repeat;background-image:url('${img(v.hero)}');background-size:cover;background-position:${v.heroPos || 'center'}">`
     : `<td bgcolor="${v.heroColor || v.bg}" style="background-color:${v.heroColor || v.bg};background-image:${v.heroGrad || 'none'}">`
+  // Outlook desktop ignores CSS background images, so it gets a real <img>; everyone else keeps the cover background.
+  const boothMso = `<!--[if mso]><img src="${img(v.booth)}" width="150" height="130" alt="" style="display:block;width:150px;height:130px;border:0"><![endif]--><!--[if !mso]><!-->&nbsp;<!--<![endif]-->`
   const boothImg = v.hero
-    ? `<td class="bimg" width="150" background="${img(v.hero)}" bgcolor="${panel}" style="width:150px;background:${panel} url('${img(v.hero)}') center / cover no-repeat;background-image:url('${img(v.hero)}');background-size:cover;background-position:center;border-radius:13px 0 0 13px">&nbsp;</td>`
-    : `<td class="bimg" width="150" bgcolor="${v.heroColor || panel}" style="width:150px;background-color:${v.heroColor || panel};background-image:${v.heroGrad || 'none'};border-radius:13px 0 0 13px">&nbsp;</td>`
+    ? `<td class="bimg" width="150" valign="middle" background="${img(v.hero)}" bgcolor="${panel}" style="width:150px;background:${panel} url('${img(v.hero)}') center / cover no-repeat;background-image:url('${img(v.hero)}');background-size:cover;background-position:center;border-radius:13px 0 0 13px">${boothMso}</td>`
+    : `<td class="bimg" width="150" valign="middle" bgcolor="${v.heroColor || panel}" style="width:150px;background-color:${v.heroColor || panel};background-image:${v.heroGrad || 'none'};border-radius:13px 0 0 13px">${boothMso}</td>`
   const wa = i.whatsappUrl
     ? `<tr><td align="center" style="padding-top:12px"><a href="${esc(i.whatsappUrl)}" style="${B(12.5, v.ink, `text-decoration:none;border:1px solid ${line};border-radius:999px;padding:8px 16px;display:inline-block`)}"><span style="color:#25D366">&#9679;</span>&nbsp; Follow ${esc(v.short)} on WhatsApp</a></td></tr>`
     : ''
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  return `<!doctype html><html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">
 <title>You're on the list</title>
 <link href="${THEME_FONTS_URL}" rel="stylesheet">
@@ -96,9 +98,11 @@ export function brandedHtml(i: BrandedInput): string {
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:${v.bg}">
 
 <tr>${heroOpen}
+  <!--[if gte mso 9]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:230px"><v:fill type="frame" src="${img(v.outlookHero)}" color="${v.bg}" /><v:textbox inset="0,0,0,0"><![endif]-->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" valign="bottom" height="230" style="height:230px;padding:0 0 30px;background:${rgba(v.bg, v.heroDim ?? 0.45)}">
     <img src="${img(v.logo)}" width="${v.logoW}" alt="${venue}" style="display:block;width:${v.logoW}px;max-width:70%;height:auto;border:0">
   </td></tr></table>
+  <!--[if gte mso 9]></v:textbox></v:rect><![endif]-->
 </td></tr>
 
 <tr><td class="px" align="center" style="padding:26px 36px 0">
@@ -156,7 +160,7 @@ ${deal ? `<tr><td class="px" style="padding:8px 36px 0;font-family:${v.body};col
 <tr><td class="px" style="padding:24px 36px 0">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${line};border-radius:14px;border-collapse:separate;overflow:hidden"><tr>
     ${boothImg}
-    <td style="padding:18px">
+    <td valign="middle" style="padding:18px">
       <div style="${H(18)}">${esc(booth.heading)}</div>
       <div style="${B(13, muted, 'padding-top:6px')}">${esc(booth.intro)}</div>
       <div style="padding-top:10px"><a href="${RESERVATIONS}/on/${v.onKey}" style="${B(12, v.acc, 'font-weight:700;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none')}">Book a booth &rarr;</a></div>

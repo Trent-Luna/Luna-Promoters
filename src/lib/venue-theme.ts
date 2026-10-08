@@ -46,6 +46,10 @@ export interface VenueTheme {
   heroDim?: number
   logo: string
   logoW: number
+  /** Real <img> for the booth card (Outlook ignores CSS background images). */
+  booth: string
+  /** Header photo with the dim baked in, for Outlook's VML background. */
+  outlookHero: string
   boothT: string
   boothP: string
 }
@@ -60,7 +64,7 @@ export const THEMES: Record<string, VenueTheme> = {
     head: "'Archivo Black','Arial Black',Arial,sans-serif", headW: 400, headCase: 'uppercase', headTrack: '0.01em',
     body: "'Archivo Narrow','Arial Narrow',Arial,sans-serif", num: "'Archivo Black','Arial Black',Arial,sans-serif", numW: 400,
     h1: 30, rad: 4, btnCase: 'uppercase',
-    hero: '/brand/email/hero-pump.jpg', logo: '/brand/email/logo-pump.png', logoW: 260,
+    hero: '/brand/email/hero-pump.jpg', logo: '/brand/email/logo-pump.png', booth: '/brand/email/booth-pump.jpg', outlookHero: '/brand/email/hero-pump-outlook.jpg', logoW: 260,
     boothT: 'VIP booths from $350', boothP: 'Skip the line with the group. Bottles to the booth.',
   },
   'mamacita-nightclub': {
@@ -71,7 +75,7 @@ export const THEMES: Record<string, VenueTheme> = {
     h1: 40, rad: 999, btnCase: 'none',
     hero: null, heroColor: '#4a1028',
     heroGrad: 'radial-gradient(120% 90% at 20% 0%, #F83460 0%, rgba(248,52,96,0) 55%), radial-gradient(90% 80% at 95% 20%, #8F1D52 0%, rgba(143,29,82,0) 60%)',
-    heroDim: 0, logo: '/brand/email/logo-mamacita.png', logoW: 280,
+    heroDim: 0, logo: '/brand/email/logo-mamacita.png', booth: '/brand/email/booth-mamacita.jpg', outlookHero: '/brand/email/hero-mamacita-outlook.jpg', logoW: 280,
     boothT: 'Make it a booth', boothP: 'Birthday, hens or just the girls. We will look after the table.',
   },
   'eclipse': {
@@ -80,7 +84,7 @@ export const THEMES: Record<string, VenueTheme> = {
     head: "Jost,'Century Gothic',Futura,Arial,sans-serif", headW: 300, headCase: 'uppercase', headTrack: '0.18em',
     body: "Jost,'Century Gothic',Arial,sans-serif", num: "Jost,'Century Gothic',Arial,sans-serif", numW: 300,
     h1: 26, rad: 2, btnCase: 'uppercase',
-    hero: '/brand/email/hero-eclipse.jpg', logo: '/brand/email/logo-eclipse.png', logoW: 260,
+    hero: '/brand/email/hero-eclipse.jpg', logo: '/brand/email/logo-eclipse.png', booth: '/brand/email/booth-eclipse.jpg', outlookHero: '/brand/email/hero-eclipse-outlook.jpg', logoW: 260,
     boothT: 'Book a VIP booth', boothP: 'A booth on the floor for the group, bottle service to the table.',
   },
   'eclipse-afterdark': {
@@ -89,7 +93,7 @@ export const THEMES: Record<string, VenueTheme> = {
     head: "'Archivo Narrow','Arial Narrow',Arial,sans-serif", headW: 700, headCase: 'uppercase', headTrack: '0.04em',
     body: "'Archivo Narrow','Arial Narrow',Arial,sans-serif", num: "'Archivo Narrow','Arial Narrow',Arial,sans-serif", numW: 700,
     h1: 34, rad: 3, btnCase: 'uppercase',
-    hero: '/brand/email/hero-afterdark.jpg', heroPos: 'center 35%', logo: '/brand/email/logo-afterdark.png', logoW: 280,
+    hero: '/brand/email/hero-afterdark.jpg', heroPos: 'center 35%', logo: '/brand/email/logo-afterdark.png', booth: '/brand/email/booth-afterdark.jpg', outlookHero: '/brand/email/hero-afterdark-outlook.jpg', logoW: 280,
     boothT: 'Book a VIP booth', boothP: 'Your own corner of After Dark for the night.',
   },
   'su-casa-brisbane': {
@@ -98,7 +102,7 @@ export const THEMES: Record<string, VenueTheme> = {
     head: "'Josefin Sans','Century Gothic',Arial,sans-serif", headW: 700, headCase: 'uppercase', headTrack: '0.12em',
     body: "'Josefin Sans','Century Gothic',Arial,sans-serif", num: "'Josefin Sans','Century Gothic',Arial,sans-serif", numW: 600,
     h1: 26, rad: 999, btnCase: 'uppercase',
-    hero: '/brand/email/hero-sucasa.jpg', logo: '/brand/email/logo-sucasa.png', logoW: 240,
+    hero: '/brand/email/hero-sucasa.jpg', logo: '/brand/email/logo-sucasa.png', booth: '/brand/email/booth-sucasa.jpg', outlookHero: '/brand/email/hero-sucasa-outlook.jpg', logoW: 240,
     boothT: 'Book a VIP booth', boothP: 'Nightclub or rooftop. Bottles to the booth.',
   },
 }
