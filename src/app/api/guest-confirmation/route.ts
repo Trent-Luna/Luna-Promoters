@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { occasionBlocksHtml } from '@/lib/occasion-packages'
 import { confirmationSubject, emailHtml, isTrentPromoter } from './email'
+import { cutoffLabel } from '@/lib/guestlist-cutoff'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     const svc = createServiceClient()
     const { data: reg } = await svc
       .from('guest_registrations')
-      .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, guests(first_name,email), venues(name,slug), events(event_date), promoters(id, promoter_code)')
+      .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, guests(first_name,email), venues(name,slug,guestlist_until), events(event_date), promoters(id, promoter_code)')
       .eq('qr_token', token)
       .maybeSingle()
     if (!reg) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 })
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
 
     const venue = (reg as any).venues?.name || 'Luna Group'
     const venueSlug = (reg as any).venues?.slug as string | undefined
+    const untilLabel = cutoffLabel((reg as any).venues?.guestlist_until)
     const occasion = (reg as any).special_occasion as string | undefined
     const occasionBlocks = occasionBlocksHtml(venueSlug, occasion)
     const eventDate = (reg as any).events?.event_date as string | undefined
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
         from: 'Luna Group <noreply@lunagroup.com.au>',
         to: [email],
         subject: confirmationSubject(venue, ownerGuestList),
-        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList }),
+        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel }),
       }),
     })
     if (!res.ok) {

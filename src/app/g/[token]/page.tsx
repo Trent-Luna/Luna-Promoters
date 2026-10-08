@@ -4,6 +4,7 @@ import { QRCode } from '@/components/QRCode'
 import { SaveQR } from '@/components/SaveQR'
 import { StatusPill } from '@/components/ui'
 import { fmtDate, fmtTime } from '@/lib/format'
+import { cutoffLabel } from '@/lib/guestlist-cutoff'
 import { notFound } from 'next/navigation'
 import { CalendarShare } from './actions'
 import { GroupInvite, type Member } from './group'
@@ -20,6 +21,7 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
   if (!reg) notFound()
   const members = (group ?? []) as Member[]
   const dateLabel = `${fmtDate(reg.event_date)}${reg.start_time ? ` · ${fmtTime(reg.start_time)}` : ''}`
+  const untilLabel = cutoffLabel(reg.guestlist_until)
   const upcoming = reg.event_date >= new Date(Date.now() + 10 * 3600_000).toISOString().slice(0, 10)
 
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
@@ -53,6 +55,11 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
             <span className="text-sm text-luna-muted">Status</span>
             <StatusPill status={reg.status} />
           </div>
+          {untilLabel && (
+            <p className="text-sm font-semibold text-luna-goldsoft mb-3">
+              Guest list entry until {untilLabel} sharp. Arrive before {untilLabel}.
+            </p>
+          )}
           <p className="text-xs text-luna-muted mb-6">
             This QR is personal to you — save it and show it at the door. One scan, one entry.
           </p>

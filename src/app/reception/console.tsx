@@ -6,8 +6,9 @@ import { fmtDate, fmtDateTime } from '@/lib/format'
 import { Icon } from '@/components/icons'
 import { SearchInput } from '@/components/ui'
 import { cacheKey, loadCache, saveCache, loadQueue, saveQueue, type QueuedCheckIn } from './offline'
+import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
 
-interface Venue { id: string; name: string }
+interface Venue { id: string; name: string; guestlist_until?: string | null }
 interface Row {
   id: string; status: string; qr_token: string
   first_name: string; last_name: string; mobile: string; email: string | null
@@ -43,6 +44,14 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
   const [queued, setQueued] = useState(0)
   const [pickerOpen, setPickerOpen] = useState(false)
   const flushing = useRef(false)
+
+  // Tonight's guest list cut-off (Pump 11pm, Mamacita 10:30pm), re-checked
+  // every 30 seconds so the door flips to closed on the minute.
+  const venue = venues.find(v => v.id === venueId) ?? null
+  const untilLabel = cutoffLabel(venue?.guestlist_until)
+  const [clock, setClock] = useState(() => Date.now())
+  useEffect(() => { const t = setInterval(() => setClock(Date.now()), 30_000); return () => clearInterval(t) }, [])
+  const listClosed = !!date && guestlistClosed(date, venue?.guestlist_until, new Date(clock))
 
   const flash = (kind: 'ok' | 'warn' | 'err', msg: string) => {
     setToast({ kind, msg }); setTimeout(() => setToast(null), 3500)
@@ -131,8 +140,8 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     try {
       for (const it of items) {
         const { error } = it.kind === 'token'
-          ? await supabase.rpc('check_in_by_token', { p_token: it.token, p_no_entry: it.noEntry, p_notes: 'offline sync', p_expected_date: it.date })
-          : await supabase.rpc('check_in_guest', { p_registration: it.registrationId, p_no_entry: it.noEntry, p_notes: 'offline sync' })
+          ? await supabase.rpc('door_check_in_by_token', { p_token: it.token, p_no_entry: it.noEntry, p_notes: 'offline sync', p_expected_date: it.date, p_at: it.at })
+          : await supabase.rpc('door_check_in', { p_registration: it.registrationId, p_no_entry: it.noEntry, p_notes: 'offline sync', p_at: it.at })
         if (error) break // still no signal — keep the rest for next time
         remaining = remaining.filter(x => x !== it)
       }
@@ -177,13 +186,18 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     if (r.status === 'checked_in' && !noEntry) {
       flash('warn', `${r.first_name} ${r.last_name} is already checked in`); return
     }
+    // Strict cut-off. Checked here too so an offline tap is refused on the spot
+    // rather than queued and quietly rejected later.
+    if (!noEntry && listClosed) {
+      flash('err', `Guest list closed at ${untilLabel} — ${r.first_name} is not on the list now`); return
+    }
     if (!navigator.onLine) {
       applyLocal(r.id, noEntry)
       enqueue({ kind: 'registration', registrationId: r.id, noEntry, at: new Date().toISOString() })
       flash('warn', `${noEntry ? 'No entry' : 'Checked in'} offline — will sync when signal returns`)
       return
     }
-    const { data, error } = await supabase.rpc('check_in_guest', {
+    const { data, error } = await supabase.rpc('door_check_in', {
       p_registration: r.id, p_no_entry: noEntry, p_notes: null,
     })
     if (error) {
@@ -195,6 +209,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     }
     if (!data?.ok) {
       if (data?.error === 'already_checked_in') flash('warn', `${r.first_name} already checked in`)
+      else if (data?.error === 'guestlist_closed') flash('err', `Guest list closed${untilLabel ? ` at ${untilLabel}` : ''} — ${r.first_name} is not on the list now`)
       else flash('err', 'Could not check in — ' + (data?.error ?? 'error'))
       return
     }
@@ -207,12 +222,13 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
       const r = rows.find(x => x.qr_token === token)
       if (!r) { setScanResult({ kind: 'err', title: 'NO SIGNAL', sub: 'Not in the cached list — search by name' }); return }
       if (r.status === 'checked_in') { setScanResult({ kind: 'err', title: 'ALREADY CHECKED IN', sub: `${r.first_name} ${r.last_name}` }); return }
+      if (listClosed) { setScanResult({ kind: 'err', title: 'GUEST LIST CLOSED', sub: `Closed at ${untilLabel} · ${r.first_name} ${r.last_name}` }); return }
       applyLocal(r.id, false)
       enqueue({ kind: 'token', token, noEntry: false, date, at: new Date().toISOString() })
       setScanResult({ kind: 'ok', title: 'CHECKED IN', sub: `${r.first_name} ${r.last_name} · offline, will sync` })
       return
     }
-    const { data, error } = await supabase.rpc('check_in_by_token', {
+    const { data, error } = await supabase.rpc('door_check_in_by_token', {
       p_token: token, p_no_entry: false, p_notes: null, p_expected_date: date,
     })
     if (error) { setScanResult({ kind: 'err', title: 'ERROR', sub: error.message }); return }
@@ -221,6 +237,8 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
         setScanResult({ kind: 'err', title: 'ALREADY CHECKED IN', sub: data.guest_name || '' })
       else if (data?.error === 'wrong_date')
         setScanResult({ kind: 'warn', title: 'WRONG DATE', sub: data.event_date ? `This QR is for ${fmtDate(data.event_date)}` : 'Not for tonight' })
+      else if (data?.error === 'guestlist_closed')
+        setScanResult({ kind: 'err', title: 'GUEST LIST CLOSED', sub: `${untilLabel ? `Closed at ${untilLabel}` : 'Closed'}${data.guest_name ? ` · ${data.guest_name}` : ''}` })
       else if (data?.error === 'not_found')
         setScanResult({ kind: 'err', title: 'NOT RECOGNISED', sub: 'QR not in this system' })
       else if (data?.error === 'not_authorised')
@@ -231,7 +249,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     setScanResult({ kind: 'ok', title: 'CHECKED IN', sub: data.guest_name || '' })
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, date, supabase, load])
+  }, [rows, date, supabase, load, listClosed, untilLabel])
 
   // A university membership QR (/verify/<token>) goes to the wristband screen —
   // one scanner at the door for both kinds of pass.
@@ -284,6 +302,14 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
             <label className="label">Date</label>
             <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
+        </div>
+      )}
+
+      {untilLabel && (
+        <div className={`card px-4 py-3 text-sm font-semibold ${listClosed ? 'border-red-500/50 text-red-400' : 'border-luna-gold/40 text-luna-goldsoft'}`}>
+          {listClosed
+            ? `Guest list closed at ${untilLabel}. No more guest list check-ins tonight.`
+            : `Guest list runs until ${untilLabel} sharp.`}
         </div>
       )}
 

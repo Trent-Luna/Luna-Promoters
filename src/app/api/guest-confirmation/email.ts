@@ -22,6 +22,8 @@ export function emailHtml(o: {
   pass: string
   occasionBlocks: string
   ownerGuestList?: boolean
+  /** e.g. "11pm" — the venue's guest list cut-off, when it has one. */
+  untilLabel?: string | null
 }) {
   const pill = o.ownerGuestList
     ? `<span style="display:inline-block;background:rgba(212,175,55,.15);color:#d4af37;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:999px">OWNER'S GUEST LIST</span>`
@@ -37,6 +39,7 @@ export function emailHtml(o: {
         <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:22px auto 8px"><tr><td style="background:#ffffff;border-radius:14px;padding:16px">
           <img src="${o.qrImg}" width="200" height="200" alt="Your QR code" style="display:block;width:200px;height:200px" />
         </td></tr></table>
+        ${o.untilLabel ? `<p style="color:#d4af37;font-size:14px;font-weight:700;margin:10px 0 4px">Guest list entry until ${o.untilLabel} sharp. Arrive before ${o.untilLabel}.</p>` : ''}
         <p style="color:#9ca3af;font-size:13px;margin:6px 0 18px">Show this QR at the door — it's personal to you.</p>
         <a href="${o.pass}" style="display:inline-block;background:#d4af37;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">View &amp; save your QR</a>
         <p style="color:#6b7280;font-size:12px;margin:20px 0 0">No screenshot? No problem — just give your name at the door and we'll find you.</p>

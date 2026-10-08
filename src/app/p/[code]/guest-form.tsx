@@ -7,8 +7,9 @@ import {
   shortNight, prettyNight, venueToday, addDays, tradingDaysLabel,
   type Blackout,
 } from '@/lib/trading'
+import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
 
-interface Venue { id: string; name: string; trading_days?: number[] | null }
+interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
 
 const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniversary', 'Graduation', 'Corporate / work', 'Other']
 
@@ -94,6 +95,10 @@ export function GuestRegistrationForm({
 
   const venue = useMemo(() => venues.find(v => v.id === venueId) ?? null, [venues, venueId])
   const tradingDays = venue?.trading_days ?? null
+  // The nightly cut-off (Pump 11pm, Mamacita 10:30pm). Once it passes, tonight
+  // is no longer on offer. The server refuses it too; this just says so first.
+  const until = venue?.guestlist_until ?? null
+  const untilLabel = cutoffLabel(until)
   const isBirthday = occasion === 'Birthday'
 
   // The window the guest chooses from. A birthday gets the fortnight around it;
@@ -106,13 +111,21 @@ export function GuestRegistrationForm({
   const nights = useMemo(() => {
     if (!venueId) return []
     return tradingNightsBetween(window.from, window.to, tradingDays, blackouts, venueId)
-  }, [venueId, window.from, window.to, tradingDays, blackouts])
+      .filter(n => !guestlistClosed(n, until))
+  }, [venueId, window.from, window.to, tradingDays, blackouts, until])
 
   // A chosen date that the venue is shut on. Only reachable through the escape
   // hatch or a hand-edited link, and said plainly rather than failing on submit.
   const chosenIsClosed = !!date && !!venueId && !tradesOn(date, tradingDays, blackouts, venueId)
   const closedAlternative = chosenIsClosed
     ? nextTradingNight(date, tradingDays, blackouts, venueId)
+    : null
+
+  // A night that trades but whose guest list has already closed — tonight,
+  // after the cut-off, reached through a locked link or the free date input.
+  const chosenIsShut = !!date && !chosenIsClosed && guestlistClosed(date, until)
+  const shutAlternative = chosenIsShut
+    ? nextTradingNight(addDays(date, 1), tradingDays, blackouts, venueId)
     : null
 
   async function submit(e: React.FormEvent) {
@@ -135,6 +148,11 @@ export function GuestRegistrationForm({
           // to go, and a tap that goes there.
           setSuggested(data.suggested ?? null)
           setErr(`${venue?.name ?? 'This venue'} isn’t open on ${prettyNight(date)}.`)
+          return
+        }
+        if (data?.error === 'guestlist_closed') {
+          setSuggested(data.suggested ?? null)
+          setErr(`The guest list for ${venue?.name ?? 'this venue'} on ${prettyNight(date)} has closed${untilLabel ? ` (it runs until ${untilLabel})` : ''}.`)
           return
         }
         const m: Record<string, string> = {
@@ -213,6 +231,12 @@ export function GuestRegistrationForm({
             ? `Birthday nights: ${venue?.name ?? 'this venue'} is open ${tradingDaysLabel(tradingDays)} — pick any night in the fortnight from ${prettyNight(window.from)}.`
             : `${venue?.name ?? 'This venue'} is open ${tradingDaysLabel(tradingDays)}.`}
           {nights.length === 0 && ' Nothing is open in that window — try “Another date”.'}
+        </p>
+      )}
+
+      {venueId && untilLabel && (
+        <p className="text-xs text-luna-goldsoft font-medium">
+          Guest list entry is until {untilLabel} sharp. Arrive before then — after {untilLabel} the guest list no longer applies.
         </p>
       )}
 
@@ -297,7 +321,22 @@ export function GuestRegistrationForm({
           )}
         </p>
       )}
-      <button className="btn-gold w-full btn-lg" disabled={loading || chosenIsClosed}>
+      {chosenIsShut && (
+        <p className="text-sm text-amber-400">
+          The guest list for {prettyNight(date)} has closed{untilLabel ? ` — it runs until ${untilLabel}` : ''}.
+          {shutAlternative && (
+            <>
+              {' '}
+              <button type="button" className="underline font-semibold"
+                onClick={() => { setDate(shutAlternative); setFreeDate(false) }}>
+                Use {prettyNight(shutAlternative)} instead
+              </button>
+            </>
+          )}
+        </p>
+      )}
+
+      <button className="btn-gold w-full btn-lg" disabled={loading || chosenIsClosed || chosenIsShut}>
         {loading ? 'Registering…' : 'Get my QR code'}
       </button>
       <p className="text-[11px] text-luna-muted text-center leading-relaxed">
