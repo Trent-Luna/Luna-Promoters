@@ -14,6 +14,21 @@ export function confirmationSubject(venue: string, ownerGuestList: boolean): str
     : `You're on the guestlist — ${venue}`
 }
 
+/**
+ * The guest list cut-off, as its own block right under the night — the one
+ * line on this email that changes when the guest leaves home.
+ * Trent, 8 Oct 2026: Pump runs until 11pm strictly, Mamacita 10:30.
+ */
+export function cutoffBlock(untilLabel?: string | null): string {
+  if (!untilLabel) return ''
+  const t = untilLabel.toUpperCase()
+  return `<table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:18px auto 0;border:1px solid #d4af37;border-radius:12px;background:#1d1a12"><tr><td align="center" style="padding:12px 22px">
+          <div style="color:#d4af37;font-size:11px;font-weight:700;letter-spacing:2px">GUEST LIST CLOSES</div>
+          <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:1px;margin-top:2px">${t} SHARP</div>
+          <div style="color:#9ca3af;font-size:12px;margin-top:4px">Arrive before ${untilLabel}. After that the guest list no longer applies.</div>
+        </td></tr></table>`
+}
+
 export function emailHtml(o: {
   first: string
   venue: string
@@ -36,10 +51,10 @@ export function emailHtml(o: {
         <h1 style="font-size:22px;margin:14px 0 4px;color:#ffffff">Hey ${o.first} 👋</h1>
         ${ownerLine}<p style="color:#9ca3af;margin:0 0 2px">${o.venue}</p>
         <p style="color:#9ca3af;font-size:14px;margin:0">${o.dateLabel}</p>
+        ${cutoffBlock(o.untilLabel)}
         <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:22px auto 8px"><tr><td style="background:#ffffff;border-radius:14px;padding:16px">
           <img src="${o.qrImg}" width="200" height="200" alt="Your QR code" style="display:block;width:200px;height:200px" />
         </td></tr></table>
-        ${o.untilLabel ? `<p style="color:#d4af37;font-size:14px;font-weight:700;margin:10px 0 4px">Guest list entry until ${o.untilLabel} sharp. Arrive before ${o.untilLabel}.</p>` : ''}
         <p style="color:#9ca3af;font-size:13px;margin:6px 0 18px">Show this QR at the door — it's personal to you.</p>
         <a href="${o.pass}" style="display:inline-block;background:#d4af37;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">View &amp; save your QR</a>
         <p style="color:#6b7280;font-size:12px;margin:20px 0 0">No screenshot? No problem — just give your name at the door and we'll find you.</p>

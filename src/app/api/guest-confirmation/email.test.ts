@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   confirmationSubject,
+  cutoffBlock,
   emailHtml,
   isTrentPromoter,
   TRENT_PROMOTER_CODE,
@@ -65,5 +66,19 @@ describe('emailHtml', () => {
     expect(html).toContain("You're on the <span style=\"color:#d4af37;font-weight:700\">owner's guest list</span>.")
     expect(html.indexOf('Hey Alex 👋')).toBeLessThan(html.indexOf("owner's guest list"))
     expect(html.indexOf("owner's guest list")).toBeLessThan(html.indexOf('Eclipse'))
+  })
+})
+
+describe('guest list cut-off on the confirmation', () => {
+  const base = { first: 'Sam', venue: 'Pump Nightclub', dateLabel: 'Friday 9 October 2026', qrImg: 'q', pass: 'p', occasionBlocks: '' }
+  it('shows the cut-off block when the venue has one', () => {
+    const html = emailHtml({ ...base, untilLabel: '11pm' })
+    expect(html).toContain('GUEST LIST CLOSES')
+    expect(html).toContain('11PM SHARP')
+    expect(html).toContain('Arrive before 11pm')
+  })
+  it('says nothing about a cut-off when there is none', () => {
+    expect(emailHtml(base)).not.toContain('GUEST LIST CLOSES')
+    expect(cutoffBlock(null)).toBe('')
   })
 })
