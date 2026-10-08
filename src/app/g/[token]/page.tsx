@@ -8,6 +8,8 @@ import { cutoffLabel } from '@/lib/guestlist-cutoff'
 import { notFound } from 'next/navigation'
 import { CalendarShare } from './actions'
 import { GroupInvite, type Member } from './group'
+import { BrandedPass } from './branded'
+import { themeFor } from '@/lib/venue-theme'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +29,12 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
   const checkInUrl = `${site}/g/${token}`
   const promoterLink = `${site}/p/${reg.promoter_code}`
+
+  // Venues with their own look get the branded pass; others keep this one.
+  const theme = themeFor(reg.venue_slug)
+  if (theme) {
+    return <BrandedPass reg={reg} theme={theme} token={token} members={members} site={site} upcoming={upcoming} />
+  }
 
   return (
     <main className="min-h-screen">

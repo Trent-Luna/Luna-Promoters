@@ -91,3 +91,24 @@ export function occasionBlocksHtml(
   }
   return boothCard('')
 }
+
+// ── for the venue-branded confirmation (8 Oct 2026) ─────────────────────────
+// The branded email draws its own booth card in the venue's colours, so it
+// takes the free-deal card on its own, and the occasion wording for the booth.
+
+/** The free guest list deal card for a Birthday / Hens / Bucks, or ''. */
+export function occasionDealHtml(occasion: string | null | undefined): string {
+  return dealCard((occasion ?? '').trim())
+}
+
+/** Booth card heading and line for an occasion, or null for none. */
+export function occasionBoothCopy(occasion: string | null | undefined): { heading: string; intro: string } | null {
+  const occ = (occasion ?? '').trim()
+  if (!PARTY[occ]) return null
+  return {
+    heading: 'Add a VIP booth',
+    intro: occ === 'Birthday'
+      ? 'Bottle service and the best seats in the house. Birthday packages can be added when you book.'
+      : 'Bottle service and the best seats in the house, and our events team will look after your group.',
+  }
+}

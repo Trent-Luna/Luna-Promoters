@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { occasionBlocksHtml } from '@/lib/occasion-packages'
 import { confirmationSubject, emailHtml, isTrentPromoter } from './email'
 import { cutoffLabel } from '@/lib/guestlist-cutoff'
+import { themeFor } from '@/lib/venue-theme'
+import { brandedFrom, brandedHtml, brandedSubject } from './branded'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,7 +22,7 @@ export async function POST(req: Request) {
     const svc = createServiceClient()
     const { data: reg } = await svc
       .from('guest_registrations')
-      .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, guests(first_name,email), venues(name,slug,guestlist_until), events(event_date), promoters(id, promoter_code)')
+      .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, guests(first_name,email), venues(name,slug,guestlist_until,whatsapp_channel_url), events(event_date), promoters(id, promoter_code, full_name)')
       .eq('qr_token', token)
       .maybeSingle()
     if (!reg) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 })
@@ -49,15 +51,31 @@ export async function POST(req: Request) {
     const promoterCode = (reg as any).promoters?.promoter_code as string | undefined
     const ownerGuestList = isTrentPromoter(promoterId, promoterCode)
 
+    // Venues with their own look (Eclipse, After Dark, Su Casa, Pump, Mamacita)
+    // get the branded email from the venue's name. Anything else keeps the
+    // original Luna Group email.
+    const theme = themeFor(venueSlug)
+    const message = theme && eventDate
+      ? {
+          from: brandedFrom(venue),
+          subject: brandedSubject({ theme, eventDate, ownerGuestList }),
+          html: brandedHtml({
+            theme, site, token, venueName: venue, first, eventDate,
+            promoterName: (reg as any).promoters?.full_name ?? null,
+            untilLabel, occasion, ownerGuestList,
+            whatsappUrl: (reg as any).venues?.whatsapp_channel_url ?? null,
+          }),
+        }
+      : {
+          from: 'Luna Group <noreply@lunagroup.com.au>',
+          subject: confirmationSubject(venue, ownerGuestList),
+          html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel }),
+        }
+
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'Luna Group <noreply@lunagroup.com.au>',
-        to: [email],
-        subject: confirmationSubject(venue, ownerGuestList),
-        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel }),
-      }),
+      body: JSON.stringify({ to: [email], ...message }),
     })
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
