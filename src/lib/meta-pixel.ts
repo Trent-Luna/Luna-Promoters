@@ -3,7 +3,8 @@
  * Meta Pixel on the guest list form, per venue.
  *
  * Trent, 8 Oct 2026: the Pump Meta ads send people to this form, so Meta needs
- * to see who signs up to optimise for it. Only venues listed here load the
+ * to see who signs up to optimise for it. Mamacita added the same day (its
+ * dataset already existed). Only venues listed here load the
  * pixel; every other venue's form stays free of Meta tracking.
  *
  * Events: PageView when the form shows a pixel venue, and Lead when the guest
@@ -12,6 +13,7 @@
  */
 const PIXELS: { match: RegExp; id: string }[] = [
   { match: /pump/i, id: '1337692745079424' }, // "Pump Pixel" dataset, Luna Group Hospitality
+  { match: /mamacita/i, id: '1358760112583754' }, // "Mamacitas Pixel" dataset, Luna Group Hospitality
 ]
 
 export function pixelForVenue(name?: string | null): string | null {
