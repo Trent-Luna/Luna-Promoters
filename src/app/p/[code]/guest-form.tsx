@@ -13,6 +13,17 @@ interface Venue { id: string; name: string; trading_days?: number[] | null; gues
 
 const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniversary', 'Graduation', 'Corporate / work', 'Other']
 
+/**
+ * `?occ=` on the link → the occasion the picker starts on. Matched on the
+ * first word, case-insensitive ("birthday", "hens", "corporate"), so a link can
+ * be typed by hand. Anything unrecognised starts on "no occasion", as before.
+ */
+export function occasionFromHint(hint: string | null | undefined): string {
+  const h = (hint ?? '').trim().toLowerCase()
+  if (!/^[a-z]{3,20}$/.test(h)) return ''
+  return OCCASIONS.find(o => o.toLowerCase().split(/[\s/]+/)[0] === h) ?? ''
+}
+
 /** How far ahead the ordinary picker looks. Ten weeks is three months of Saturdays. */
 const HORIZON_DAYS = 70
 
@@ -63,7 +74,7 @@ const HORIZON_DAYS = 70
  */
 export function GuestRegistrationForm({
   promoterCode, venues, blackouts = [],
-  lockedVenue = null, lockedDate = null, showOccasion = true, source = null,
+  lockedVenue = null, lockedDate = null, showOccasion = true, source = null, occasionHint = null,
 }: {
   promoterCode: string
   venues: Venue[]
@@ -72,6 +83,7 @@ export function GuestRegistrationForm({
   lockedDate?: string | null
   showOccasion?: boolean
   source?: string | null
+  occasionHint?: string | null
 }) {
   const router = useRouter()
   const today = venueToday()
@@ -85,7 +97,7 @@ export function GuestRegistrationForm({
   const [venueId, setVenueId] = useState(lockedVenue?.id ?? '')
   const [date, setDate] = useState(lockedDate ?? '')
   const [freeDate, setFreeDate] = useState(false)
-  const [occasion, setOccasion] = useState('')
+  const [occasion, setOccasion] = useState(() => occasionFromHint(occasionHint))
   const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
   const [consent, setConsent] = useState(false)
   const [err, setErr] = useState('')

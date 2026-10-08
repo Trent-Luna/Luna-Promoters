@@ -17,6 +17,10 @@ export const dynamic = 'force-dynamic'
  *   ?d=2026-08-14 one night: the date picker becomes a heading
  *   ?t=…          the heading text, for when "Eclipse" is not what to call it
  *   ?o=0          hide the special-occasion picker
+ *   ?occ=birthday start the occasion picker on Birthday (or hens, bucks…).
+ *                 For an ad that is selling one occasion — Pump's "Birthday
+ *                 packages" — so the guest lands on the birthday version of
+ *                 the form without hunting for it. Still changeable.
  *   ?src=ig-juju  which poster / story / SMS the guest came from — recorded on
  *                 the registration and counted as a visit, so My Link can show
  *                 visits → registered → checked in per source
@@ -40,10 +44,10 @@ export default async function PromoterLink({
   params, searchParams,
 }: {
   params: Promise<{ code: string }>
-  searchParams: Promise<{ v?: string; d?: string; t?: string; o?: string; src?: string }>
+  searchParams: Promise<{ v?: string; d?: string; t?: string; o?: string; src?: string; occ?: string }>
 }) {
   const { code } = await params
-  const { v, d, t, o, src } = await searchParams
+  const { v, d, t, o, src, occ } = await searchParams
   const supabase = await createClient()
 
   const { data } = await supabase.rpc('get_promoter_link', { p_code: code })
@@ -141,6 +145,7 @@ export default async function PromoterLink({
               lockedVenue={lockedVenue}
               lockedDate={lockedDate}
               showOccasion={showOccasion}
+              occasionHint={showOccasion ? (occ ?? null) : null}
               source={source}
             />
           )}
