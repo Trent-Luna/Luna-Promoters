@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -8,6 +8,7 @@ import {
   type Blackout,
 } from '@/lib/trading'
 import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
+import { pixelForVenue, loadPixel, trackLead } from '@/lib/meta-pixel'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
 
@@ -107,6 +108,9 @@ export function GuestRegistrationForm({
 
   const venue = useMemo(() => venues.find(v => v.id === venueId) ?? null, [venues, venueId])
   const tradingDays = venue?.trading_days ?? null
+  // Meta Pixel, only for venues that run Meta ads to this form (Pump for now).
+  const pixelId = pixelForVenue(venue?.name)
+  useEffect(() => { if (pixelId) loadPixel(pixelId) }, [pixelId])
   // The nightly cut-off (Pump 11pm, Mamacita 10:30pm). Once it passes, tonight
   // is no longer on offer. The server refuses it too; this just says so first.
   const until = venue?.guestlist_until ?? null
@@ -186,6 +190,7 @@ export function GuestRegistrationForm({
           keepalive: true,
         })
       } catch {}
+      if (pixelId) trackLead(pixelId, data.qr_token, { content_name: venue?.name, content_category: occasion || 'guest list' })
       router.push(`/g/${data.qr_token}`)
     } catch (e: any) {
       setErr(e.message || 'Something went wrong. Please try again.')
