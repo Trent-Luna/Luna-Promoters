@@ -26,7 +26,9 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
   const rad = v.rad >= 999 ? '999px' : `${v.rad}px`
   // A party night (migration 0051): one QR for the guest and up to N friends.
   const isParty = !!reg.party
-  const plus = Math.max(0, Number(reg.plus_ones) || 0)
+  // Party nights only. Staff can add plus-ones by hand on any night; those
+  // passes keep reading exactly as they always have.
+  const plus = isParty ? Math.max(0, Number(reg.plus_ones) || 0) : 0
   const friends = namesLine(reg.party_names)
 
   const vars = {

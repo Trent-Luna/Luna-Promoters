@@ -18,6 +18,8 @@ interface Row {
   method: string | null; plus_ones: number; group_id: string | null; source: string | null
   /** Party nights (migration 0051): friends' names, and how many of the group are in when it arrived in parts. */
   party_names: string[] | null; admitted: number | null
+  /** The night is a party night (events.party set). Group controls appear only then. */
+  is_party: boolean
 }
 /**
  * `group` is set for a party-night registration bringing friends: the door
@@ -94,7 +96,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     try {
       const { data, error } = await supabase
         .from('guest_registrations')
-        .select('id,status,qr_token,special_occasion,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date)')
+        .select('id,status,qr_token,special_occasion,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date,party)')
         .eq('venue_id', venueId).eq('events.event_date', date)
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -109,6 +111,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
         method: r.check_ins?.[0]?.method ?? r.check_ins?.method ?? null,
         plus_ones: r.plus_ones ?? 0, group_id: r.group_id ?? null, source: r.source ?? null,
         party_names: r.party_names ?? null,
+        is_party: !!r.events?.party,
         admitted: r.check_ins?.[0]?.admitted ?? r.check_ins?.admitted ?? null,
       }))
       setRows(mapped)
@@ -391,7 +394,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
                   {party > 0 && <span className="pill bg-luna-gold/20 text-luna-gold text-[11px]">party of {party + 1}</span>}
                   {r.special_occasion && <span className="pill bg-luna-gold/15 text-luna-gold text-[11px]">{r.special_occasion}</span>}
                 </div>
-                {r.party_names && r.party_names.length > 0 && (
+                {r.is_party && r.party_names && r.party_names.length > 0 && (
                   <div className="text-sm text-luna-goldsoft truncate">With {namesLine(r.party_names)}</div>
                 )}
                 <div className="text-sm text-luna-muted truncate">
@@ -399,7 +402,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
                   {r.checked_in_at && <span className="text-emerald-400"> · in {fmtDateTime(r.checked_in_at)}{r.method ? ` (${r.method === 'scan' ? 'scanned' : 'manual'})` : ''}</span>}
                 </div>
               </div>
-              {r.status === 'checked_in' && r.plus_ones > 0 ? (
+              {r.status === 'checked_in' && r.is_party && r.plus_ones > 0 ? (
                 // A party-night group: who is in, and a tap to change it.
                 <div className="flex flex-col items-start sm:items-end gap-1.5">
                   <span className={`pill ${headsIn(r.plus_ones, r.admitted) < 1 + r.plus_ones ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
