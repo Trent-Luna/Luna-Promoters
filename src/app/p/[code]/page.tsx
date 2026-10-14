@@ -2,6 +2,9 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { GuestRegistrationForm } from './guest-form'
 import { notFound } from 'next/navigation'
+import { PartyPage } from './party'
+import { themeFor } from '@/lib/venue-theme'
+import type { PartyNight } from '@/lib/party'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,6 +107,29 @@ export default async function PromoterLink({
   // link is still a place where somebody will type "birthday", and losing that
   // would cost the venue a table it would otherwise have looked after.
   const showOccasion = o !== '0'
+
+  // A party night (events.party, migration 0051) — the Su Casa 10K Party was
+  // the first. Only for a link locked to one venue AND one night; any other
+  // link renders exactly as before.
+  const party = lockedVenue && lockedDate
+    ? ((await supabase.rpc('get_party_night', { p_venue: lockedVenue.id, p_date: lockedDate })).data as PartyNight | null)
+    : null
+  if (party && lockedVenue) {
+    return (
+      <PartyPage night={party} theme={themeFor(party.venue_slug)}>
+        <GuestRegistrationForm
+          promoterCode={promoter.promoter_code}
+          venues={venues}
+          blackouts={blackouts}
+          lockedVenue={lockedVenue}
+          lockedDate={lockedDate}
+          showOccasion={false}
+          source={source}
+          party={{ maxPlusOnes: party.max_plus_ones ?? 0, texts: party.party?.sms === true }}
+        />
+      </PartyPage>
+    )
+  }
 
   return (
     <main className="min-h-screen">

@@ -11,6 +11,18 @@
  */
 import { SISTERS, THEME_FONTS_URL, RESERVATIONS, nightParts, rgba, tones, type VenueTheme } from '@/lib/venue-theme'
 import { occasionDealHtml, occasionBoothCopy } from '@/lib/occasion-packages'
+import { groupPhrase, namesLine, shortTime } from '@/lib/party'
+
+/** A party night (migration 0051): its name, look and the guest's group. */
+export interface PartyEmail {
+  eventName: string
+  startTime?: string | null
+  tagline?: string | null
+  lede?: string | null
+  included?: string | null
+  plusOnes: number
+  names?: string[] | null
+}
 
 export interface BrandedInput {
   theme: VenueTheme
@@ -24,12 +36,14 @@ export interface BrandedInput {
   occasion?: string | null
   ownerGuestList?: boolean
   whatsappUrl?: string | null
+  party?: PartyEmail | null
 }
 
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-export function brandedSubject(i: Pick<BrandedInput, 'theme' | 'eventDate' | 'ownerGuestList'>): string {
+export function brandedSubject(i: Pick<BrandedInput, 'theme' | 'eventDate' | 'ownerGuestList' | 'party'>): string {
   const n = nightParts(i.eventDate)
+  if (i.party) return `You're in: ${i.party.eventName}, ${n.night}`
   return i.ownerGuestList
     ? `You're on the owner's guest list: ${i.theme.short}, ${n.night}`
     : `You're on the list: ${i.theme.short}, ${n.night}`
@@ -54,9 +68,14 @@ export function brandedHtml(i: BrandedInput): string {
   const radBtn = v.rad >= 999 ? '999px' : `${v.rad}px`
   const H = (size: number, extra = '') => `font-family:${v.head};font-weight:${v.headW};text-transform:${v.headCase};letter-spacing:${v.headTrack};font-size:${size}px;line-height:1.1;color:${v.ink};${extra}`
   const B = (size: number, color = muted, extra = '') => `font-family:${v.body};font-size:${size}px;line-height:1.5;color:${color};${extra}`
-  const kicker = i.ownerGuestList ? "Owner's guest list" : 'Guest list confirmed'
+  const p = i.party ?? null
+  const plus = p ? Math.max(0, p.plusOnes || 0) : 0
+  const friends = p ? namesLine(p.names) : ''
+  const from = p ? shortTime(p.startTime) : ''
+  const title = p ? p.eventName : v.short
+  const kicker = p ? (p.tagline || "You're on the list") : i.ownerGuestList ? "Owner's guest list" : 'Guest list confirmed'
   const kColor = i.ownerGuestList ? '#d4af37' : v.acc
-  const cal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(i.venueName + ' guest list')}&dates=${n.ymd}/${n.ymd}&details=${encodeURIComponent('Your pass: ' + pass)}&location=${encodeURIComponent(i.venueName)}`
+  const cal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p ? p.eventName : i.venueName + ' guest list')}&dates=${n.ymd}/${n.ymd}&details=${encodeURIComponent('Your pass: ' + pass)}&location=${encodeURIComponent(i.venueName)}`
   const sib = SISTERS.map(s => s === v.short ? `<b style="color:${v.ink}">${s}</b>` : s).join(' &middot; ')
   const booth = occasionBoothCopy(i.occasion) ?? { heading: v.boothT, intro: v.boothP }
   const deal = occasionDealHtml(i.occasion)
@@ -108,7 +127,8 @@ export function brandedHtml(i: BrandedInput): string {
 <tr><td class="px" align="center" style="padding:26px 36px 0">
   <div style="font-family:${v.body};font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${kColor}">${kicker}</div>
   <div style="${H(v.h1, 'padding-top:10px')}">You're on the list, ${first}</div>
-  <div style="${B(14, muted, 'padding-top:8px')}">${venue} &middot; ${n.night}</div>
+  <div style="${B(14, muted, 'padding-top:8px')}">${p ? `${esc(p.eventName)} &middot; ${n.night}${from ? ` from ${from}` : ''}` : `${venue} &middot; ${n.night}`}</div>
+  ${p ? `<div style="${B(15, v.ink, 'padding-top:14px')}">${p.lede ? `${esc(p.lede)} ` : ''}${esc(groupPhrase(plus).replace(/^you/, 'You'))} are on the list.</div>` : ''}
 </td></tr>
 
 <tr><td class="px" style="padding:24px 36px 0">
@@ -121,9 +141,9 @@ export function brandedHtml(i: BrandedInput): string {
           <div style="${B(12, muted, 'letter-spacing:0.2em')}">${n.mon}</div>
         </td>
         <td valign="middle" style="padding:18px">
-          <div style="${H(20)}">${esc(v.short)}</div>
+          <div style="${H(20)}">${esc(title)}</div>
           <div style="${B(13, muted, 'padding-top:4px')}">${n.night}${i.promoterName ? `<br>Guest of ${esc(i.promoterName)}` : ''}</div>
-          <div style="${B(11, v.ink, 'font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding-top:6px')}">Guest list &middot; Admit 1</div>
+          <div style="${B(11, v.ink, 'font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding-top:6px')}">Guest list &middot; Admit ${1 + plus}</div>
         </td>
       </tr></table>
     </td></tr>
@@ -137,7 +157,7 @@ export function brandedHtml(i: BrandedInput): string {
         </td>
         <td valign="middle" style="padding-left:16px">
           <div style="${B(15, v.ink, 'font-weight:700')}">Show this at the door</div>
-          <div style="${B(13, muted, 'padding-top:4px')}">It's yours alone. One scan, one entry. Phone flat? Give your name.</div>
+          <div style="${B(13, muted, 'padding-top:4px')}">${plus > 0 ? `One scan lets your group of ${1 + plus} in${friends ? `: you, ${esc(friends)}` : ''}. Phone flat? Give your name.` : "It's yours alone. One scan, one entry. Phone flat? Give your name."}</div>
         </td>
       </tr></table>
     </td></tr>
@@ -153,7 +173,9 @@ export function brandedHtml(i: BrandedInput): string {
   </tr></table>
 </td></tr>
 
-<tr><td align="center" class="px" style="padding:20px 48px 0;${B(13.5, muted)}"><b style="color:${v.ink}">Bringing friends?</b> Everyone needs their own QR. Add them from your pass and we'll send each one theirs.</td></tr>
+${p
+  ? (p.included ? `<tr><td align="center" class="px" style="padding:20px 48px 0;${B(13.5, muted)}"><b style="color:${v.ink}">On the night:</b> ${esc(p.included)}</td></tr>` : '')
+  : `<tr><td align="center" class="px" style="padding:20px 48px 0;${B(13.5, muted)}"><b style="color:${v.ink}">Bringing friends?</b> Everyone needs their own QR. Add them from your pass and we'll send each one theirs.</td></tr>`}
 
 ${deal ? `<tr><td class="px" style="padding:8px 36px 0;font-family:${v.body};color:${v.ink}">${deal}</td></tr>` : ''}
 
@@ -172,7 +194,7 @@ ${deal ? `<tr><td class="px" style="padding:8px 36px 0;font-family:${v.body};col
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
     <td class="kn" width="33%" valign="top" style="border-top:2px solid ${v.acc};padding:8px 8px 0 0;${B(12, muted)}"><b style="color:${v.ink};font-size:12.5px">Bring ID</b><br>Valid photo ID, 18+.</td>
     <td class="kn" width="33%" valign="top" style="border-top:2px solid ${v.acc};padding:8px 8px 0 0;${B(12, muted)}"><b style="color:${v.ink};font-size:12.5px">Door rules</b><br>Capacity, dress code and management discretion apply.</td>
-    <td class="kn" width="33%" valign="top" style="border-top:2px solid ${v.acc};padding:8px 0 0 0;${B(12, muted)}"><b style="color:${v.ink};font-size:12.5px">One each</b><br>Only checked-in guests count toward rewards.</td>
+    <td class="kn" width="33%" valign="top" style="border-top:2px solid ${v.acc};padding:8px 0 0 0;${B(12, muted)}">${p ? `<b style="color:${v.ink};font-size:12.5px">Your group</b><br>Come together, or show the same QR again when the rest arrive.` : `<b style="color:${v.ink};font-size:12.5px">One each</b><br>Only checked-in guests count toward rewards.`}</td>
   </tr></table>
 </td></tr>
 
@@ -182,7 +204,7 @@ ${deal ? `<tr><td class="px" style="padding:8px 36px 0;font-family:${v.body};col
     <tr><td align="center"><img src="${img('/luna-group-white.png')}" width="120" alt="Luna Group Hospitality" style="display:block;width:120px;height:auto;border:0"></td></tr>
     <tr><td align="center" style="padding-top:12px;${B(11, muted, 'letter-spacing:0.16em;text-transform:uppercase')}">${sib}</td></tr>
     ${wa}
-    <tr><td align="center" style="padding-top:12px;${B(11, muted)}">You're getting this because you joined the ${esc(v.short)} guest list.<br>Luna Group Hospitality, Brisbane.</td></tr>
+    <tr><td align="center" style="padding-top:12px;${B(11, muted)}">You're getting this because you ${p ? `registered for the ${esc(p.eventName)}` : `joined the ${esc(v.short)} guest list`}.<br>Luna Group Hospitality, Brisbane.</td></tr>
   </table>
 </td></tr>
 

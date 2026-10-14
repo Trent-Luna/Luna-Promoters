@@ -54,4 +54,25 @@ describe('venue-branded confirmation', () => {
     expect(html).not.toContain('<b>x</b>')
     expect(html).toContain('&lt;b&gt;x&lt;/b&gt;')
   })
+
+  it('a party night: its name, the group and what is on', () => {
+    const party = { eventName: 'Su Casa 10K Party', startTime: '18:00:00', tagline: 'Thank you party',
+      lede: 'Ten thousand of you on Instagram.', included: null, plusOnes: 3, names: ['Mia', 'Sam', 'Priya'] }
+    const theme = THEMES['su-casa-brisbane']
+    expect(brandedSubject({ theme, eventDate: '2026-11-13', party })).toBe("You're in: Su Casa 10K Party, Friday 13 November")
+    const html = brandedHtml({ ...base, venueName: 'Su Casa Brisbane', eventDate: '2026-11-13', theme, party })
+    expect(html).toContain('Admit 4')
+    expect(html).toContain('You and 3 friends are on the list.')
+    expect(html).toContain('group of 4 in: you, Mia, Sam and Priya')
+    expect(html).toContain('from 6pm')
+    expect(html).toContain('registered for the Su Casa 10K Party')
+    expect(html).not.toContain('Everyone needs their own QR')
+    expect(html).not.toContain('On the night:')
+    expect(brandedHtml({ ...base, eventDate: '2026-11-13', theme, party: { ...party, included: 'DJ from 6pm' } })).toContain('On the night:</b> DJ from 6pm')
+  })
+  it('an ordinary night is unchanged', () => {
+    const html = brandedHtml({ ...base, theme: THEMES['pump-nightclub'] })
+    expect(html).toContain('Admit 1')
+    expect(html).toContain('Everyone needs their own QR')
+  })
 })

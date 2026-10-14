@@ -4,7 +4,9 @@ import { occasionBlocksHtml } from '@/lib/occasion-packages'
 import { confirmationSubject, emailHtml, isTrentPromoter } from './email'
 import { cutoffLabel } from '@/lib/guestlist-cutoff'
 import { themeFor } from '@/lib/venue-theme'
-import { brandedFrom, brandedHtml, brandedSubject } from './branded'
+import { brandedFrom, brandedHtml, brandedSubject, type PartyEmail } from './branded'
+import { confirmationText, type PartyLook } from '@/lib/party'
+import { sendSms } from '@/lib/sms'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -22,7 +24,7 @@ export async function POST(req: Request) {
     const svc = createServiceClient()
     const { data: reg } = await svc
       .from('guest_registrations')
-      .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, guests(first_name,email), venues(name,slug,guestlist_until,whatsapp_channel_url), events(event_date), promoters(id, promoter_code, full_name)')
+      .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, plus_ones, party_names, guests(first_name,email,mobile), venues(name,slug,guestlist_until,whatsapp_channel_url), events(event_date,name,start_time,party), promoters(id, promoter_code, full_name)')
       .eq('qr_token', token)
       .maybeSingle()
     if (!reg) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 })
@@ -51,6 +53,17 @@ export async function POST(req: Request) {
     const promoterCode = (reg as any).promoters?.promoter_code as string | undefined
     const ownerGuestList = isTrentPromoter(promoterId, promoterCode)
 
+    // A party night (migration 0051) carries its own name and the guest's group.
+    const ev: any = (reg as any).events ?? {}
+    const look = (ev.party ?? null) as PartyLook | null
+    const party: PartyEmail | null = look
+      ? {
+          eventName: ev.name, startTime: ev.start_time ?? null,
+          tagline: look.tagline ?? null, lede: look.lede ?? null, included: look.included ?? null,
+          plusOnes: (reg as any).plus_ones ?? 0, names: (reg as any).party_names ?? null,
+        }
+      : null
+
     // Venues with their own look (Eclipse, After Dark, Su Casa, Pump, Mamacita)
     // get the branded email from the venue's name. Anything else keeps the
     // original Luna Group email.
@@ -58,12 +71,13 @@ export async function POST(req: Request) {
     const message = theme && eventDate
       ? {
           from: brandedFrom(venue),
-          subject: brandedSubject({ theme, eventDate, ownerGuestList }),
+          subject: brandedSubject({ theme, eventDate, ownerGuestList, party }),
           html: brandedHtml({
             theme, site, token, venueName: venue, first, eventDate,
             promoterName: (reg as any).promoters?.full_name ?? null,
             untilLabel, occasion, ownerGuestList,
             whatsappUrl: (reg as any).venues?.whatsapp_channel_url ?? null,
+            party,
           }),
         }
       : {
@@ -86,7 +100,17 @@ export async function POST(req: Request) {
       .from('guest_registrations')
       .update({ confirmation_sent_at: new Date().toISOString() })
       .eq('qr_token', token)
-    return NextResponse.json({ ok: true })
+
+    // A party night with texts switched on (events.party.sms) also gets the
+    // pass by text. Once only: a forced email resend does not re-text.
+    let sms: string | undefined
+    if (look?.sms === true && party && eventDate && force !== true) {
+      sms = await sendSms(g?.mobile, confirmationText({
+        first, eventName: party.eventName, eventDate, startTime: party.startTime ?? null,
+        plusOnes: party.plusOnes, passUrl: `${site}/g/${token}`,
+      }))
+    }
+    return NextResponse.json({ ok: true, ...(sms ? { sms } : {}) })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 })
   }
