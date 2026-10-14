@@ -81,7 +81,9 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
             No screenshot? No problem — just give your name at the door and we&apos;ll find you.
           </p>
         </div>
-        <GroupInvite token={token} members={members} site={site} venue={reg.venue_name} dateLabel={dateLabel} canAdd={upcoming && reg.status !== 'cancelled'} />
+        {!reg.party && (
+          <GroupInvite token={token} members={members} site={site} venue={reg.venue_name} dateLabel={dateLabel} canAdd={upcoming && reg.status !== 'cancelled'} />
+        )}
         <p className="text-center text-xs text-luna-muted mt-5">
           Everyone needs their own QR. Only checked-in guests count toward rewards.
         </p>

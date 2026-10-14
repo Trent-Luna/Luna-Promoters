@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/party-reminders", "schedule": "0 4 * * *" }
+  ]
+}

@@ -7,6 +7,7 @@ import { Icon } from '@/components/icons'
 import { SearchInput } from '@/components/ui'
 import { cacheKey, loadCache, saveCache, loadQueue, saveQueue, type QueuedCheckIn } from './offline'
 import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
+import { headsIn, namesLine } from '@/lib/party'
 
 interface Venue { id: string; name: string; guestlist_until?: string | null }
 interface Row {
@@ -15,8 +16,18 @@ interface Row {
   promoter_name: string; promoter_code: string
   checked_in_at: string | null; notes: string | null; special_occasion: string | null
   method: string | null; plus_ones: number; group_id: string | null; source: string | null
+  /** Party nights (migration 0051): friends' names, and how many of the group are in when it arrived in parts. */
+  party_names: string[] | null; admitted: number | null
 }
-type ScanResult = { kind: 'ok' | 'err' | 'warn'; title: string; sub?: string } | null
+/**
+ * `group` is set for a party-night registration bringing friends: the door
+ * sees "Admit 4" and can record that only some are here, or later let the
+ * rest in on the same QR.
+ */
+type ScanResult = {
+  kind: 'ok' | 'err' | 'warn'; title: string; sub?: string
+  group?: { regId: string; party: number; admitted: number; names: string }
+} | null
 
 function localToday() {
   const d = new Date()
@@ -59,7 +70,8 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
 
   useEffect(() => {
     if (!scanResult) return
-    const t = setTimeout(() => setScanResult(null), 2400)
+    // A group gets longer, and buttons: the door may need to say only some are here.
+    const t = setTimeout(() => setScanResult(null), scanResult.group ? 7000 : 2400)
     return () => clearTimeout(t)
   }, [scanResult])
 
@@ -82,7 +94,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     try {
       const { data, error } = await supabase
         .from('guest_registrations')
-        .select('id,status,qr_token,special_occasion,plus_ones,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method),events!inner(event_date)')
+        .select('id,status,qr_token,special_occasion,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date)')
         .eq('venue_id', venueId).eq('events.event_date', date)
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -96,6 +108,8 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
         notes: r.check_ins?.[0]?.notes ?? null,
         method: r.check_ins?.[0]?.method ?? r.check_ins?.method ?? null,
         plus_ones: r.plus_ones ?? 0, group_id: r.group_id ?? null, source: r.source ?? null,
+        party_names: r.party_names ?? null,
+        admitted: r.check_ins?.[0]?.admitted ?? r.check_ins?.admitted ?? null,
       }))
       setRows(mapped)
       const at = new Date().toISOString()
@@ -156,7 +170,8 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
   const stats = useMemo(() => {
     const heads = (r: Row) => 1 + (r.plus_ones || 0)
     const registered = rows.reduce((s, r) => s + heads(r), 0)
-    const checked = rows.filter(r => r.status === 'checked_in').reduce((s, r) => s + heads(r), 0)
+    // A group let in in parts counts only the heads inside; the rest stay "waiting".
+    const checked = rows.filter(r => r.status === 'checked_in').reduce((s, r) => s + headsIn(r.plus_ones, r.admitted), 0)
     const noEntry = rows.filter(r => r.status === 'no_entry').reduce((s, r) => s + heads(r), 0)
     return { registered, checked, remaining: registered - checked - noEntry, noEntry }
   }, [rows])
@@ -217,6 +232,15 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     load()
   }
 
+  /** How many of a checked-in group are inside. null = all of them. */
+  async function setAdmitted(regId: string, admitted: number | null, label?: string) {
+    const { data, error } = await supabase.rpc('door_set_admitted', { p_registration: regId, p_admitted: admitted })
+    if (error || !data?.ok) { flash('err', 'Could not update the group — ' + (error?.message ?? data?.error ?? 'error')); return false }
+    flash('ok', label ?? (data.admitted >= data.party ? `All ${data.party} in ✓` : `${data.admitted} of ${data.party} in`))
+    load()
+    return true
+  }
+
   const checkInByToken = useCallback(async (token: string) => {
     if (!navigator.onLine) {
       const r = rows.find(x => x.qr_token === token)
@@ -233,7 +257,11 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     })
     if (error) { setScanResult({ kind: 'err', title: 'ERROR', sub: error.message }); return }
     if (!data?.ok) {
-      if (data?.error === 'already_checked_in')
+      if (data?.error === 'already_checked_in' && data.registration_id && Number(data.admitted) < Number(data.party))
+        // Part of this group came in earlier; the rest are here now.
+        setScanResult({ kind: 'warn', title: `${data.admitted} OF ${data.party} IN`, sub: data.guest_name || '',
+          group: { regId: data.registration_id, party: Number(data.party), admitted: Number(data.admitted), names: namesLine(data.party_names) } })
+      else if (data?.error === 'already_checked_in')
         setScanResult({ kind: 'err', title: 'ALREADY CHECKED IN', sub: data.guest_name || '' })
       else if (data?.error === 'wrong_date')
         setScanResult({ kind: 'warn', title: 'WRONG DATE', sub: data.event_date ? `This QR is for ${fmtDate(data.event_date)}` : 'Not for tonight' })
@@ -246,7 +274,11 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
       else setScanResult({ kind: 'err', title: 'CHECK-IN FAILED' })
       load(); return
     }
-    setScanResult({ kind: 'ok', title: 'CHECKED IN', sub: data.guest_name || '' })
+    const party = Number(data.party) || 1
+    setScanResult(party > 1
+      ? { kind: 'ok', title: `ADMIT ${party}`, sub: `${data.guest_name || ''} +${party - 1}`,
+          group: { regId: data.registration_id, party, admitted: party, names: namesLine(data.party_names) } }
+      : { kind: 'ok', title: 'CHECKED IN', sub: data.guest_name || '' })
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, date, supabase, load, listClosed, untilLabel])
@@ -359,12 +391,29 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
                   {party > 0 && <span className="pill bg-luna-gold/20 text-luna-gold text-[11px]">party of {party + 1}</span>}
                   {r.special_occasion && <span className="pill bg-luna-gold/15 text-luna-gold text-[11px]">{r.special_occasion}</span>}
                 </div>
+                {r.party_names && r.party_names.length > 0 && (
+                  <div className="text-sm text-luna-goldsoft truncate">With {namesLine(r.party_names)}</div>
+                )}
                 <div className="text-sm text-luna-muted truncate">
                   {r.mobile} · {r.promoter_name}{r.promoter_code ? ` (${r.promoter_code})` : ''}
                   {r.checked_in_at && <span className="text-emerald-400"> · in {fmtDateTime(r.checked_in_at)}{r.method ? ` (${r.method === 'scan' ? 'scanned' : 'manual'})` : ''}</span>}
                 </div>
               </div>
-              {r.status === 'checked_in' ? (
+              {r.status === 'checked_in' && r.plus_ones > 0 ? (
+                // A party-night group: who is in, and a tap to change it.
+                <div className="flex flex-col items-start sm:items-end gap-1.5">
+                  <span className={`pill ${headsIn(r.plus_ones, r.admitted) < 1 + r.plus_ones ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                    {headsIn(r.plus_ones, r.admitted)} of {1 + r.plus_ones} in
+                  </span>
+                  <div className="flex gap-1" role="group" aria-label="How many of the group are in">
+                    {Array.from({ length: 1 + r.plus_ones }, (_, i) => i + 1).map(n => (
+                      <button key={n} type="button"
+                        className={`w-9 h-9 rounded-lg text-sm font-bold border ${headsIn(r.plus_ones, r.admitted) === n ? 'bg-emerald-500 text-black border-emerald-500' : 'border-white/15 text-luna-muted'}`}
+                        onClick={() => setAdmitted(r.id, n >= 1 + r.plus_ones ? null : n)}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              ) : r.status === 'checked_in' ? (
                 <span className="pill bg-emerald-500/15 text-emerald-400 self-start sm:self-auto">Checked in ✓</span>
               ) : r.status === 'no_entry' ? (
                 <span className="pill bg-red-500/15 text-red-400 self-start sm:self-auto">No entry</span>
@@ -410,7 +459,31 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
                 {scanResult.title}
               </div>
               {scanResult.sub && <div className="text-white/90 mt-4 text-2xl font-semibold">{scanResult.sub}</div>}
-              <div className="text-white/70 mt-8 text-base">Ready for the next guest…</div>
+              {scanResult.group?.names && <div className="text-white/85 mt-2 text-xl">With {scanResult.group.names}</div>}
+              {scanResult.group && scanResult.group.admitted < scanResult.group.party ? (
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <button type="button" className="rounded-2xl bg-white text-black font-extrabold text-2xl px-8 py-4"
+                    onClick={async () => { const g = scanResult.group!; if (await setAdmitted(g.regId, null, `All ${g.party} in ✓`)) setScanResult(null) }}>
+                    Admit {scanResult.group.party - scanResult.group.admitted} more
+                  </button>
+                  <button type="button" className="text-white/80 underline text-lg" onClick={() => setScanResult(null)}>Not yet</button>
+                </div>
+              ) : scanResult.group ? (
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <div className="text-white/80 text-base">Not everyone here yet?</div>
+                  <div className="flex gap-2">
+                    {Array.from({ length: scanResult.group.party - 1 }, (_, i) => i + 1).map(n => (
+                      <button key={n} type="button" className="rounded-xl bg-black/25 text-white font-bold text-xl w-14 h-14"
+                        onClick={async () => { const g = scanResult.group!; if (await setAdmitted(g.regId, n, `${n} of ${g.party} in — scan again when the rest arrive`)) setScanResult(null) }}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" className="mt-2 rounded-2xl bg-white text-black font-extrabold text-xl px-8 py-3" onClick={() => setScanResult(null)}>All in · next guest</button>
+                </div>
+              ) : (
+                <div className="text-white/70 mt-8 text-base">Ready for the next guest…</div>
+              )}
             </div>
           )}
         </div>

@@ -9,6 +9,7 @@ import {
 } from '@/lib/trading'
 import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
 import { pixelForVenue, loadPixel, trackLead } from '@/lib/meta-pixel'
+import { clampPlusOnes, cleanNames } from '@/lib/party'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
 
@@ -76,6 +77,7 @@ const HORIZON_DAYS = 70
 export function GuestRegistrationForm({
   promoterCode, venues, blackouts = [],
   lockedVenue = null, lockedDate = null, showOccasion = true, source = null, occasionHint = null,
+  party = null,
 }: {
   promoterCode: string
   venues: Venue[]
@@ -85,6 +87,13 @@ export function GuestRegistrationForm({
   showOccasion?: boolean
   source?: string | null
   occasionHint?: string | null
+  /**
+   * A party night (events.party, migration 0051): the guest can bring up to
+   * `maxPlusOnes` friends on their own QR, optionally naming them. Only passed
+   * for a locked venue + date that is a party night; null everywhere else, so
+   * every other form is unchanged.
+   */
+  party?: { maxPlusOnes: number; texts: boolean } | null
 }) {
   const router = useRouter()
   const today = venueToday()
@@ -101,6 +110,9 @@ export function GuestRegistrationForm({
   const [occasion, setOccasion] = useState(() => occasionFromHint(occasionHint))
   const [f, setF] = useState({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '' })
   const [consent, setConsent] = useState(false)
+  const maxPlus = party ? clampPlusOnes(party.maxPlusOnes, party.maxPlusOnes) : 0
+  const [plus, setPlus] = useState(0)
+  const [friends, setFriends] = useState<string[]>([])
   const [err, setErr] = useState('')
   const [suggested, setSuggested] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -151,12 +163,19 @@ export function GuestRegistrationForm({
     setLoading(true)
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.rpc('register_guest_vd', {
+      const base = {
         p_promoter_code: promoterCode, p_venue: venueId, p_date: date,
         p_first: f.first.trim(), p_last: f.last.trim(), p_mobile: f.mobile.trim(),
         p_email: f.email.trim(), p_dob: f.dob || null, p_instagram: f.instagram,
         p_marketing: consent, p_occasion: occasion || null, p_source: source,
-      })
+      }
+      // A party night registers through the wrapper that adds the friends; the
+      // checks are the same function either way (register_guest_vd).
+      const { data, error } = maxPlus > 0
+        ? await supabase.rpc('register_guest_party', {
+            ...base, p_plus_ones: plus, p_party_names: cleanNames(friends, plus),
+          })
+        : await supabase.rpc('register_guest_vd', base)
       if (error) throw error
       if (!data?.ok) {
         if (data?.error === 'not_trading') {
@@ -319,6 +338,37 @@ export function GuestRegistrationForm({
         <label className="label">Instagram</label>
         <input className="input" placeholder="@handle" value={f.instagram} onChange={e => set('instagram', e.target.value)} />
       </div>
+      {maxPlus > 0 && (
+        <div>
+          <label className="label">Bringing friends?</label>
+          <div className="input !py-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-semibold">{plus === 0 ? 'Just me' : `Me +${plus}`}</div>
+              <div className="text-[11px] text-luna-muted">Up to {maxPlus} friends on your pass</div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button type="button" aria-label="One fewer friend" disabled={plus === 0}
+                className="w-10 h-10 rounded-lg border border-white/15 text-lg disabled:opacity-35"
+                onClick={() => setPlus(p => Math.max(0, p - 1))}>−</button>
+              <span className="w-6 text-center text-lg font-bold" aria-live="polite">{plus}</span>
+              <button type="button" aria-label="One more friend" disabled={plus >= maxPlus}
+                className="w-10 h-10 rounded-lg btn-gold !p-0 text-lg disabled:opacity-35"
+                onClick={() => setPlus(p => Math.min(maxPlus, p + 1))}>+</button>
+            </div>
+          </div>
+          {plus > 0 && (
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {Array.from({ length: plus }, (_, i) => (
+                <input key={i} className="input" maxLength={40}
+                  placeholder={`Friend ${i + 1}'s first name`} aria-label={`Friend ${i + 1}'s first name (optional)`}
+                  value={friends[i] ?? ''}
+                  onChange={e => setFriends(fs => { const n = [...fs]; n[i] = e.target.value; return n })} />
+              ))}
+            </div>
+          )}
+          {plus > 0 && <p className="text-[11px] text-luna-muted mt-1">Names are optional and help the door. Your one QR lets your whole group in.</p>}
+        </div>
+      )}
       <label className="flex items-start gap-3 text-sm cursor-pointer">
         <input type="checkbox" className="mt-1 accent-luna-gold w-4 h-4" checked={consent}
           onChange={e => setConsent(e.target.checked)} />
@@ -354,8 +404,15 @@ export function GuestRegistrationForm({
       )}
 
       <button className="btn-gold w-full btn-lg" disabled={loading || chosenIsClosed || chosenIsShut}>
-        {loading ? 'Registering…' : 'Get my QR code'}
+        {loading ? 'Registering…' : maxPlus > 0 ? 'Get my pass' : 'Get my QR code'}
       </button>
+      {party && (
+        <p className="text-[11px] text-luna-muted text-center">
+          {party.texts
+            ? 'We’ll email your pass and text it to you, with a reminder on the day.'
+            : 'We’ll email your pass straight away.'}
+        </p>
+      )}
       <p className="text-[11px] text-luna-muted text-center leading-relaxed">
         Guestlist entry is subject to availability, venue capacity, dress code, valid 18+ ID and
         management discretion. Registering does not guarantee entry. Please arrive early to avoid disappointment.

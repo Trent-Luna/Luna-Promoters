@@ -7,6 +7,7 @@ import { cutoffLabel } from '@/lib/guestlist-cutoff'
 import { SISTERS, THEME_FONTS_URL, nightParts, rgba, tones, type VenueTheme } from '@/lib/venue-theme'
 import { CalendarShare } from './actions'
 import { GroupInvite, type Member } from './group'
+import { namesLine, plusLabel } from '@/lib/party'
 
 /**
  * The guest list pass in the venue's own look (8 Oct 2026), matching the
@@ -23,6 +24,10 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
   const promoterLink = `${site}/p/${reg.promoter_code}`
   const dateLabel = `${fmtDate(reg.event_date)}${reg.start_time ? ` · ${fmtTime(reg.start_time)}` : ''}`
   const rad = v.rad >= 999 ? '999px' : `${v.rad}px`
+  // A party night (migration 0051): one QR for the guest and up to N friends.
+  const isParty = !!reg.party
+  const plus = Math.max(0, Number(reg.plus_ones) || 0)
+  const friends = namesLine(reg.party_names)
 
   const vars = {
     '--bg': v.bg, '--ink': v.ink, '--acc': v.acc, '--accInk': v.accInk,
@@ -64,9 +69,15 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
 
       <section className="max-w-md mx-auto px-5 pt-4 pb-16">
         <div className="text-center">
-          <div className="gp-k">Your guest list pass</div>
+          <div className="gp-k">{isParty ? reg.event_name : 'Your guest list pass'}</div>
           <h1 className="gp-h mt-2" style={{ fontSize: Math.round(v.h1 * 0.95) }}>{reg.first_name} {reg.last_name}</h1>
           <p className="gp-m text-sm mt-1">{n.night} · Guest of {reg.promoter_name}</p>
+          {plus > 0 && (
+            <div className="mt-3">
+              <span className="inline-block rounded-full px-3 py-1 text-sm font-bold" style={{ background: v.acc, color: v.accInk }}>{plusLabel(plus)}</span>
+              {friends && <p className="gp-m text-sm mt-2">With {friends}</p>}
+            </div>
+          )}
           <div className="mt-3"><StatusPill status={reg.status} /></div>
         </div>
 
@@ -78,16 +89,20 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
               <span className="gp-m text-xs tracking-[.2em]">{n.mon}</span>
             </div>
             <div className="p-4 min-w-0 flex flex-col justify-center">
-              <div className="gp-h text-xl">{v.short}</div>
+              <div className="gp-h text-xl">{isParty ? reg.event_name : v.short}</div>
               <div className="gp-m text-xs mt-1">{dateLabel}</div>
-              <div className="text-[11px] font-bold tracking-[.18em] uppercase mt-2">Guest list · Admit 1</div>
+              <div className="text-[11px] font-bold tracking-[.18em] uppercase mt-2">Guest list · Admit {1 + plus}</div>
             </div>
           </div>
           <div className="gp-perf" />
           <div className="flex justify-center pt-5 pb-3">
             <div className="rounded-xl bg-white p-3"><QRCode value={checkInUrl} size={220} /></div>
           </div>
-          <p className="gp-m text-xs text-center px-6 pb-4">One scan, one entry. No signal? Give your name at the door.</p>
+          <p className="gp-m text-xs text-center px-6 pb-4">
+            {plus > 0
+              ? `One scan lets your group of ${1 + plus} in. No signal? Give your name at the door.`
+              : 'One scan, one entry. No signal? Give your name at the door.'}
+          </p>
           {until ? (
             <div className="px-5 py-3.5" style={{ background: v.acc, color: v.accInk }}>
               <div className="flex items-baseline justify-between gap-3">
@@ -118,8 +133,12 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
             promoterLink={promoterLink} qrUrl={checkInUrl} />
         </div>
 
-        <GroupInvite token={token} members={members} site={site} venue={reg.venue_name} dateLabel={dateLabel}
-          canAdd={upcoming && reg.status !== 'cancelled'} />
+        {/* A party night brings friends on this one QR, so the separate
+            invite-a-friend flow (each friend their own QR) is not offered. */}
+        {!isParty && (
+          <GroupInvite token={token} members={members} site={site} venue={reg.venue_name} dateLabel={dateLabel}
+            canAdd={upcoming && reg.status !== 'cancelled'} />
+        )}
 
         <footer className="mt-10 pt-6 text-center" style={{ borderTop: `1px solid ${line}` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -129,7 +148,7 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
               <span key={s}>{i > 0 && ' · '}{s === v.short ? <b style={{ color: v.ink }}>{s}</b> : s}</span>
             ))}
           </p>
-          <p className="gp-m text-xs mt-3">Everyone needs their own QR. Only checked-in guests count toward rewards.</p>
+          {!isParty && <p className="gp-m text-xs mt-3">Everyone needs their own QR. Only checked-in guests count toward rewards.</p>}
         </footer>
       </section>
     </main>
