@@ -10,8 +10,9 @@
  * page, this email and the pass all read as the same venue. Images live in
  * this app's public/brand/email so they ship with it.
  *
- * Keyed on venues.slug. A venue with no theme (Silk) keeps the original Luna
- * Group email and pass, unchanged.
+ * Keyed on venues.slug. A venue with no theme (Silk) gets the Satin email
+ * (src/lib/email/silk-pass.ts, Trent's pick on 22 Oct 2026) and keeps the
+ * original pass page.
  */
 
 export interface VenueTheme {

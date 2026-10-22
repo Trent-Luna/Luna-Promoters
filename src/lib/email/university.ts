@@ -1,5 +1,9 @@
 // University membership transactional emails (reuses the existing Resend setup).
 // No internal AI scores or fraud logic is ever exposed to the applicant.
+//
+// 22 Oct 2026: redesigned in the Luna Group look Trent approved, from the
+// shared blocks in ./blocks.
+import { actionCard, buttons, esc, footer, header, intro, lunaSkin, para, shell, siteUrl } from './blocks'
 
 const FROM = 'Luna Group <noreply@lunagroup.com.au>'
 
@@ -11,27 +15,79 @@ function membershipsBase(): string {
   ).replace(/\/$/, '')
 }
 
-function shell(title: string, bodyInner: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-  <body style="margin:0;padding:0;background:#0a0a0f;font-family:Helvetica,Arial,sans-serif;color:#ffffff">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f"><tr><td align="center" style="padding:28px 14px">
-      <table role="presentation" width="500" cellpadding="0" cellspacing="0" style="width:500px;max-width:500px;margin:0 auto">
-        <tr><td align="center" style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff">LUNA GROUP</td></tr>
-        <tr><td align="center" style="font-size:12px;letter-spacing:2px;color:#9ca3af;padding-top:2px">UNIVERSITY MEMBERSHIP</td></tr>
-        <tr><td>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#14141c;border:1px solid #23232e;border-radius:16px;margin-top:24px"><tr><td style="padding:28px">
-            <h1 style="font-size:20px;margin:0 0 12px;color:#ffffff">${title}</h1>
-            ${bodyInner}
-          </td></tr></table>
-        </td></tr>
-        <tr><td align="center" style="color:#6b7280;font-size:11px;padding-top:18px">Luna Group Hospitality · Brisbane</td></tr>
-      </table>
-    </td></tr></table>
-  </body></html>`
+const REASON = "You're getting this because you applied for a Luna University Membership."
+
+type Built = { subject: string; html: string }
+
+function build(subject: string, preheader: string, o: {
+  kicker: string; headline: string; lead: string; rows?: string[]
+}): Built {
+  const s = lunaSkin(siteUrl())
+  const rows = [
+    header(s),
+    intro(s, { kicker: o.kicker, headline: o.headline, lead: o.lead, top: 22 }),
+    ...(o.rows ?? []),
+    footer(s, REASON, { sisters: false }),
+  ]
+  return { subject, html: shell(s, subject, preheader, rows) }
 }
 
-function btn(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;background:#ffffff;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px;margin-top:8px">${label}</a>`
+const firstOf = (firstName: string) => esc(firstName || 'there')
+
+/** Pure builders, one per email; the send functions below post them. */
+export const universityEmails = {
+  received(firstName: string): Built {
+    return build('Your Luna University Membership application', "Your ID is being checked now. We'll email you when it's confirmed.", {
+      kicker: 'University membership &middot; received',
+      headline: `We&rsquo;ve got your application, ${firstOf(firstName)}`,
+      lead: 'Your university ID is being checked now. This usually only takes a moment, and we&rsquo;ll email you as soon as it&rsquo;s confirmed.',
+    })
+  },
+  approved(firstName: string, passToken: string): Built {
+    const s = lunaSkin(siteUrl())
+    return build('Your Luna University Membership is approved', 'Open your digital pass and show the QR at reception.', {
+      kicker: 'University membership &middot; approved',
+      headline: `You&rsquo;re a member, ${firstOf(firstName)}`,
+      lead: 'Your Luna University Membership is approved. Open your digital pass on your phone and show the QR at reception.',
+      rows: [
+        buttons(s, ['View my membership pass', `${membershipsBase()}/m/${passToken}`]),
+        para(s, 'Save it to your home screen so it&rsquo;s there when you get to the door.', { top: 16, size: 13 }),
+      ],
+    })
+  },
+  review(firstName: string): Built {
+    void firstName
+    return build('Your Luna University Membership application is under review', "Nothing you need to do. We'll email you when it's done.", {
+      kicker: 'University membership &middot; in review',
+      headline: 'We&rsquo;re checking your application',
+      lead: 'A member of our team is reviewing it now. There&rsquo;s nothing you need to do; we&rsquo;ll email you as soon as it&rsquo;s done.',
+    })
+  },
+  newUpload(firstName: string, passToken: string): Built {
+    const s = lunaSkin(siteUrl())
+    return build('Action needed: upload a clearer university ID', "We couldn't read your ID. A new photo takes a minute.", {
+      kicker: 'University membership &middot; action needed',
+      headline: `Upload a clearer ID, ${firstOf(firstName)}`,
+      lead: 'We couldn&rsquo;t read your university ID, so we can&rsquo;t approve you yet.',
+      rows: [
+        actionCard(s, {
+          eyebrow: 'New photo',
+          note: 'Use good light, with the whole card in frame and nothing covering your name or the expiry date.',
+          button: ['Upload a new photo', `${membershipsBase()}/m/${passToken}/reupload`],
+        }),
+      ],
+    })
+  },
+  rejected(firstName: string): Built {
+    void firstName
+    const s = lunaSkin(siteUrl())
+    return build('Your Luna University Membership application: an update', "We couldn't approve it this time. You can apply again with a current ID.", {
+      kicker: 'University membership',
+      headline: 'About your application',
+      lead: 'We weren&rsquo;t able to approve your application this time. You&rsquo;re welcome to apply again with a current university ID.',
+      rows: [buttons(s, ['Apply again', `${membershipsBase()}/memberships/university`])],
+    })
+  },
 }
 
 async function send(to: string, subject: string, html: string): Promise<{ ok: boolean; skipped?: string; error?: string }> {
@@ -51,41 +107,24 @@ async function send(to: string, subject: string, html: string): Promise<{ ok: bo
   }
 }
 
+const post = (to: string, m: Built) => send(to, m.subject, m.html)
+
 export function sendApplicationReceived(to: string, firstName: string) {
-  const html = shell('We’ve received your application 👋',
-    `<p style="color:#cbd5e1;line-height:1.6;margin:0 0 12px">Hi ${firstName || 'there'},</p>
-     <p style="color:#9ca3af;line-height:1.6;margin:0 0 12px">Thanks for applying for a Luna University Membership. Your university ID is being checked now — this usually only takes a moment. We’ll email you as soon as it’s confirmed.</p>`)
-  return send(to, 'Your Luna University Membership application', html)
+  return post(to, universityEmails.received(firstName))
 }
 
 export function sendApproved(to: string, firstName: string, passToken: string) {
-  const url = `${membershipsBase()}/m/${passToken}`
-  const html = shell('Your membership is approved 🎉',
-    `<p style="color:#cbd5e1;line-height:1.6;margin:0 0 12px">Hi ${firstName || 'there'},</p>
-     <p style="color:#9ca3af;line-height:1.6;margin:0 0 18px">Your Luna University Membership has been approved. Open your digital pass on your phone and show the QR code at reception.</p>
-     ${btn(url, 'View my membership pass')}`)
-  return send(to, 'Your Luna University Membership is approved', html)
+  return post(to, universityEmails.approved(firstName, passToken))
 }
 
 export function sendManualReview(to: string, firstName: string) {
-  const html = shell('Your application is being reviewed',
-    `<p style="color:#cbd5e1;line-height:1.6;margin:0 0 12px">Hi ${firstName || 'there'},</p>
-     <p style="color:#9ca3af;line-height:1.6;margin:0 0 12px">We couldn’t automatically confirm all the details on your university ID, so a member of our team is reviewing your application. We’ll be in touch shortly — no action is needed right now.</p>`)
-  return send(to, 'Your Luna University Membership application is under review', html)
+  return post(to, universityEmails.review(firstName))
 }
 
 export function sendNewUploadRequested(to: string, firstName: string, passToken: string) {
-  const url = `${membershipsBase()}/m/${passToken}/reupload`
-  const html = shell('Please upload a clearer university ID',
-    `<p style="color:#cbd5e1;line-height:1.6;margin:0 0 12px">Hi ${firstName || 'there'},</p>
-     <p style="color:#9ca3af;line-height:1.6;margin:0 0 18px">To finish verifying your Luna University Membership, we need a clearer or more current photo of your university ID. You don’t need to re-apply — just upload a new photo using the secure link below.</p>
-     ${btn(url, 'Upload a new photo')}`)
-  return send(to, 'Action needed: upload a clearer university ID', html)
+  return post(to, universityEmails.newUpload(firstName, passToken))
 }
 
 export function sendRejected(to: string, firstName: string) {
-  const html = shell('About your membership application',
-    `<p style="color:#cbd5e1;line-height:1.6;margin:0 0 12px">Hi ${firstName || 'there'},</p>
-     <p style="color:#9ca3af;line-height:1.6;margin:0 0 12px">Thanks for your interest in a Luna University Membership. Unfortunately we weren’t able to approve your application at this time. If you believe this was a mistake or your circumstances change, you’re welcome to apply again with a current university ID.</p>`)
-  return send(to, 'Your Luna University Membership application', html)
+  return post(to, universityEmails.rejected(firstName))
 }

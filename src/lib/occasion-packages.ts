@@ -101,6 +101,42 @@ export function occasionDealHtml(occasion: string | null | undefined): string {
   return dealCard((occasion ?? '').trim())
 }
 
+/**
+ * The free guest list deal as data, for the emails that draw it in the venue's
+ * own look (the 22 Oct 2026 redesign): a label, a title, the perks as HTML and
+ * the fine print. Null for any other occasion, or none.
+ */
+export interface OccasionDeal {
+  label: string
+  title: string
+  perks: string[]
+  fine: string
+}
+
+const DEAL_NAMES: Record<string, { label: string; title: string }> = {
+  'Birthday': { label: 'Your birthday, on us', title: 'Your birthday deal' },
+  'Hens party': { label: 'Hens night, sorted', title: 'Your hens night deal' },
+  'Bucks party': { label: 'Bucks night, sorted', title: 'Your bucks night deal' },
+}
+
+export function occasionDeal(occasion: string | null | undefined): OccasionDeal | null {
+  const occ = (occasion ?? '').trim()
+  const p = PARTY[occ]
+  const n = DEAL_NAMES[occ]
+  if (!p || !n) return null
+  return {
+    label: n.label,
+    title: n.title,
+    perks: [
+      '<b>Free entry</b> for you and your guests before 10:30pm',
+      `A free <b>all-night VIP wristband</b> for the ${p.honour}`,
+      'Come with a group of <b>5 or more</b> to unlock it',
+      `Valid within <b>2 weeks</b> of ${p.when}`,
+    ],
+    fine: 'Subject to availability, dress code, valid 18+ ID and management discretion.',
+  }
+}
+
 /** Booth card heading and line for an occasion, or null for none. */
 export function occasionBoothCopy(occasion: string | null | undefined): { heading: string; intro: string } | null {
   const occ = (occasion ?? '').trim()

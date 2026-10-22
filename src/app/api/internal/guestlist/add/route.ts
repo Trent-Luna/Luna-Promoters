@@ -112,9 +112,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: reason }, { status })
   }
 
+  // A CRM add has no guest browser to ask for the pass (that is how a
+  // promoter-link sign-up gets one), so it is sent from here: the same email,
+  // stamped the same way. A failed send never undoes the add; the CRM is told
+  // in `confirmation` and staff can resend from the Guest lists screen.
+  let confirmation: 'sent' | 'skipped' | 'failed' = 'skipped'
+  if (result.qr_token) {
+    try {
+      const { sendGuestConfirmation } = await import('@/lib/guest-confirmation')
+      const sent = await sendGuestConfirmation(result.qr_token)
+      confirmation = sent.ok ? (sent.skipped ? 'skipped' : 'sent') : 'failed'
+      if (!sent.ok) console.error(JSON.stringify({ level: 'error', msg: 'guestlist_add_confirmation_failed', detail: sent.error }))
+    } catch (e: any) {
+      confirmation = 'failed'
+      console.error(JSON.stringify({ level: 'error', msg: 'guestlist_add_confirmation_failed', detail: e?.message ?? 'error' }))
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     registration_id: result.registration_id,
     qr_token: result.qr_token,
+    confirmation,
   })
 }

@@ -14,6 +14,12 @@
  * Both write their timestamp only AFTER a successful send, so a bounce or a
  * crash leaves that person eligible next run rather than silently skipped.
  *
+ * 22 Oct 2026: both emails redesigned in the Luna Group look Trent approved.
+ * The blocks below are a copy of src/lib/email/blocks.ts (the Luna skin only),
+ * because an edge function cannot import from the app. Keep them in step.
+ *
+ * Deploying this file is a live change: `supabase functions deploy promoter-emails`.
+ *
  * POST body: { job?: 'welcome' | 'whatsapp_invite', dry_run?: boolean, limit?: number }
  */
 
@@ -27,7 +33,7 @@ const FROM = 'Luna Group <noreply@lunagroup.com.au>'
 const WELCOME_WINDOW_DAYS = 14
 
 const esc = (s: unknown) =>
-  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 
 const J = (o: unknown, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { 'Content-Type': 'application/json' } })
@@ -38,54 +44,120 @@ const rest = (path: string, init: RequestInit = {}) =>
     headers: { apikey: SK, Authorization: `Bearer ${SK}`, 'Content-Type': 'application/json', ...(init.headers ?? {}) },
   })
 
-// ------------------------------------------------------------------ shell ---
-function shell(kicker: string, inner: string) {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:Helvetica,Arial,sans-serif;color:#ffffff">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f"><tr><td align="center" style="padding:28px 14px">
-  <table role="presentation" width="500" cellpadding="0" cellspacing="0" style="width:500px;max-width:500px;margin:0 auto">
-    <tr><td align="center" style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff">LUNA GROUP</td></tr>
-    <tr><td align="center" style="font-size:12px;letter-spacing:2px;color:#9ca3af;padding-top:2px">${kicker}</td></tr>
-    <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#14141c;border:1px solid #23232e;border-radius:16px;margin-top:24px"><tr><td style="padding:28px">${inner}</td></tr></table></td></tr>
-    <tr><td align="center" style="color:#6b7280;font-size:11px;padding-top:18px">Luna Group Hospitality · Brisbane &amp; Gold Coast</td></tr>
-  </table>
+// ─────────────────────────────────────────── blocks (the Luna Group skin) ───
+const S = {
+  bg: '#0B0A12', ink: '#F2F0F8', acc: '#E7C873', accInk: '#141019',
+  panel: '#15131F', line: '#2A2638', muted: '#A49FB8',
+  font: "'Helvetica Neue',Helvetica,Arial,sans-serif",
+  logo: `${SITE}/luna-group-white.png`,
+}
+
+const B = (size: number, color: string = S.muted, extra = '') =>
+  `font-family:${S.font};font-size:${size}px;line-height:1.55;color:${color};${extra}`
+
+function shell(title: string, preheader: string, rows: string[]) {
+  const pad = '&#847;&zwnj;&nbsp;'.repeat(60)
+  return `<!doctype html><html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>${esc(title)}</title>
+<style>body{margin:0;padding:0;background:${S.bg}}a{color:${S.acc}}@media (max-width:520px){.px{padding-left:20px!important;padding-right:20px!important}.btnw{display:block!important;margin:0 0 10px 0!important}.btnw table{width:100%!important}}</style>
+</head><body style="margin:0;padding:0;background:${S.bg}">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${esc(preheader)}${pad}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${S.bg}" style="background:${S.bg}"><tr><td align="center" style="padding:0">
+<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;margin:0 auto;background:${S.bg}">
+${rows.join('')}
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
 </td></tr></table></body></html>`
 }
 
-const greenButton = (href: string, label: string) =>
-  `<a href="${href}" style="display:inline-block;background:#25D366;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">${label}</a>`
+const header = () =>
+  `<tr><td align="center" style="padding:34px 24px 6px"><img src="${S.logo}" width="150" alt="Luna Group" style="display:block;width:150px;height:auto;border:0"></td></tr>`
 
-const goldButton = (href: string, label: string) =>
-  `<a href="${href}" style="display:inline-block;background:#d4a24c;color:#0a0a0f;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px">${label}</a>`
+const intro = (kicker: string, headline: string, lead: string) =>
+  `<tr><td class="px" align="center" style="padding:22px 36px 0;text-align:center">
+<div style="font-family:${S.font};font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:${S.acc}">${kicker}</div>
+<div style="font-family:${S.font};font-weight:700;letter-spacing:-0.01em;font-size:30px;line-height:1.08;color:${S.ink};padding-top:10px">${headline}</div>
+<div style="${B(15, S.muted, 'padding-top:10px')}">${lead}</div>
+</td></tr>`
 
-const step = (n: number, title: string, body: string) =>
-  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr>
-     <td width="30" valign="top" style="color:#d4a24c;font-weight:800;font-size:14px">${n}</td>
-     <td style="color:#d1d5db;font-size:14px;line-height:1.55"><strong style="color:#ffffff">${title}</strong><br>${body}</td>
-   </tr></table>`
+function buttons(primary: [string, string], secondary?: [string, string] | null) {
+  const one = ([label, href]: [string, string], solid: boolean) => {
+    const cell = solid
+      ? `<td align="center" bgcolor="${S.acc}" style="background:${S.acc};border-radius:999px">`
+      : `<td align="center" style="border:1px solid ${S.line};border-radius:999px">`
+    return `<div class="btnw" style="display:inline-block;margin:0 10px 10px 0;vertical-align:top"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${cell}`
+      + `<a href="${esc(href)}" style="display:block;padding:${solid ? '15px 24px' : '14px 22px'};${B(14, solid ? S.accInk : S.ink, 'font-weight:700;letter-spacing:0.06em;text-decoration:none;text-align:center')}">${label}</a>`
+      + `</td></tr></table></div>`
+  }
+  return `<tr><td class="px" align="center" style="padding:24px 26px 0 36px;text-align:center">${one(primary, true)}${secondary ? one(secondary, false) : ''}</td></tr>`
+}
+
+const para = (html: string, top = 16) =>
+  `<tr><td class="px" align="center" style="padding:${top}px 36px 0;text-align:center;${B(13)}">${html}</td></tr>`
+
+function steps(items: [string, string][]) {
+  const rows = items.map(([title, body], i) => {
+    const bb = i === items.length - 1 ? '' : `border-bottom:1px solid ${S.line};`
+    return `<tr><td width="40" valign="top" style="width:40px;padding:14px 0;${bb}">`
+      + `<div style="width:28px;height:28px;border-radius:999px;background:${S.acc};text-align:center;${B(13, S.accInk, 'font-weight:700;line-height:28px')}">${i + 1}</div></td>`
+      + `<td valign="top" style="padding:14px 0;${bb}"><div style="${B(15, S.ink, 'font-weight:700')}">${title}</div>`
+      + `<div style="${B(13.5, S.muted, 'padding-top:2px')}">${body}</div></td></tr>`
+  })
+  return `<tr><td class="px" style="padding:22px 36px 0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${S.panel};border:1px solid ${S.line};border-radius:12px;border-collapse:separate">
+<tr><td style="padding:6px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows.join('')}</table></td></tr></table>
+</td></tr>`
+}
+
+const footer = (reason: string) =>
+  `<tr><td style="padding:30px 0 0"><div style="border-top:1px solid ${S.line};height:0;line-height:0;font-size:0">&nbsp;</div></td></tr>
+<tr><td align="center" style="padding:24px 28px 32px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr><td align="center"><img src="${S.logo}" width="120" alt="Luna Group Hospitality" style="display:block;width:120px;height:auto;border:0;opacity:0.9"></td></tr>
+<tr><td align="center" style="padding-top:12px;${B(11)}">${reason}<br>Luna Group Hospitality &middot; Brisbane &amp; Gold Coast</td></tr>
+</table>
+</td></tr>`
+
+/** A channel link (whatsapp.com/channel/…) rather than a group invite. */
+function isChannel(url: string) {
+  try { return new URL(url.trim()).hostname.replace(/^www\./, '') === 'whatsapp.com' } catch { return false }
+}
 
 // ----------------------------------------------------------------- emails ---
+const WELCOME_SUBJECT = "You're in: your Luna guest list link"
+const INVITE_SUBJECT = 'Follow the Luna promoter WhatsApp channel'
+
 function welcomeHtml(first: string, code: string, invite: string | null) {
-  const link = `${SITE}/p/${esc(code)}`
-  return shell('PROMOTERS', `
-    <h1 style="font-size:21px;margin:0 0 10px;color:#ffffff">You're in, ${esc(first)} 👋</h1>
-    <p style="color:#9ca3af;line-height:1.6;margin:0 0 20px">Welcome to the Luna Group promoter team. Three things and you're running.</p>
-    ${step(1, 'Your guestlist link', `Anyone who signs up through it counts toward your numbers and your tier.<br><a href="${link}" style="color:#d4a24c">${link.replace(/^https?:\/\//, '')}</a>`)}
-    ${step(2, 'Your dashboard', 'Your QR code, live numbers and where you sit on the leaderboard.')}
-    ${invite ? step(3, 'The promoter channel', 'Guestlist cut-offs, table drops and which rooms need numbers go out there first. Your number stays private.') : ''}
-    <div style="margin-top:18px">${goldButton(`${SITE}/promoter`, 'Open my dashboard →')}</div>
-    ${invite ? `<div style="margin-top:12px">${greenButton(invite, 'Follow the channel →')}</div>` : ''}
-    <p style="color:#6b7280;font-size:12px;margin:20px 0 0">New to this? The Promoter Guide is on your dashboard.</p>`)
+  const link = `${SITE}/p/${code}`
+  const items: [string, string][] = [
+    ['Your guest list link', `<a href="${esc(link)}" style="color:${S.acc}">${esc(link.replace(/^https?:\/\//, ''))}</a>. Share it anywhere; everyone who signs up is on your list.`],
+    ['Your dashboard', 'See who&rsquo;s signed up and who checked in.'],
+  ]
+  if (invite) items.push(['The promoter channel', 'Cut-offs, table drops and which rooms need numbers go out there first.'])
+  return shell(WELCOME_SUBJECT, invite ? 'Your link, your dashboard and the promoter channel.' : 'Your link and your dashboard.', [
+    header(),
+    intro('Promoters &middot; welcome', `You&rsquo;re in, ${esc(first)}`,
+      `Welcome to the Luna Group promoter team. ${invite ? 'Three' : 'Two'} things and you&rsquo;re running.`),
+    steps(items),
+    buttons(['Open my dashboard', `${SITE}/promoter`], invite ? ['Follow the channel', invite] : null),
+    para('New to this? The Promoter Guide is on your dashboard.', 14),
+    footer("You're getting this because you were approved as a Luna Group promoter."),
+  ])
 }
 
 function inviteHtml(first: string, invite: string) {
-  return shell('PROMOTERS', `
-    <h1 style="font-size:20px;margin:0 0 12px;color:#ffffff">Follow the promoter channel, ${esc(first)}</h1>
-    <p style="color:#9ca3af;line-height:1.6;margin:0 0 12px">We run a promoter channel on WhatsApp now — guestlist cut-offs, table drops and which rooms need numbers all go out there first. You signed up before it existed, so here's the link.</p>
-    <p style="color:#9ca3af;line-height:1.6;margin:0 0 16px">Tap below and WhatsApp will ask you to follow. Your number stays private — nobody else in the channel can see it.</p>
-    ${greenButton(invite, 'Follow on WhatsApp →')}
-    <p style="color:#9ca3af;line-height:1.6;margin:18px 0 0">Need something from us? The channel doesn't take replies — your dashboard and guestlist link are at <a href="${SITE}/promoter" style="color:#d4a24c">${SITE.replace(/^https?:\/\//, '')}/promoter</a>.</p>
-    <p style="color:#6b7280;font-size:12px;margin:16px 0 0">Not promoting any more? Ignore this and we will leave you be.</p>`)
+  const dashboard = `<a href="${SITE}/promoter" style="color:${S.acc}">your dashboard</a>`
+  return shell(INVITE_SUBJECT, 'Cut-offs, table drops and which rooms need numbers, first.', [
+    header(),
+    intro('Promoters &middot; channel', `Follow the promoter channel, ${esc(first)}`,
+      'Guest list cut-offs, table drops and which rooms need numbers all go out there first. You signed up before it existed, so here&rsquo;s the link.'),
+    buttons(['Follow on WhatsApp', invite]),
+    para(isChannel(invite)
+      ? `Your number stays private: a channel doesn&rsquo;t show followers to each other. The channel doesn&rsquo;t take replies, so for anything else use ${dashboard}.`
+      : `For anything else, use ${dashboard}.`),
+    para('Not promoting any more? Ignore this and we&rsquo;ll leave you be.', 10),
+    footer("You're getting this because you're a Luna Group promoter."),
+  ])
 }
 
 // -------------------------------------------------------------------- run ---
@@ -132,9 +204,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: FROM,
           to: [r.email],
-          subject: job === 'welcome'
-            ? "You're in — your Luna guestlist link"
-            : 'Follow the Luna promoter WhatsApp channel',
+          subject: job === 'welcome' ? WELCOME_SUBJECT : INVITE_SUBJECT,
           html: job === 'welcome'
             ? welcomeHtml(first, r.promoter_code ?? '', invite)
             : inviteHtml(first, invite as string),
@@ -142,10 +212,17 @@ Deno.serve(async (req) => {
       })
       if (!res.ok) { failed++; if (errors.length < 10) errors.push(await res.text()); continue }
       // Stamped only on success — a failure stays eligible for the next run.
+      //
+      // A welcome that carried the channel link IS their invite: stamping both
+      // stops the catch-up job mailing the same person a second time minutes
+      // later telling them to follow a channel they were just told about.
+      const now = new Date().toISOString()
+      const patch: Record<string, string> = { [stamp]: now }
+      if (job === 'welcome' && invite) patch.whatsapp_invited_at = now
       await rest(`promoters?id=eq.${r.id}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ [stamp]: new Date().toISOString() }),
+        body: JSON.stringify(patch),
       })
       sent++
       await new Promise((res) => setTimeout(res, 300)) // Resend rate limit

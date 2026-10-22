@@ -421,6 +421,48 @@ export async function sendBoothOffer(registrationId: string): Promise<{ ok: bool
   return { ok: true }
 }
 
+// ---------- The pass for a guest staff added ----------
+/**
+ * Email a guest their QR pass: straight after staff add them on the Guest
+ * lists screen, and again from the row's "Send QR" button.
+ *
+ * A promoter-link sign-up gets its pass because the guest's own browser asks
+ * for it once the sign-up lands. A staff add had nothing asking, so no pass
+ * ever went out although the form promised one ("Guests with an email get
+ * their QR automatically"): 43 staff adds from mid-September to 22 Oct 2026,
+ * 8 with an email, none sent.
+ *
+ * The send is the same function the public route uses, so the guest gets the
+ * same email as a promoter-link sign-up, stamped the same way. A second call
+ * without `resend` sends nothing.
+ */
+export async function sendGuestPass(
+  registrationId: string,
+  opts: { resend?: boolean } = {},
+): Promise<{ ok: boolean; reason?: string; to?: string }> {
+  const s = await ensureManager()
+  const svc = createServiceClient()
+  const { data: reg } = await svc.from('guest_registrations')
+    .select('id,venue_id,qr_token,guests(email)')
+    .eq('id', registrationId).maybeSingle()
+  if (!reg) return { ok: false, reason: 'not_found' }
+  if (!s.roles.includes('admin') && !s.venueIds.includes((reg as any).venue_id)) return { ok: false, reason: 'not_authorised' }
+  const email = ((reg as any).guests?.email as string | null) || null
+  if (!email) return { ok: false, reason: 'no_email' }
+
+  const { sendGuestConfirmation } = await import('@/lib/guest-confirmation')
+  const sent = await sendGuestConfirmation((reg as any).qr_token, { force: opts.resend === true })
+  if (!sent.ok) return { ok: false, reason: sent.error }
+  if (sent.skipped === 'already_sent') return { ok: true, reason: 'already_sent', to: email }
+
+  await svc.rpc('log_action', {
+    p_action: opts.resend ? 'guest_pass_resent' : 'guest_pass_sent',
+    p_user: s.userId, p_venue: (reg as any).venue_id, p_notes: null,
+  })
+  revalidatePath('/admin/guestlists')
+  return { ok: true, to: email }
+}
+
 export async function deleteSourceLinkForm(fd: FormData) {
   await deleteSourceLink(String(fd.get('id') || ''))
 }
@@ -451,7 +493,7 @@ export async function sendMovedNightNotice(guestId: string, venueId: string): Pr
   const today = new Date(Date.now() + 10 * 3600_000).toISOString().slice(0, 10)
 
   const { data: rows } = await svc.from('guest_registrations')
-    .select('id,qr_token,moved_from,special_occasion,guests(first_name,email),venues(name),events!inner(event_date)')
+    .select('id,qr_token,moved_from,special_occasion,plus_ones,guests(first_name,email),venues(name,slug),events!inner(event_date)')
     .eq('guest_id', guestId).eq('venue_id', venueId)
     .not('moved_from', 'is', null)
     .is('moved_notice_sent_at', null)
@@ -475,8 +517,11 @@ export async function sendMovedNightNotice(guestId: string, venueId: string): Pr
     to: g.email,
     first: g.first_name || 'there',
     venue: sorted[0].venues?.name || 'Luna Group',
+    venueSlug: sorted[0].venues?.slug ?? null,
     was: fmt(was),
     nights,
+    nightDates: sorted.map((r) => String(r.events.event_date)),
+    plusOnes: sorted[0].plus_ones ?? 0,
     occasion: sorted[0].special_occasion,
     qrUrl: sorted[0].qr_token
       ? `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://promoter.lunagroup.com.au').replace(/\/$/, '')}/g/${sorted[0].qr_token}`
