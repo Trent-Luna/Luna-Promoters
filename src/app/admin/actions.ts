@@ -451,7 +451,7 @@ export async function sendMovedNightNotice(guestId: string, venueId: string): Pr
   const today = new Date(Date.now() + 10 * 3600_000).toISOString().slice(0, 10)
 
   const { data: rows } = await svc.from('guest_registrations')
-    .select('id,qr_token,moved_from,special_occasion,guests(first_name,email),venues(name),events!inner(event_date)')
+    .select('id,qr_token,moved_from,special_occasion,plus_ones,guests(first_name,email),venues(name,slug),events!inner(event_date)')
     .eq('guest_id', guestId).eq('venue_id', venueId)
     .not('moved_from', 'is', null)
     .is('moved_notice_sent_at', null)
@@ -475,8 +475,11 @@ export async function sendMovedNightNotice(guestId: string, venueId: string): Pr
     to: g.email,
     first: g.first_name || 'there',
     venue: sorted[0].venues?.name || 'Luna Group',
+    venueSlug: sorted[0].venues?.slug ?? null,
     was: fmt(was),
     nights,
+    nightDates: sorted.map((r) => String(r.events.event_date)),
+    plusOnes: sorted[0].plus_ones ?? 0,
     occasion: sorted[0].special_occasion,
     qrUrl: sorted[0].qr_token
       ? `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://promoter.lunagroup.com.au').replace(/\/$/, '')}/g/${sorted[0].qr_token}`

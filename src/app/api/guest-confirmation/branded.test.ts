@@ -45,9 +45,31 @@ describe('venue-branded confirmation', () => {
   })
   it('keeps the birthday deal and the owner wording', () => {
     const html = brandedHtml({ ...base, theme: THEMES['eclipse'], occasion: 'Birthday', ownerGuestList: true })
-    expect(html).toContain('YOUR BIRTHDAY, ON US')
+    expect(html).toContain('Your birthday, on us')
+    expect(html).toContain('Your birthday deal')
+    expect(html).toContain('for the birthday star')
     expect(html).toContain("Owner's guest list")
     expect(html).toContain('Birthday packages can be added')
+  })
+  it('draws the deal in the venue colours, without the old generic card', () => {
+    const html = brandedHtml({ ...base, theme: THEMES['pump-nightclub'], occasion: 'Hens party' })
+    expect(html).toContain('Hens night, sorted')
+    expect(html).toContain('for the hen')
+    expect(html).toContain(`color:${THEMES['pump-nightclub'].acc};">Hens night, sorted`)
+    expect(html).not.toContain('#34d399')        // the old green tick
+    expect(html).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u)
+    expect(html).not.toContain('Just reply')
+  })
+  it('lets the two buttons stack on a phone', () => {
+    const html = brandedHtml({ ...base, theme: THEMES['pump-nightclub'] })
+    expect(html.match(/class="btnw"/g)?.length).toBe(2)
+    expect(html).toContain('.btnw{display:block!important')
+  })
+  it('a club with no photo (Mamacita) colours the booth card instead', () => {
+    const t = THEMES['mamacita-nightclub']
+    const html = brandedHtml({ ...base, venueName: 'Mamacita Nightclub', theme: t })
+    expect(html).toContain(`background-color:${t.heroColor}`)
+    expect(html).not.toContain('url(\'null')
   })
   it('escapes the guest name', () => {
     const html = brandedHtml({ ...base, theme: THEMES['eclipse'], first: '<b>x</b>' })
