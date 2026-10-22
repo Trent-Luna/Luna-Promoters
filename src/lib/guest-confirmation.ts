@@ -6,6 +6,8 @@ import { themeFor } from '@/lib/venue-theme'
 import { brandedFrom, brandedHtml, brandedSubject, type PartyEmail } from '@/app/api/guest-confirmation/branded'
 import { confirmationText, type PartyLook } from '@/lib/party'
 import { sendSms, type SmsOutcome } from '@/lib/sms'
+import { SATIN_FROM, satinPassHtml, satinSubject } from '@/lib/email/silk-pass'
+import { siteUrl } from '@/lib/email/blocks'
 
 /**
  * Send one guest their guest list pass: the QR email, plus the party-night
@@ -72,8 +74,9 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
     : null
 
   // Venues with their own look (Eclipse, After Dark, Su Casa, Pump, Mamacita)
-  // get the branded email from the venue's name. Anything else keeps the
-  // original Luna Group email.
+  // get the branded email from the venue's name. A venue without one (today
+  // Silk Saturdays and Silk) gets the Satin pass Trent picked on 22 Oct 2026.
+  // The original Luna Group email is kept only for a pass with no night on it.
   const theme = themeFor(venueSlug)
   const message = theme && eventDate
     ? {
@@ -87,11 +90,17 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
           party,
         }),
       }
-    : {
-        from: 'Luna Group <noreply@lunagroup.com.au>',
-        subject: confirmationSubject(venue, ownerGuestList),
-        html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel }),
-      }
+    : eventDate
+      ? {
+          from: SATIN_FROM,
+          subject: satinSubject({ venueName: venue, eventDate, ownerGuestList }),
+          html: satinPassHtml({ site: site || siteUrl(), token, venueName: venue, first, eventDate, ownerGuestList, untilLabel, occasion }),
+        }
+      : {
+          from: 'Luna Group <noreply@lunagroup.com.au>',
+          subject: confirmationSubject(venue, ownerGuestList),
+          html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel }),
+        }
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

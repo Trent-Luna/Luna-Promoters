@@ -76,6 +76,15 @@ describe('sendGuestConfirmation', () => {
     expect(h.updates[0].patch).toHaveProperty('confirmation_sent_at')
   })
 
+  it('gives a venue without its own look (Silk) the Satin pass', async () => {
+    h.reg = reg({ venues: { name: 'Silk Saturdays', slug: 'Silk', guestlist_until: null, whatsapp_channel_url: null }, events: { event_date: '2026-10-31', name: 'Sat 31 Oct', start_time: null, party: null } })
+    await sendGuestConfirmation('tok-1')
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.subject).toBe("You're on the list: Silk Saturdays, Saturday 31 October")
+    expect(body.from).toBe('Luna Group <noreply@lunagroup.com.au>')
+    expect(body.html).toContain('/brand/email/hero-silk.jpg')
+  })
+
   it('sends nothing a second time unless forced', async () => {
     h.reg = reg({ confirmation_sent_at: '2026-10-22T00:00:00Z' })
     expect(await sendGuestConfirmation('tok-1')).toEqual({ ok: true, skipped: 'already_sent' })
