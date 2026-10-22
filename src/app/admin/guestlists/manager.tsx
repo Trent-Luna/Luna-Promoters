@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StatusPill, SearchInput, Th, Td, EmptyRow } from '@/components/ui'
 import { Icon } from '@/components/icons'
-import { setNightList, sendBoothOffer } from '../actions'
+import { setNightList, sendBoothOffer, sendGuestPass } from '../actions'
 import { tradesOn, nextTradingNight, prettyNight, tradingDaysLabel } from '@/lib/trading'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null }
@@ -14,6 +14,7 @@ interface Row {
   promoter_name: string; promoter_code: string; plus_ones: number
   notes: string | null; special_occasion: string | null
   source: string | null; group_id: string | null; booth_offer_sent_at: string | null
+  confirmation_sent_at: string | null
   checked_in_at: string | null
 }
 
@@ -63,6 +64,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
   const [saving, setSaving] = useState(false)
   const [pending, start] = useTransition()
   const [offerMsg, setOfferMsg] = useState<Record<string, string>>({})
+  const [qrMsg, setQrMsg] = useState<Record<string, string>>({})
   const set = (k: string, v: string) => setF(p => ({ ...p, [k]: v }))
 
   // inline edit state
@@ -91,7 +93,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
     setLoading(true)
     const [{ data }, { data: ev }] = await Promise.all([
       supabase.from('guest_registrations')
-        .select('id,status,plus_ones,notes,special_occasion,source,group_id,booth_offer_sent_at,guests(first_name,last_name,mobile,email,date_of_birth,instagram),promoters(full_name,promoter_code),check_ins(checked_in_at),events!inner(event_date)')
+        .select('id,status,plus_ones,notes,special_occasion,source,group_id,booth_offer_sent_at,confirmation_sent_at,guests(first_name,last_name,mobile,email,date_of_birth,instagram),promoters(full_name,promoter_code),check_ins(checked_in_at),events!inner(event_date)')
         .eq('venue_id', venueId).eq('events.event_date', date)
         .order('created_at', { ascending: false }),
       supabase.from('events').select('guestlist_open').eq('venue_id', venueId).eq('event_date', date).order('created_at').limit(1).maybeSingle(),
@@ -104,6 +106,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       promoter_name: r.promoters?.full_name ?? '', promoter_code: r.promoters?.promoter_code ?? '',
       plus_ones: r.plus_ones ?? 0, notes: r.notes ?? null, special_occasion: r.special_occasion ?? null,
       source: r.source ?? null, group_id: r.group_id ?? null, booth_offer_sent_at: r.booth_offer_sent_at ?? null,
+      confirmation_sent_at: r.confirmation_sent_at ?? null,
       checked_in_at: r.check_ins?.[0]?.checked_in_at ?? r.check_ins?.checked_in_at ?? null,
     })))
     setListOpen(ev ? !!ev.guestlist_open : null)
@@ -149,7 +152,9 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       setMsg({ ok: false, text: m[data?.error] || 'Could not add guest.' })
       return
     }
-    setMsg({ ok: true, text: `${f.first} ${f.last} is on the list${nightClosed ? ` for ${prettyNight(date)} (closed night, opened by you)` : ''}.` })
+    const added = `${f.first} ${f.last} is on the list${nightClosed ? ` for ${prettyNight(date)} (closed night, opened by you)` : ''}.`
+    const typedEmail = Boolean(f.email.trim())
+    setMsg({ ok: true, text: typedEmail ? `${added} Sending their QR…` : `${added} No email, so no QR was sent.` })
     setJustAdded(data.registration_id ?? null)
     setF({ first: '', last: '', mobile: '', email: '', dob: '', instagram: '', plus: '0', notes: '', occasion: '' })
     await load()
@@ -157,6 +162,30 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
     // this the proof of success is off the bottom of the screen.
     requestAnimationFrame(() => document.getElementById(`reg-${data.registration_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
     setTimeout(() => setJustAdded(null), 6000)
+    // The pass goes out from here because nothing else would send it: a
+    // promoter-link sign-up asks from the guest's own browser, a staff add has
+    // no guest browser. Said on screen, with the address it actually went to
+    // (a matched guest keeps the email already on file).
+    if (data.registration_id) {
+      const sent = await sendGuestPass(data.registration_id)
+        .catch(() => ({ ok: false } as { ok: boolean; reason?: string; to?: string }))
+      if (sent.ok) {
+        setMsg({ ok: true, text: `${added} QR emailed to ${sent.to}.` })
+        load()
+      } else if (sent.reason !== 'no_email' || typedEmail) {
+        setMsg({ ok: true, text: sent.reason === 'no_email'
+          ? `${added} No email on file, so no QR was sent.`
+          : `${added} The QR email didn't send. Press Send QR on their row to try again.` })
+      }
+    }
+  }
+
+  function sendQr(r: Row) {
+    start(async () => {
+      const res = await sendGuestPass(r.id, { resend: Boolean(r.confirmation_sent_at) })
+      setQrMsg(m => ({ ...m, [r.id]: res.ok ? 'QR sent' : res.reason === 'no_email' ? 'No email' : 'Failed' }))
+      if (res.ok) load()
+    })
   }
 
   function startEdit(r: Row) {
@@ -434,6 +463,11 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                                   ? <span className="text-xs text-luna-muted" title="Booth offer sent">Offer sent</span>
                                   : <button className="btn-gold !py-1.5 !px-3 text-xs" disabled={pending || !r.email} title={r.email ? 'Email the VIP booth offer' : 'No email on file'} onClick={() => offer(r)}>{offerMsg[r.id] ?? 'Booth offer'}</button>
                               )}
+                              <button className="btn-ghost !py-1.5 !px-3 text-xs" disabled={pending || !r.email}
+                                title={!r.email ? 'No email on file' : r.confirmation_sent_at ? `QR emailed ${sinceLabel(r.confirmation_sent_at)}. Press to send it again.` : 'Email this guest their QR'}
+                                onClick={() => sendQr(r)}>
+                                {qrMsg[r.id] ?? (r.confirmation_sent_at ? 'Resend QR' : 'Send QR')}
+                              </button>
                               <button className="btn-ghost !py-1.5 !px-3 text-xs" onClick={() => startEdit(r)}><Icon name="pen" size={14} /> Edit</button>
                             </span>
                           </Td>
