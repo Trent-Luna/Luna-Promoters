@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { GuestRegistrationForm } from '@/app/p/[code]/guest-form'
-import { OCCASIONS, GROUP_PIXEL, sourceFor, tileFor, onOccasionPages, type OccasionKey } from '@/lib/occasion'
+import { OCCASIONS, GROUP_PIXEL, SU_CASA_PIXEL, sourceFor, tileFor, onOccasionPages, type OccasionKey } from '@/lib/occasion'
 import { RESERVATIONS_URL } from '@/lib/occasion-packages'
 
 /**
@@ -119,7 +119,8 @@ export async function OccasionPage({
                 occasionHint={o.hint}
                 source={source}
                 venueTiles={tiles}
-                extraPixels={[GROUP_PIXEL]}
+                // Not one venue, so Su Casa loads with the page. Group stays an extra.
+                extraPixels={[GROUP_PIXEL, SU_CASA_PIXEL]}
                 ctaLabel={o.cta}
                 crew={{ honoreeLabel: o.honoreeLabel }}
               />

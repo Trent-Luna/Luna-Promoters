@@ -153,6 +153,17 @@ export function sourceFor(
  * The Luna Group dataset (lunagroup.com.au's pixel). These pages are for ads
  * that sell every club at once, so they fire PageView and Lead to the group
  * dataset as well as to the chosen venue's own pixel where it has one (Pump,
- * Mamacita — meta-pixel.ts).
+ * Mamacita, Su Casa — meta-pixel.ts).
+ *
+ * The guest picks a club, and that club's name is what pixelForVenue matches
+ * ("Su Casa Brisbane" and "SuCasa" both hit Su Casa). The page opens with no
+ * club selected, so Su Casa's dataset also loads with the page
+ * (SU_CASA_PIXEL): PageView immediately, and Lead with the pass token on
+ * every sign-up. When the chosen club is Su Casa the form sends that Lead
+ * once. Crew links pass venues.name into pixelForVenue and keep GROUP_PIXEL
+ * as their extra.
  */
 export const GROUP_PIXEL = '339963945485464'
+
+/** Su Casa Brisbane dataset. Same id as the `/su ?casa/i` entry in meta-pixel.ts. */
+export const SU_CASA_PIXEL = '785459746721078'
