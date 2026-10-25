@@ -143,7 +143,10 @@ export function GuestRegistrationForm({
 
   const venue = useMemo(() => venues.find(v => v.id === venueId) ?? null, [venues, venueId])
   const tradingDays = venue?.trading_days ?? null
-  // Meta Pixel, only for venues that run Meta ads to this form (Pump for now).
+  // Meta Pixel for a venue in meta-pixel.ts. PageView once that venue is the
+  // one on the form; Lead on sign-up, eventID = the pass token. Occasion
+  // pages also pass Su Casa and the group dataset via extraPixels, because
+  // they open with no club selected.
   const pixelId = pixelForVenue(venue?.name)
   useEffect(() => { if (pixelId) loadPixel(pixelId) }, [pixelId])
   const extraKey = extraPixels.join(',')

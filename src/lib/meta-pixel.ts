@@ -4,16 +4,24 @@
  *
  * Trent, 8 Oct 2026: the Pump Meta ads send people to this form, so Meta needs
  * to see who signs up to optimise for it. Mamacita added the same day (its
- * dataset already existed). Only venues listed here load the
- * pixel; every other venue's form stays free of Meta tracking.
+ * dataset already existed). Su Casa Brisbane the same way. Only venues listed
+ * here load the pixel; every other venue's form stays free of Meta tracking.
  *
  * Events: PageView when the form shows a pixel venue, and Lead when the guest
  * is registered. Lead carries the pass token as eventID so a later server-side
  * (Conversions API) event for the same sign-up is de-duplicated, not doubled.
+ *
+ * Occasion landings (/birthday, /hens, /bucks) are not one venue — the guest
+ * picks a club, and that club's name is what matches here ("Su Casa Brisbane",
+ * "SuCasa"). They also load Su Casa's pixel with the page (SU_CASA_PIXEL in
+ * occasion.ts) because nothing is selected when the ad lands. Crew links
+ * (/c/[code]) are one venue: get_crew returns venues.name, matched here, with
+ * the group dataset still passed as an extra.
  */
 const PIXELS: { match: RegExp; id: string }[] = [
   { match: /pump/i, id: '1337692745079424' }, // "Pump Pixel" dataset, Luna Group Hospitality
   { match: /mamacita/i, id: '1358760112583754' }, // "Mamacitas Pixel" dataset, Luna Group Hospitality
+  { match: /su ?casa/i, id: '785459746721078' }, // Su Casa Brisbane dataset
 ]
 
 export function pixelForVenue(name?: string | null): string | null {

@@ -14,7 +14,8 @@ export function CrewJoinForm({ code, venueName, extraPixels, cta }: {
   code: string; venueName: string; extraPixels: string[]; cta: string
 }) {
   // The venue's own pixel (meta-pixel.ts is a client module, so it is looked up
-  // here, not on the server page) plus the group dataset.
+  // here, not on the server page) plus the group dataset. get_crew's venue_name
+  // is venues.name, so "Su Casa Brisbane" (and "SuCasa") selects Su Casa's pixel.
   const pixels = Array.from(new Set([pixelForVenue(venueName), ...extraPixels].filter((x): x is string => !!x)))
   const router = useRouter()
   const today = venueToday()
