@@ -10,6 +10,7 @@ import {
 import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
 import { pixelForVenue, loadPixel, trackLead } from '@/lib/meta-pixel'
 import { clampPlusOnes, cleanNames } from '@/lib/party'
+import { CREW_MIN, CREW_MAX, clampCrew } from '@/lib/crew'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
 
@@ -78,6 +79,7 @@ export function GuestRegistrationForm({
   promoterCode, venues, blackouts = [],
   lockedVenue = null, lockedDate = null, showOccasion = true, source = null, occasionHint = null,
   party = null,
+  venueTiles = null, extraPixels = [], ctaLabel = null, crew = null,
 }: {
   promoterCode: string
   venues: Venue[]
@@ -94,6 +96,25 @@ export function GuestRegistrationForm({
    * every other form is unchanged.
    */
   party?: { maxPlusOnes: number; texts: boolean } | null
+  /**
+   * The occasion landing pages (/birthday, /hens, /bucks, 24 Oct 2026): show
+   * the venues as photo tiles instead of a dropdown. Keyed by venue id; null
+   * for a venue with no photo, which gets a name tile. Every other caller
+   * leaves this out and keeps the dropdown.
+   */
+  venueTiles?: Record<string, string | null> | null
+  /** More pixels to send PageView and Lead to, beside the venue's own. */
+  extraPixels?: string[]
+  /** The submit button's words, when the page wants its own. */
+  ctaLabel?: string | null
+  /**
+   * The occasion landing pages again (25 Oct 2026, migration 0053): ask how
+   * many are coming and, for a hens or bucks, the bride or groom's name, then
+   * give the host a crew link (set_crew_details) once they are registered.
+   * `honoreeLabel` is null on the birthday page. Every other caller leaves
+   * this out and the form is unchanged.
+   */
+  crew?: { honoreeLabel: string | null } | null
 }) {
   const router = useRouter()
   const today = venueToday()
@@ -113,6 +134,8 @@ export function GuestRegistrationForm({
   const maxPlus = party ? clampPlusOnes(party.maxPlusOnes, party.maxPlusOnes) : 0
   const [plus, setPlus] = useState(0)
   const [friends, setFriends] = useState<string[]>([])
+  const [crewSize, setCrewSize] = useState(CREW_MIN)
+  const [honoree, setHonoree] = useState('')
   const [err, setErr] = useState('')
   const [suggested, setSuggested] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -123,6 +146,9 @@ export function GuestRegistrationForm({
   // Meta Pixel, only for venues that run Meta ads to this form (Pump for now).
   const pixelId = pixelForVenue(venue?.name)
   useEffect(() => { if (pixelId) loadPixel(pixelId) }, [pixelId])
+  const extraKey = extraPixels.join(',')
+  useEffect(() => { for (const id of extraKey ? extraKey.split(',') : []) loadPixel(id) }, [extraKey])
+  const pickVenue = (id: string) => { setVenueId(id); setDate(''); setErr(''); setSuggested(null) }
   // The nightly cut-off (Pump 11pm, Mamacita 10:30pm). Once it passes, tonight
   // is no longer on offer. The server refuses it too; this just says so first.
   const until = venue?.guestlist_until ?? null
@@ -209,7 +235,19 @@ export function GuestRegistrationForm({
           keepalive: true,
         })
       } catch {}
+      // The host's crew link and details. Awaited so the pass page opens with
+      // the link ready; a failure here never undoes the registration.
+      if (crew) {
+        try {
+          await supabase.rpc('set_crew_details', {
+            p_token: data.qr_token, p_honoree: honoree.trim() || null, p_crew_size: crewSize,
+          })
+        } catch {}
+      }
       if (pixelId) trackLead(pixelId, data.qr_token, { content_name: venue?.name, content_category: occasion || 'guest list' })
+      for (const id of extraPixels) {
+        if (id !== pixelId) trackLead(id, data.qr_token, { content_name: venue?.name, content_category: occasion || 'guest list' })
+      }
       router.push(`/g/${data.qr_token}`)
     } catch (e: any) {
       setErr(e.message || 'Something went wrong. Please try again.')
@@ -220,11 +258,32 @@ export function GuestRegistrationForm({
     <form onSubmit={submit} className="space-y-5">
       {(!lockedVenue || !lockedDate) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {!lockedVenue && (
+          {!lockedVenue && venueTiles && (
+            <fieldset className="sm:col-span-2">
+              <legend className="label">Pick your club *</legend>
+              <div className="grid grid-cols-2 gap-2.5">
+                {venues.map(v => {
+                  const img = venueTiles[v.id] ?? null
+                  const on = v.id === venueId
+                  return (
+                    <button key={v.id} type="button" aria-pressed={on} onClick={() => pickVenue(v.id)}
+                      className={`occ-tile text-left rounded-xl overflow-hidden border-2 transition ${on ? 'occ-tile-on' : 'border-white/[0.08]'}`}>
+                      {img
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={img} alt="" className="block w-full h-[74px] object-cover" />
+                        : <span className="flex h-[74px] items-center justify-center bg-white/[0.04] text-lg font-extrabold uppercase tracking-widest">{v.name}</span>}
+                      <span className="block px-2.5 py-2 text-[13.5px] font-bold leading-tight">{v.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          )}
+          {!lockedVenue && !venueTiles && (
             <div>
               <label className="label">Venue *</label>
               <select className="input" value={venueId}
-                onChange={e => { setVenueId(e.target.value); setDate(''); setErr(''); setSuggested(null) }} required>
+                onChange={e => pickVenue(e.target.value)} required>
                 {venues.length === 0
                   ? <option value="">No venues available</option>
                   : <option value="" disabled>Choose your venue</option>}
@@ -309,6 +368,32 @@ export function GuestRegistrationForm({
         </p>
       )}
 
+      {crew && (
+        <div>
+          <label className="label">How many in your crew? <span className="font-normal">(including you)</span></label>
+          <div className="input !py-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-semibold">{crewSize} {crewSize === 1 ? 'person' : 'people'}</div>
+              <div className={`text-[11px] ${crewSize >= CREW_MIN ? 'text-luna-gold font-semibold' : 'text-luna-muted'}`}>
+                {crewSize >= CREW_MIN
+                  ? 'You’re getting the deal ✓'
+                  : `${CREW_MIN - crewSize} more to get the deal (groups of ${CREW_MIN}+)`}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button type="button" aria-label="One fewer" disabled={crewSize <= 1}
+                className="w-10 h-10 rounded-lg border border-white/15 text-lg disabled:opacity-35"
+                onClick={() => setCrewSize(n => clampCrew(n - 1))}>−</button>
+              <span className="w-7 text-center text-lg font-bold" aria-live="polite">{crewSize}</span>
+              <button type="button" aria-label="One more" disabled={crewSize >= CREW_MAX}
+                className="w-10 h-10 rounded-lg btn-gold !p-0 text-lg disabled:opacity-35"
+                onClick={() => setCrewSize(n => clampCrew(n + 1))}>+</button>
+            </div>
+          </div>
+          <p className="text-[11px] text-luna-muted mt-1">You’ll get a link to send them. Everyone who signs up joins your list with their own QR. Up to 10 in a crew, you included.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">First name *</label>
@@ -319,6 +404,13 @@ export function GuestRegistrationForm({
           <input className="input" required value={f.last} onChange={e => set('last', e.target.value)} />
         </div>
       </div>
+      {crew?.honoreeLabel && (
+        <div>
+          <label className="label">{crew.honoreeLabel} <span className="font-normal">(optional)</span></label>
+          <input className="input" maxLength={40} value={honoree} onChange={e => setHonoree(e.target.value)}
+            placeholder="e.g. Jess" />
+        </div>
+      )}
       <div>
         <label className="label">Mobile number *</label>
         <input className="input" required type="tel" placeholder="04xx xxx xxx"
@@ -404,7 +496,7 @@ export function GuestRegistrationForm({
       )}
 
       <button className="btn-gold w-full btn-lg" disabled={loading || chosenIsClosed || chosenIsShut}>
-        {loading ? 'Registering…' : maxPlus > 0 ? 'Get my pass' : 'Get my QR code'}
+        {loading ? 'Registering…' : ctaLabel ? ctaLabel : maxPlus > 0 ? 'Get my pass' : 'Get my QR code'}
       </button>
       {party && (
         <p className="text-[11px] text-luna-muted text-center">

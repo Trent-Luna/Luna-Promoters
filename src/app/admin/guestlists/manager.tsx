@@ -5,6 +5,7 @@ import { StatusPill, SearchInput, Th, Td, EmptyRow } from '@/components/ui'
 import { Icon } from '@/components/icons'
 import { setNightList, sendBoothOffer, sendGuestPass } from '../actions'
 import { tradesOn, nextTradingNight, prettyNight, tradingDaysLabel } from '@/lib/trading'
+import { occasionTag } from '@/lib/crew'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null }
 interface Row {
@@ -13,6 +14,8 @@ interface Row {
   email: string | null; dob: string | null; instagram: string | null
   promoter_name: string; promoter_code: string; plus_ones: number
   notes: string | null; special_occasion: string | null
+  /** Birthday / hens / bucks hosts (migration 0053). */
+  honoree_name: string | null; crew_size: number | null
   source: string | null; group_id: string | null; booth_offer_sent_at: string | null
   confirmation_sent_at: string | null
   checked_in_at: string | null
@@ -93,7 +96,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
     setLoading(true)
     const [{ data }, { data: ev }] = await Promise.all([
       supabase.from('guest_registrations')
-        .select('id,status,plus_ones,notes,special_occasion,source,group_id,booth_offer_sent_at,confirmation_sent_at,guests(first_name,last_name,mobile,email,date_of_birth,instagram),promoters(full_name,promoter_code),check_ins(checked_in_at),events!inner(event_date)')
+        .select('id,status,plus_ones,notes,special_occasion,honoree_name,crew_size,source,group_id,booth_offer_sent_at,confirmation_sent_at,guests(first_name,last_name,mobile,email,date_of_birth,instagram),promoters(full_name,promoter_code),check_ins(checked_in_at),events!inner(event_date)')
         .eq('venue_id', venueId).eq('events.event_date', date)
         .order('created_at', { ascending: false }),
       supabase.from('events').select('guestlist_open').eq('venue_id', venueId).eq('event_date', date).order('created_at').limit(1).maybeSingle(),
@@ -105,6 +108,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
       dob: r.guests?.date_of_birth ?? null, instagram: r.guests?.instagram ?? null,
       promoter_name: r.promoters?.full_name ?? '', promoter_code: r.promoters?.promoter_code ?? '',
       plus_ones: r.plus_ones ?? 0, notes: r.notes ?? null, special_occasion: r.special_occasion ?? null,
+      honoree_name: r.honoree_name ?? null, crew_size: r.crew_size ?? null,
       source: r.source ?? null, group_id: r.group_id ?? null, booth_offer_sent_at: r.booth_offer_sent_at ?? null,
       confirmation_sent_at: r.confirmation_sent_at ?? null,
       checked_in_at: r.check_ins?.[0]?.checked_in_at ?? r.check_ins?.checked_in_at ?? null,
@@ -452,7 +456,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                             </div>
                             {r.notes && <div className="text-xs text-luna-gold mt-0.5">{r.notes}</div>}
                           </Td>
-                          <Td className={`md:table-cell ${r.special_occasion ? 'inline-block !py-1' : 'hidden'}`}>{r.special_occasion ? <span className="pill bg-luna-gold/15 text-luna-gold">{r.special_occasion}</span> : <span className="text-luna-muted">—</span>}</Td>
+                          <Td className={`md:table-cell ${r.special_occasion ? 'inline-block !py-1' : 'hidden'}`}>{r.special_occasion ? <span className="pill bg-luna-gold/15 text-luna-gold">{occasionTag(r.special_occasion, r.honoree_name, r.crew_size)}</span> : <span className="text-luna-muted">—</span>}</Td>
                           <Td className="inline-block md:table-cell !py-1 md:!py-2.5 text-xs md:text-sm text-luna-muted">
                             {r.promoter_name}{r.source ? <span className="md:block"> · src {r.source}</span> : null}
                           </Td>
