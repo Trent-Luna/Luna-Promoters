@@ -98,18 +98,33 @@ export const OCCASIONS: Record<OccasionKey, OccasionCopy> = {
 }
 
 /**
- * The photo on each club's tile, by venue NAME — the guest list RPC returns
+ * The logo on each club's tile, by venue NAME — the guest list RPC returns
  * ids and names, and the names are what every other lookup in this app keys
  * on (see meta-pixel.ts). After Dark is tested before Eclipse because its name
- * contains "Eclipse". A venue with no photo (Silk) gets a name tile.
+ * contains "Eclipse". A venue with no logo here gets a name tile.
+ *
+ * Logos, not photos: Trent, 25 Oct 2026, "lets use the logos for the venues
+ * not photos". The same white-on-transparent logos the branded emails and
+ * passes use.
  */
 const TILES: { match: RegExp; img: string }[] = [
-  { match: /after\s*dark/i, img: '/brand/email/booth-afterdark.jpg' },
-  { match: /eclipse/i, img: '/brand/email/booth-eclipse.jpg' },
-  { match: /su\s*casa/i, img: '/brand/email/booth-sucasa.jpg' },
-  { match: /pump/i, img: '/brand/email/booth-pump.jpg' },
-  { match: /mamacita/i, img: '/brand/email/booth-mamacita.jpg' },
+  { match: /after\s*dark/i, img: '/brand/email/logo-afterdark.png' },
+  { match: /eclipse/i, img: '/brand/email/logo-eclipse.png' },
+  { match: /su\s*casa/i, img: '/brand/email/logo-sucasa.png' },
+  { match: /pump/i, img: '/brand/email/logo-pump.png' },
+  { match: /mamacita/i, img: '/brand/email/logo-mamacita.png' },
 ]
+
+/**
+ * Clubs left off these pages. Trent, 25 Oct 2026: "can you remove silk from
+ * this?" Silk (and Silk Saturdays) stay on the ordinary Luna guest list and
+ * every promoter link; only the birthday / hens / bucks pages leave them out.
+ */
+const NOT_ON_OCCASION_PAGES = /silk/i
+
+export function onOccasionPages(name: string | null | undefined): boolean {
+  return !!name && !NOT_ON_OCCASION_PAGES.test(name)
+}
 
 export function tileFor(name: string | null | undefined): string | null {
   if (!name) return null

@@ -98,8 +98,8 @@ export function GuestRegistrationForm({
   party?: { maxPlusOnes: number; texts: boolean } | null
   /**
    * The occasion landing pages (/birthday, /hens, /bucks, 24 Oct 2026): show
-   * the venues as photo tiles instead of a dropdown. Keyed by venue id; null
-   * for a venue with no photo, which gets a name tile. Every other caller
+   * the venues as logo tiles instead of a dropdown. Keyed by venue id; null
+   * for a venue with no logo, which gets a name tile. Every other caller
    * leaves this out and keeps the dropdown.
    */
   venueTiles?: Record<string, string | null> | null
@@ -269,8 +269,10 @@ export function GuestRegistrationForm({
                     <button key={v.id} type="button" aria-pressed={on} onClick={() => pickVenue(v.id)}
                       className={`occ-tile text-left rounded-xl overflow-hidden border-2 transition ${on ? 'occ-tile-on' : 'border-white/[0.08]'}`}>
                       {img
-                        // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={img} alt="" className="block w-full h-[74px] object-cover" />
+                        ? <span className="flex h-[74px] items-center justify-center bg-white/[0.03] px-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img} alt={v.name} className="block max-h-[42px] max-w-full object-contain" />
+                          </span>
                         : <span className="flex h-[74px] items-center justify-center bg-white/[0.04] text-lg font-extrabold uppercase tracking-widest">{v.name}</span>}
                       <span className="block px-2.5 py-2 text-[13.5px] font-bold leading-tight">{v.name}</span>
                     </button>

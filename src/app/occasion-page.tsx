@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { GuestRegistrationForm } from '@/app/p/[code]/guest-form'
-import { OCCASIONS, GROUP_PIXEL, sourceFor, tileFor, type OccasionKey } from '@/lib/occasion'
+import { OCCASIONS, GROUP_PIXEL, sourceFor, tileFor, onOccasionPages, type OccasionKey } from '@/lib/occasion'
 import { RESERVATIONS_URL } from '@/lib/occasion-packages'
 
 /**
@@ -35,7 +35,8 @@ export async function OccasionPage({
   const o = OCCASIONS[occasion]
   const supabase = await createClient()
   const { data } = await supabase.rpc('get_promoter_link', { p_code: 'luna' })
-  const venues = (data?.venues ?? []) as { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }[]
+  const venues = ((data?.venues ?? []) as { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }[])
+    .filter(v => onOccasionPages(v.name))
   const blackouts = (data?.blackouts ?? []) as { venue_id: string | null; date: string }[]
   const tiles = Object.fromEntries(venues.map(v => [v.id, tileFor(v.name)]))
 
