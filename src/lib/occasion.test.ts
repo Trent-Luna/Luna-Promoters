@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OCCASIONS, sourceFor, tileFor } from './occasion'
+import { OCCASIONS, sourceFor, tileFor, onOccasionPages } from './occasion'
 import { occasionFromHint } from '@/app/p/[code]/guest-form'
 
 describe('occasion landing pages', () => {
@@ -20,10 +20,23 @@ describe('occasion landing pages', () => {
 
   it('finds each club photo by name, After Dark before Eclipse', () => {
     expect(tileFor('Eclipse AfterDark')).toContain('afterdark')
-    expect(tileFor('Eclipse')).toContain('booth-eclipse')
+    expect(tileFor('Eclipse')).toBe('/brand/email/logo-eclipse.png')
     expect(tileFor('Su Casa Brisbane')).toContain('sucasa')
     expect(tileFor('Pump Nightclub')).toContain('pump')
     expect(tileFor('Mamacita Nightclub')).toContain('mamacita')
     expect(tileFor('Silk')).toBeNull()
+  })
+})
+
+describe('onOccasionPages', () => {
+  it('leaves Silk off (Trent, 25 Oct)', () => {
+    expect(onOccasionPages('Silk')).toBe(false)
+    expect(onOccasionPages('Silk Saturdays')).toBe(false)
+  })
+  it('keeps every other club', () => {
+    for (const n of ['Eclipse', 'Eclipse AfterDark', 'Mamacita Nightclub', 'Pump Nightclub', 'Su Casa Brisbane']) {
+      expect(onOccasionPages(n)).toBe(true)
+    }
+    expect(onOccasionPages(null)).toBe(false)
   })
 })
