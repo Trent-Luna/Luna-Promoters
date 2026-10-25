@@ -10,6 +10,7 @@ import {
 import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
 import { pixelForVenue, loadPixel, trackLead } from '@/lib/meta-pixel'
 import { clampPlusOnes, cleanNames } from '@/lib/party'
+import { CREW_MIN, CREW_MAX, clampCrew } from '@/lib/crew'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
 
@@ -78,7 +79,7 @@ export function GuestRegistrationForm({
   promoterCode, venues, blackouts = [],
   lockedVenue = null, lockedDate = null, showOccasion = true, source = null, occasionHint = null,
   party = null,
-  venueTiles = null, extraPixels = [], ctaLabel = null,
+  venueTiles = null, extraPixels = [], ctaLabel = null, crew = null,
 }: {
   promoterCode: string
   venues: Venue[]
@@ -106,6 +107,14 @@ export function GuestRegistrationForm({
   extraPixels?: string[]
   /** The submit button's words, when the page wants its own. */
   ctaLabel?: string | null
+  /**
+   * The occasion landing pages again (25 Oct 2026, migration 0053): ask how
+   * many are coming and, for a hens or bucks, the bride or groom's name, then
+   * give the host a crew link (set_crew_details) once they are registered.
+   * `honoreeLabel` is null on the birthday page. Every other caller leaves
+   * this out and the form is unchanged.
+   */
+  crew?: { honoreeLabel: string | null } | null
 }) {
   const router = useRouter()
   const today = venueToday()
@@ -125,6 +134,8 @@ export function GuestRegistrationForm({
   const maxPlus = party ? clampPlusOnes(party.maxPlusOnes, party.maxPlusOnes) : 0
   const [plus, setPlus] = useState(0)
   const [friends, setFriends] = useState<string[]>([])
+  const [crewSize, setCrewSize] = useState(CREW_MIN)
+  const [honoree, setHonoree] = useState('')
   const [err, setErr] = useState('')
   const [suggested, setSuggested] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -224,6 +235,15 @@ export function GuestRegistrationForm({
           keepalive: true,
         })
       } catch {}
+      // The host's crew link and details. Awaited so the pass page opens with
+      // the link ready; a failure here never undoes the registration.
+      if (crew) {
+        try {
+          await supabase.rpc('set_crew_details', {
+            p_token: data.qr_token, p_honoree: honoree.trim() || null, p_crew_size: crewSize,
+          })
+        } catch {}
+      }
       if (pixelId) trackLead(pixelId, data.qr_token, { content_name: venue?.name, content_category: occasion || 'guest list' })
       for (const id of extraPixels) {
         if (id !== pixelId) trackLead(id, data.qr_token, { content_name: venue?.name, content_category: occasion || 'guest list' })
@@ -348,6 +368,32 @@ export function GuestRegistrationForm({
         </p>
       )}
 
+      {crew && (
+        <div>
+          <label className="label">How many in your crew? <span className="font-normal">(including you)</span></label>
+          <div className="input !py-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-semibold">{crewSize} {crewSize === 1 ? 'person' : 'people'}</div>
+              <div className={`text-[11px] ${crewSize >= CREW_MIN ? 'text-luna-gold font-semibold' : 'text-luna-muted'}`}>
+                {crewSize >= CREW_MIN
+                  ? 'You’re getting the deal ✓'
+                  : `${CREW_MIN - crewSize} more to get the deal (groups of ${CREW_MIN}+)`}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button type="button" aria-label="One fewer" disabled={crewSize <= 1}
+                className="w-10 h-10 rounded-lg border border-white/15 text-lg disabled:opacity-35"
+                onClick={() => setCrewSize(n => clampCrew(n - 1))}>−</button>
+              <span className="w-7 text-center text-lg font-bold" aria-live="polite">{crewSize}</span>
+              <button type="button" aria-label="One more" disabled={crewSize >= CREW_MAX}
+                className="w-10 h-10 rounded-lg btn-gold !p-0 text-lg disabled:opacity-35"
+                onClick={() => setCrewSize(n => clampCrew(n + 1))}>+</button>
+            </div>
+          </div>
+          <p className="text-[11px] text-luna-muted mt-1">You’ll get a link to send them. Everyone who signs up joins your list with their own QR.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">First name *</label>
@@ -358,6 +404,13 @@ export function GuestRegistrationForm({
           <input className="input" required value={f.last} onChange={e => set('last', e.target.value)} />
         </div>
       </div>
+      {crew?.honoreeLabel && (
+        <div>
+          <label className="label">{crew.honoreeLabel} <span className="font-normal">(optional)</span></label>
+          <input className="input" maxLength={40} value={honoree} onChange={e => setHonoree(e.target.value)}
+            placeholder="e.g. Jess" />
+        </div>
+      )}
       <div>
         <label className="label">Mobile number *</label>
         <input className="input" required type="tel" placeholder="04xx xxx xxx"

@@ -5,9 +5,11 @@ import { SaveQR } from '@/components/SaveQR'
 import { StatusPill } from '@/components/ui'
 import { fmtDate, fmtTime } from '@/lib/format'
 import { cutoffLabel } from '@/lib/guestlist-cutoff'
+import { prettyNight } from '@/lib/trading'
 import { notFound } from 'next/navigation'
 import { CalendarShare } from './actions'
 import { GroupInvite, type Member } from './group'
+import { CrewCard, type CrewInfo } from './crew'
 import { BrandedPass } from './branded'
 import { themeFor } from '@/lib/venue-theme'
 
@@ -16,9 +18,11 @@ export const dynamic = 'force-dynamic'
 export default async function GuestQR({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const supabase = await createClient()
-  const [{ data: reg }, { data: group }] = await Promise.all([
+  const [{ data: reg }, { data: group }, { data: crew }] = await Promise.all([
     supabase.rpc('get_registration_by_token', { p_token: token }),
     supabase.rpc('get_group_members', { p_token: token }),
+    // A birthday / hens / bucks host's crew link (0053); null for everyone else.
+    supabase.rpc('get_crew_by_token', { p_token: token }),
   ])
   if (!reg) notFound()
   const members = (group ?? []) as Member[]
@@ -29,11 +33,15 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
   const checkInUrl = `${site}/g/${token}`
   const promoterLink = `${site}/p/${reg.promoter_code}`
+  const crewCard = crew && !reg.party ? (
+    <CrewCard token={token} crew={crew as CrewInfo} site={site} hostFirst={reg.first_name}
+      venue={reg.venue_name} night={prettyNight(reg.event_date)} canShare={upcoming && reg.status !== 'cancelled'} />
+  ) : null
 
   // Venues with their own look get the branded pass; others keep this one.
   const theme = themeFor(reg.venue_slug)
   if (theme) {
-    return <BrandedPass reg={reg} theme={theme} token={token} members={members} site={site} upcoming={upcoming} />
+    return <BrandedPass reg={reg} theme={theme} token={token} members={members} site={site} upcoming={upcoming} crew={crewCard} />
   }
 
   return (
@@ -81,6 +89,7 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
             No screenshot? No problem — just give your name at the door and we&apos;ll find you.
           </p>
         </div>
+        {crewCard}
         {!reg.party && (
           <GroupInvite token={token} members={members} site={site} venue={reg.venue_name} dateLabel={dateLabel} canAdd={upcoming && reg.status !== 'cancelled'} />
         )}

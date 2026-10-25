@@ -120,6 +120,7 @@ export async function OccasionPage({
                 venueTiles={tiles}
                 extraPixels={[GROUP_PIXEL]}
                 ctaLabel={o.cta}
+                crew={{ honoreeLabel: o.honoreeLabel }}
               />
             )}
           </section>
@@ -130,7 +131,7 @@ export async function OccasionPage({
           <ol className="mt-3 grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             {[
               ['01', 'Sign up here', 'Pick your club and the night. You’ll get your QR pass straight away.'],
-              ['02', 'Bring the crew', 'Five or more of you, arriving before 10:30pm.'],
+              ['02', 'Send the crew your link', 'You’ll get a personal link. Everyone who signs up through it joins your list with their own QR. Five or more of you, arriving before 10:30pm.'],
               ['03', 'Show your QR at the door', o.step3],
             ].map(([n, t, d]) => (
               <li key={n} className="rounded-2xl border border-[#262236] bg-[#0F0D17] p-4">

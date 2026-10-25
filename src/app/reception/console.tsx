@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/ui'
 import { cacheKey, loadCache, saveCache, loadQueue, saveQueue, type QueuedCheckIn } from './offline'
 import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
 import { headsIn, namesLine } from '@/lib/party'
+import { occasionTag } from '@/lib/crew'
 
 interface Venue { id: string; name: string; guestlist_until?: string | null }
 interface Row {
@@ -15,6 +16,8 @@ interface Row {
   first_name: string; last_name: string; mobile: string; email: string | null
   promoter_name: string; promoter_code: string
   checked_in_at: string | null; notes: string | null; special_occasion: string | null
+  /** Birthday / hens / bucks hosts (migration 0053). */
+  honoree_name: string | null; crew_size: number | null
   method: string | null; plus_ones: number; group_id: string | null; source: string | null
   /** Party nights (migration 0051): friends' names, and how many of the group are in when it arrived in parts. */
   party_names: string[] | null; admitted: number | null
@@ -96,7 +99,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     try {
       const { data, error } = await supabase
         .from('guest_registrations')
-        .select('id,status,qr_token,special_occasion,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date,party)')
+        .select('id,status,qr_token,special_occasion,honoree_name,crew_size,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date,party)')
         .eq('venue_id', venueId).eq('events.event_date', date)
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -107,6 +110,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
         promoter_name: r.promoters?.full_name ?? '', promoter_code: r.promoters?.promoter_code ?? '',
         checked_in_at: r.check_ins?.[0]?.checked_in_at ?? r.check_ins?.checked_in_at ?? null,
         special_occasion: r.special_occasion ?? null,
+        honoree_name: r.honoree_name ?? null, crew_size: r.crew_size ?? null,
         notes: r.check_ins?.[0]?.notes ?? null,
         method: r.check_ins?.[0]?.method ?? r.check_ins?.method ?? null,
         plus_ones: r.plus_ones ?? 0, group_id: r.group_id ?? null, source: r.source ?? null,
@@ -392,7 +396,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
                 <div className="font-bold text-lg truncate flex items-center gap-2">
                   {r.first_name} {r.last_name}
                   {party > 0 && <span className="pill bg-luna-gold/20 text-luna-gold text-[11px]">party of {party + 1}</span>}
-                  {r.special_occasion && <span className="pill bg-luna-gold/15 text-luna-gold text-[11px]">{r.special_occasion}</span>}
+                  {r.special_occasion && <span className="pill bg-luna-gold/15 text-luna-gold text-[11px]">{occasionTag(r.special_occasion, r.honoree_name, r.crew_size)}</span>}
                 </div>
                 {r.is_party && r.party_names && r.party_names.length > 0 && (
                   <div className="text-sm text-luna-goldsoft truncate">With {namesLine(r.party_names)}</div>

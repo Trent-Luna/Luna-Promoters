@@ -39,6 +39,8 @@ export interface OccasionCopy {
   h1b: string
   intro: string
   honour: string
+  /** The bride / groom field on the form (migration 0053); null on birthdays. */
+  honoreeLabel: string | null
   formTitle: string
   cta: string
   step3: string
@@ -58,7 +60,7 @@ export const OCCASIONS: Record<OccasionKey, OccasionCopy> = {
     hero: '/brand/email/hero-afterdark.jpg',
     kicker: 'Birthday sign-up', h1: 'Your birthday', h1b: 'is on us.',
     intro: `Bring five or more of your crew to any Luna club: ${DEAL} for you.`,
-    honour: 'you',
+    honour: 'you', honoreeLabel: null,
     formTitle: 'Lock in your birthday', cta: 'Claim my birthday deal',
     step3: 'The birthday person gets the VIP wristband on the night.',
     boothTitle: 'Going big for your birthday?',
@@ -72,7 +74,7 @@ export const OCCASIONS: Record<OccasionKey, OccasionCopy> = {
     hero: '/brand/email/hero-sucasa.jpg',
     kicker: 'Hens party sign-up', h1: 'Hens night', h1b: 'sorted.',
     intro: `Bring five or more of the girls to any Luna club: ${DEAL} for the bride.`,
-    honour: 'the bride',
+    honour: 'the bride', honoreeLabel: 'The bride’s name',
     formTitle: 'Lock in the hens', cta: 'Lock in the hens',
     step3: 'The bride gets the VIP wristband on the night.',
     boothTitle: 'Want your own space for the hens?',
@@ -86,7 +88,7 @@ export const OCCASIONS: Record<OccasionKey, OccasionCopy> = {
     hero: '/brand/email/hero-pump.jpg',
     kicker: 'Bucks party sign-up', h1: 'Bucks night', h1b: 'sorted.',
     intro: `Bring five or more of the boys to any Luna club: ${DEAL} for the groom.`,
-    honour: 'the groom',
+    honour: 'the groom', honoreeLabel: 'The groom’s name',
     formTitle: 'Lock in the bucks', cta: 'Lock in the bucks',
     step3: 'The groom gets the VIP wristband on the night.',
     boothTitle: 'Want your own space for the bucks?',

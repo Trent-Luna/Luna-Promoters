@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { QRCode } from '@/components/QRCode'
 import { SaveQR } from '@/components/SaveQR'
 import { StatusPill } from '@/components/ui'
@@ -14,8 +14,10 @@ import { namesLine, plusLabel } from '@/lib/party'
  * branded confirmation email. Same pieces as the plain pass — QR, save to
  * photos, calendar, invite, bringing friends — restyled through CSS variables.
  */
-export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
+export function BrandedPass({ reg, theme: v, token, members, site, upcoming, crew = null }: {
   reg: any; theme: VenueTheme; token: string; members: Member[]; site: string; upcoming: boolean
+  /** The birthday / hens / bucks crew link card (0053), when this guest is a host. */
+  crew?: ReactNode
 }) {
   const { panel, line, muted } = tones(v)
   const n = nightParts(reg.event_date)
@@ -50,6 +52,7 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
         .gp .gp-h{font-family:var(--head);font-weight:var(--headW);text-transform:var(--headCase);letter-spacing:var(--headTrack);line-height:1.1}
         .gp .gp-k{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--acc)}
         .gp .gp-m,.gp .text-luna-muted,.gp .text-luna-subtle{color:var(--muted)}
+        .gp .text-luna-gold{color:var(--acc)}
         .gp .gp-num{font-family:var(--num);font-weight:var(--numW)}
         .gp .card{background:var(--panel);border-color:var(--line)}
         .gp .input{background:var(--bg);border-color:var(--line);color:var(--ink)}
@@ -137,6 +140,7 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming }: {
 
         {/* A party night brings friends on this one QR, so the separate
             invite-a-friend flow (each friend their own QR) is not offered. */}
+        {crew}
         {!isParty && (
           <GroupInvite token={token} members={members} site={site} venue={reg.venue_name} dateLabel={dateLabel}
             canAdd={upcoming && reg.status !== 'cancelled'} />
