@@ -14,7 +14,8 @@ import type { OccasionKey } from '@/lib/occasion'
 
 /** The deal on the landing pages is for a group of five or more. */
 export const CREW_MIN = 5
-export const CREW_MAX = 40
+/** Ten in a crew, the host included (Trent, 25 Oct: "make the limit 10"; 0054). */
+export const CREW_MAX = 10
 
 /** The stored special_occasion → the landing page it belongs to. */
 export function occasionKeyFor(occasion: string | null | undefined): OccasionKey | null {

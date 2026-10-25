@@ -14,10 +14,10 @@ describe('occasionKeyFor', () => {
 })
 
 describe('clampCrew', () => {
-  it('keeps 1–40', () => {
+  it('keeps 1–10', () => {
     expect(clampCrew(0)).toBe(1)
     expect(clampCrew(8)).toBe(8)
-    expect(clampCrew(99)).toBe(40)
+    expect(clampCrew(99)).toBe(10)
     expect(clampCrew(NaN)).toBe(5)
   })
 })

@@ -21,7 +21,7 @@ type Crew = {
   host_first: string; honoree_name: string | null; occasion: string | null; crew_size: number | null
   venue_id: string; venue_name: string; venue_slug: string; guestlist_until: string | null
   event_date: string; start_time: string | null; joined: number
-  state: 'open' | 'past' | 'closed' | 'cancelled'
+  state: 'open' | 'past' | 'closed' | 'cancelled' | 'full'
 }
 
 async function load(code: string): Promise<Crew | null> {
@@ -61,6 +61,7 @@ export default async function CrewPage({ params }: { params: Promise<{ code: str
     past: `${title} has been and gone. Hope it was a big one.`,
     closed: `The guest list for ${night} has closed${until ? ` (it ran until ${until})` : ''}.`,
     cancelled: 'This crew link is no longer active.',
+    full: `${title} is full: ten is the limit for a crew. Ask ${c.host_first} about another way in.`,
   }
 
   return (

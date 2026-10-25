@@ -45,7 +45,7 @@ export function CrewJoinForm({ code, venueName, extraPixels, cta }: {
           guestlist_closed: 'The guest list for this night has closed.',
           past_event: 'This night has already happened.',
           cancelled: 'This crew link is no longer active.',
-          crew_full: 'This crew is full.',
+          crew_full: 'This crew is full — ten is the limit.',
           not_found: 'This crew link isn’t active.',
         }
         setErr(m[data?.error] || 'Could not get you on the list. Please check your details.')

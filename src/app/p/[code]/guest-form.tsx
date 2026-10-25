@@ -390,7 +390,7 @@ export function GuestRegistrationForm({
                 onClick={() => setCrewSize(n => clampCrew(n + 1))}>+</button>
             </div>
           </div>
-          <p className="text-[11px] text-luna-muted mt-1">You’ll get a link to send them. Everyone who signs up joins your list with their own QR.</p>
+          <p className="text-[11px] text-luna-muted mt-1">You’ll get a link to send them. Everyone who signs up joins your list with their own QR. Up to 10 in a crew, you included.</p>
         </div>
       )}
 

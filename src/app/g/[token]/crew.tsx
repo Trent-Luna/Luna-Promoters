@@ -87,7 +87,7 @@ export function CrewCard({ token, crew, site, hostFirst, venue, night, canShare 
                 <button onClick={share} className="btn-ghost">Share another way</button>
               </div>
               <p className="text-[11px] text-luna-muted mt-3">
-                Each friend gets their own QR for {venue}, {night}. They show up in your list below as they sign up.
+                Each friend gets their own QR for {venue}, {night}. They show up in your list below as they sign up. Up to 10 in a crew, you included.
               </p>
             </>
           )}
