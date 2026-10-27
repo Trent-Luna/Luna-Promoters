@@ -1,15 +1,58 @@
 import { sendEmail, type SendResult } from './send'
-import { buttons, esc, footer, header, intro, lunaSkin, para, shell, siteUrl } from './blocks'
+import { actionCard, buttons, esc, footer, header, intro, lunaSkin, panel, para, shell, siteUrl, steps, tones } from './blocks'
+import { WHATSAPP_CHANNEL_BODY, WHATSAPP_CHANNEL_TITLE } from '@/lib/whatsapp-copy'
 
 /**
  * Promoter emails, in the Luna Group look Trent approved on 22 Oct 2026.
- * The welcome itself goes from the promoter-emails edge function, which
- * carries its own copy of these blocks.
+ *
+ * The welcome that actually sends is welcomeHtml in
+ * supabase/functions/promoter-emails — an edge function cannot import these
+ * blocks. promoterWelcomeEmail is that same email, so it can be rendered and
+ * tested. Keep the two in step; the wording lives in src/lib/whatsapp-copy.ts.
  */
 
 const REASON = "You're getting this because you're a Luna Group promoter."
+const WELCOME_REASON = "You're getting this because you were approved as a Luna Group promoter."
 
 const firstName = (fullName: string) => esc((fullName || '').split(' ')[0] || 'there')
+
+/** The welcome a new promoter receives. Blank invite → the card is left out. */
+export function promoterWelcomeEmail(
+  fullName: string,
+  code: string,
+  inviteUrl: string | null,
+): { subject: string; html: string } {
+  const site = siteUrl()
+  const s = lunaSkin(site)
+  const first = firstName(fullName)
+  const link = `${site}/p/${code}`
+  const invite = inviteUrl?.trim() || null
+  const items: [string, string][] = [
+    ['Your guest list link', `<a href="${esc(link)}" style="color:${s.acc}">${esc(link.replace(/^https?:\/\//, ''))}</a>. Share it anywhere; everyone who signs up is on your list.`],
+    ['Your dashboard', 'See who&rsquo;s signed up and who checked in.'],
+  ]
+  const note = `<div style="font-family:${s.body};font-weight:700;font-size:18px;line-height:1.25;color:${s.ink}">${WHATSAPP_CHANNEL_TITLE}</div>`
+    + `<div style="font-family:${s.body};font-size:14px;line-height:1.55;color:${tones(s).muted};padding-top:8px">${WHATSAPP_CHANNEL_BODY.replace(/\u2019/g, '&rsquo;')}</div>`
+  const rows = [
+    header(s),
+    intro(s, {
+      kicker: 'Promoters &middot; welcome',
+      headline: `You&rsquo;re in, ${first}`,
+      lead: 'Welcome to the Luna Group promoter team. Two things and you&rsquo;re running.',
+      top: 22,
+    }),
+    ...(invite ? [actionCard(s, { eyebrow: 'WhatsApp Channel', note, button: ['Follow', invite] })] : []),
+    panel(s, steps(s, items)),
+    buttons(s, ['Open my dashboard', `${site}/promoter`]),
+    para(s, 'New to this? The Promoter Guide is on your dashboard.', { top: 14, size: 13 }),
+    footer(s, WELCOME_REASON, { sisters: false }),
+  ]
+  const subject = "You're in: your Luna guest list link"
+  const preheader = invite
+    ? 'All guest list links, headliner drops and promoter perks go out first in our WhatsApp Channel.'
+    : 'Your link and your dashboard.'
+  return { subject, html: shell(s, subject, preheader, rows) }
+}
 
 /** A channel link (whatsapp.com/channel/…) rather than a group invite. */
 function isChannel(url: string): boolean {
