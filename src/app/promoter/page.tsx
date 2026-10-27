@@ -8,7 +8,9 @@ import { TierBadge, Stat } from '@/components/ui'
 import { TierProgressBar } from '@/components/TierProgressBar'
 import { fmtDate, pct } from '@/lib/format'
 import { CopyLink } from './copy-link'
+import { PromoterWhatsAppCard } from './whatsapp-card'
 import { PROMOTER_NAV } from '@/components/nav'
+import { getWhatsappInvite } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,12 +33,13 @@ export default async function PromoterDashboard() {
 
   const monthStart = new Date(); monthStart.setDate(1)
   const mStr = monthStart.toISOString().slice(0, 10)
-  const [{ data: tiers }, { data: perf }, { data: events }, { data: board }, { data: refs }] = await Promise.all([
+  const [{ data: tiers }, { data: perf }, { data: events }, { data: board }, { data: refs }, whatsappInvite] = await Promise.all([
     supabase.from('tiers').select('name,min_guests,max_guests,invite_only,perks').order('sort_order'),
     supabase.from('promoter_performance').select('checked_in_count,registered_count').eq('promoter_id', p.id).eq('period_month', mStr).maybeSingle(),
     supabase.rpc('get_promoter_events', { p_promoter: p.id }),
     supabase.rpc('get_leaderboard', { p_from: mStr, p_limit: 500 }),
     supabase.rpc('get_my_referrals', { p_promoter: p.id }),
+    getWhatsappInvite(),
   ])
 
   const checkedThisMonth = perf?.checked_in_count ?? 0
@@ -58,6 +61,7 @@ export default async function PromoterDashboard() {
     <AppShell nav={PROMOTER_NAV} current="/promoter"
       title={`Welcome, ${p.full_name.split(' ')[0]}`}
       subtitle={`${p.current_tier.charAt(0).toUpperCase() + p.current_tier.slice(1)} tier · #${myRank} this month`}>
+      <PromoterWhatsAppCard href={whatsappInvite} />
       <div className="grid lg:grid-cols-3 gap-5">
         {/* link card */}
         <div className="card p-6 min-w-0 lg:col-span-2">
