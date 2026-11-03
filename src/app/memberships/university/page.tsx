@@ -8,19 +8,19 @@ export const dynamic = 'force-dynamic'
 
 const ASSETS = '/memberships/university'
 
-type Venue = { name: string; colour: string; src?: string; textClass?: string }
+type Venue = { name: string; colour: string; src?: string }
 
-// Venues without a logo file render as styled text in their brand colour.
-// TODO: Juju, Ember & Ash and Night Market logo PNGs still to be supplied.
+// Official logo files, original brand colours. A venue without `src` falls
+// back to its name as styled text.
 const VENUES: Venue[] = [
   { name: 'Eclipse', colour: '#E7C873', src: `${ASSETS}/eclipse.png` },
   { name: 'Eclipse After Dark', colour: '#D0343A', src: `${ASSETS}/after-dark.png` },
   { name: 'Su Casa', colour: '#A78BFA', src: `${ASSETS}/su-casa.png` },
   { name: 'Pump', colour: '#F4281C', src: `${ASSETS}/pump.png` },
-  { name: 'Juju', colour: '#F26822' },
-  { name: 'Ember & Ash', colour: '#A65E3E' },
-  { name: 'Night Market', colour: '#C81E3E' },
-  { name: 'Mamacita', colour: '#F83460' },
+  { name: 'Juju', colour: '#F26822', src: `${ASSETS}/juju.png` },
+  { name: 'Ember & Ash', colour: '#A65E3E', src: `${ASSETS}/ember-and-ash.png` },
+  { name: 'Night Market', colour: '#C81E3E', src: `${ASSETS}/night-market.png` },
+  { name: 'Mamacita', colour: '#F83460', src: `${ASSETS}/mamacita.png` },
 ]
 
 const STEPS = [
