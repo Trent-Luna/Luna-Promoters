@@ -72,65 +72,65 @@ export function UniversitySignupForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form onSubmit={submit} className="space-y-[18px]">
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
-          <label className="label">Full name *</label>
-          <input className="input" required value={f.full_name} onChange={e => set('full_name', e.target.value)} />
+          <label className="label text-[13px] font-bold text-white/90">Full name *</label>
+          <input className="input h-[54px] rounded-xl border-white/15 bg-[#0B0C10] px-4 text-base font-semibold text-white placeholder:text-white/30 focus:border-[#E7C873] focus:ring-4 focus:ring-[#E7C873]/15 [color-scheme:dark]" required value={f.full_name} onChange={e => set('full_name', e.target.value)} />
         </div>
         <div>
-          <label className="label">Mobile number *</label>
-          <input className="input" required type="tel" placeholder="04xx xxx xxx"
+          <label className="label text-[13px] font-bold text-white/90">Mobile number *</label>
+          <input className="input h-[54px] rounded-xl border-white/15 bg-[#0B0C10] px-4 text-base font-semibold text-white placeholder:text-white/30 focus:border-[#E7C873] focus:ring-4 focus:ring-[#E7C873]/15 [color-scheme:dark]" required type="tel" placeholder="04xx xxx xxx"
             value={f.mobile} onChange={e => set('mobile', e.target.value)} />
         </div>
         <div>
-          <label className="label">Email address *</label>
-          <input className="input" required type="email" value={f.email} onChange={e => set('email', e.target.value)} />
+          <label className="label text-[13px] font-bold text-white/90">Email address *</label>
+          <input className="input h-[54px] rounded-xl border-white/15 bg-[#0B0C10] px-4 text-base font-semibold text-white placeholder:text-white/30 focus:border-[#E7C873] focus:ring-4 focus:ring-[#E7C873]/15 [color-scheme:dark]" required type="email" value={f.email} onChange={e => set('email', e.target.value)} />
         </div>
         <div>
-          <label className="label">Date of birth * <span className="text-luna-muted font-normal">(must be 18+)</span></label>
-          <input className="input" required type="date" max={today} value={f.dob} onChange={e => set('dob', e.target.value)} />
+          <label className="label text-[13px] font-bold text-white/90">Date of birth * <span className="text-white/45 font-normal">(must be 18+)</span></label>
+          <input className="input h-[54px] rounded-xl border-white/15 bg-[#0B0C10] px-4 text-base font-semibold text-white placeholder:text-white/30 focus:border-[#E7C873] focus:ring-4 focus:ring-[#E7C873]/15 [color-scheme:dark]" required type="date" max={today} value={f.dob} onChange={e => set('dob', e.target.value)} />
         </div>
         <div>
-          <label className="label">University ID expiry date *</label>
-          <input className="input" required type="date" value={f.expiry_date} onChange={e => set('expiry_date', e.target.value)} />
+          <label className="label text-[13px] font-bold text-white/90">University ID expiry date *</label>
+          <input className="input h-[54px] rounded-xl border-white/15 bg-[#0B0C10] px-4 text-base font-semibold text-white placeholder:text-white/30 focus:border-[#E7C873] focus:ring-4 focus:ring-[#E7C873]/15 [color-scheme:dark]" required type="date" value={f.expiry_date} onChange={e => set('expiry_date', e.target.value)} />
         </div>
       </div>
 
-      <div className="card bg-luna-surface p-4">
-        <p className="text-sm font-semibold mb-2">Upload your current university ID *</p>
-        <ul className="text-xs text-luna-muted list-disc pl-5 space-y-1 mb-3">
+      <div className="rounded-[14px] border-[1.5px] border-dashed border-[#E7C873]/45 bg-[#E7C873]/[0.04] p-5">
+        <p className="text-[13px] font-bold text-white/90 mb-3">Upload your current university ID *</p>
+        <ul className="mb-4 grid grid-cols-1 gap-2 text-[12.5px] text-white/65 sm:grid-cols-2 [&>li]:rounded-[10px] [&>li]:border [&>li]:border-white/[0.09] [&>li]:bg-[#0B0C10] [&>li]:px-3 [&>li]:py-2.5">
           <li>Make sure the whole card is visible and the text is readable.</li>
           <li>Avoid glare and shadows.</li>
           <li>Upload the side showing your name and the expiry date.</li>
           <li>Don’t upload a different ID (e.g. licence or passport).</li>
         </ul>
         <input type="file" accept={ACCEPT} onChange={pickFile}
-          className="block w-full text-sm text-luna-text file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white file:text-black file:font-semibold" />
-        {file && <p className="text-xs text-emerald-400 mt-2">Selected: {file.name}</p>}
-        <p className="text-[11px] text-luna-muted mt-2">JPG, PNG, WEBP, HEIC or PDF · up to {MAX_MB} MB. Stored securely and never shared publicly.</p>
+          className="block w-full text-sm text-luna-text file:mr-3 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:bg-[#E7C873] file:text-[#07080B] file:font-extrabold file:cursor-pointer" />
+        {file && <p className="text-[13px] font-bold text-[#E7C873] mt-2">Selected: {file.name}</p>}
+        <p className="text-[12px] text-white/45 mt-2">JPG, PNG, WEBP, HEIC or PDF · up to {MAX_MB} MB. Stored securely and never shared publicly.</p>
       </div>
 
-      <div className="card bg-luna-surface p-4 space-y-3">
-        <label className="flex items-start gap-3 text-sm cursor-pointer">
-          <input type="checkbox" className="mt-1 accent-white w-4 h-4" checked={privacy} onChange={e => setPrivacy(e.target.checked)} />
-          <span>I agree to the <a href="/terms" target="_blank" className="underline hover:text-white">Privacy Policy &amp; Terms</a>. *</span>
+      <div className="space-y-3 pt-1">
+        <label className="flex items-start gap-3 text-[14.5px] text-white/90 cursor-pointer">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#E7C873]" checked={privacy} onChange={e => setPrivacy(e.target.checked)} />
+          <span>I agree to the <a href="/terms" target="_blank" className="text-[#E7C873] underline hover:text-white">Privacy Policy &amp; Terms</a>. *</span>
         </label>
-        <label className="flex items-start gap-3 text-sm cursor-pointer">
-          <input type="checkbox" className="mt-1 accent-white w-4 h-4" checked={ownId} onChange={e => setOwnId(e.target.checked)} />
+        <label className="flex items-start gap-3 text-[14.5px] text-white/90 cursor-pointer">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#E7C873]" checked={ownId} onChange={e => setOwnId(e.target.checked)} />
           <span>I confirm the uploaded university ID belongs to me. *</span>
         </label>
-        <label className="flex items-start gap-3 text-sm cursor-pointer">
-          <input type="checkbox" className="mt-1 accent-white w-4 h-4" checked={marketing} onChange={e => setMarketing(e.target.checked)} />
-          <span className="text-luna-muted">Optional: I’d like to receive Luna Group event updates and offers.</span>
+        <label className="flex items-start gap-3 text-[14.5px] text-white/90 cursor-pointer">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#E7C873]" checked={marketing} onChange={e => setMarketing(e.target.checked)} />
+          <span className="text-white/65">Optional: I’d like to receive Luna Group event updates and offers.</span>
         </label>
       </div>
 
       {err && <p className="text-sm text-red-400">{err}</p>}
-      <button className="btn-gold w-full btn-lg" disabled={loading}>
+      <button className="btn-gold w-full btn-lg mt-2 rounded-full !bg-[#E7C873] py-5 text-[17px] font-extrabold text-[#07080B] shadow-[0_10px_40px_-10px_rgba(231,200,115,.55)] hover:!bg-[#efd690]" disabled={loading}>
         {loading ? 'Submitting & verifying…' : 'Submit application'}
       </button>
-      <p className="text-xs text-luna-muted text-center">
+      <p className="text-[13px] text-white/45 text-center">
         University membership benefits are only available to people aged 18 or older.
       </p>
     </form>
