@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { GuestRegistrationForm } from '@/app/p/[code]/guest-form'
 import { OCCASIONS, GROUP_PIXEL, SU_CASA_PIXEL, sourceFor, tileFor, onOccasionPages, type OccasionKey } from '@/lib/occasion'
 import { RESERVATIONS_URL } from '@/lib/occasion-packages'
+import { loadEventNotices } from '@/lib/load-event-notices'
 
 /**
  * A birthday / hens / bucks landing page for Meta ads (24 Oct 2026). See
@@ -34,7 +35,10 @@ export async function OccasionPage({
 }) {
   const o = OCCASIONS[occasion]
   const supabase = await createClient()
-  const { data } = await supabase.rpc('get_promoter_link', { p_code: 'luna' })
+  const [{ data }, eventNotices] = await Promise.all([
+    supabase.rpc('get_promoter_link', { p_code: 'luna' }),
+    loadEventNotices(),
+  ])
   const venues = ((data?.venues ?? []) as { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }[])
     .filter(v => onOccasionPages(v.name))
   const blackouts = (data?.blackouts ?? []) as { venue_id: string | null; date: string }[]
@@ -123,6 +127,7 @@ export async function OccasionPage({
                 extraPixels={[GROUP_PIXEL, SU_CASA_PIXEL]}
                 ctaLabel={o.cta}
                 crew={{ honoreeLabel: o.honoreeLabel }}
+                eventNotices={eventNotices}
               />
             )}
           </section>

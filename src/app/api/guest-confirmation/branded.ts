@@ -41,7 +41,9 @@ export interface BrandedInput {
   first: string
   eventDate: string            // YYYY-MM-DD
   promoterName?: string | null
-  untilLabel?: string | null   // "11pm" when the venue has a cut-off
+  untilLabel?: string | null   // "11pm" or "10:30pm" — the night's cut-off, when it has one
+  /** events.description, already meant for the guest. Omitted when the night has none. */
+  eventNote?: string | null
   occasion?: string | null
   ownerGuestList?: boolean
   whatsappUrl?: string | null
@@ -95,6 +97,9 @@ export function brandedHtml(i: BrandedInput): string {
   const cutoff = until
     ? band(s, 'Guest list closes', `${until} sharp`, `Arrive before ${until}. After that the guest list no longer applies.`)
     : band(s, 'Guest list', 'Arrive early', 'Entry is subject to capacity on the night.', false)
+  const eventLine = i.eventNote?.trim()
+    ? para(s, esc(i.eventNote.trim()).replace(/\r\n|\n/g, '<br>'), { top: 16, size: 14 })
+    : ''
   const friendsLine = p
     ? (p.included ? para(s, `<b style="color:${s.ink}">On the night:</b> ${esc(p.included)}`, { top: 16, size: 13.5 }) : '')
     : para(s, `<b style="color:${s.ink}">Bringing friends?</b> Everyone needs their own QR. Add them from your pass and we&rsquo;ll send each one theirs.`, { top: 16, size: 13.5 })
@@ -119,6 +124,7 @@ export function brandedHtml(i: BrandedInput): string {
       body: qrBody(s, { qr, pass, title: 'Show this at the door', line: door }),
       band: cutoff,
     }),
+    eventLine,
     buttons(s, ['Open my pass', pass], ['Add to calendar', cal]),
     friendsLine,
     deal ? dealCard(s, deal) : '',

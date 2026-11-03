@@ -38,6 +38,14 @@ describe('venue-branded confirmation', () => {
       expect(html.match(/<\/v:rect>/g)?.length, slug).toBe(1)
     }
   })
+  it('shows the night\'s own note, escaped, and leaves a night without one unchanged', () => {
+    const withNote = brandedHtml({ ...base, theme: THEMES['eclipse'], untilLabel: '10:30pm', eventNote: 'Strict 10:30pm guest list cut-off. No pass-outs. <b>no</b>' })
+    expect(withNote).toContain('10:30pm sharp')
+    expect(withNote).toContain('Strict 10:30pm guest list cut-off. No pass-outs. &lt;b&gt;no&lt;/b&gt;')
+    expect(withNote).not.toContain('<b>no</b>')
+    const plain = brandedHtml({ ...base, venueName: 'Eclipse', theme: THEMES['eclipse'] })
+    expect(plain).not.toContain('No pass-outs')
+  })
   it('says arrive early where there is no cut-off', () => {
     const html = brandedHtml({ ...base, venueName: 'Eclipse', theme: THEMES['eclipse'] })
     expect(html).toContain('Arrive early')

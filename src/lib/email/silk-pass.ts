@@ -25,8 +25,10 @@ export interface SatinPassInput {
   /** YYYY-MM-DD. */
   eventDate: string
   ownerGuestList?: boolean
-  /** e.g. "11pm", when the venue's guest list has a cut-off. */
+  /** e.g. "11pm" or "10:30pm", when this night's guest list has a cut-off. */
   untilLabel?: string | null
+  /** events.description. Omitted when the night has none. */
+  eventNote?: string | null
   occasion?: string | null
 }
 
@@ -73,6 +75,7 @@ export function satinPassHtml(i: SatinPassInput): string {
   const venue = esc(String(i.venueName ?? '').trim() || 'Luna Group')
   const first = esc(String(i.first ?? '').trim() || 'there')
   const until = i.untilLabel ? esc(i.untilLabel) : null
+  const eventNote = i.eventNote?.trim() ? esc(i.eventNote.trim()).replace(/\r\n|\n/g, '<br>') : ''
   const pass = `${site}/g/${encodeURIComponent(i.token)}`
   const qr = `${site}/api/qr/${encodeURIComponent(i.token)}`
   const hero = `${site}/brand/email/hero-silk.jpg`
@@ -141,6 +144,7 @@ export function satinPassHtml(i: SatinPassInput): string {
 <td valign="middle" style="padding-left:16px"><div style="font-family:${PLAY};font-size:21px;line-height:1.2;color:${C.cardInk}">Show this at the door</div>
 <div style="${body(C.cardMuted, 13.5, 'padding-top:6px')}">It&rsquo;s yours alone. One scan, one entry. Phone flat? Give your name.</div></td></tr></table></td></tr></table>
 </td></tr></table></td></tr>
+${eventNote ? `<tr><td class="px" align="center" style="padding:16px 36px 0"><div style="${body(C.ink, 14)}">${eventNote}</div></td></tr>` : ''}
 <tr><td class="px" align="center" style="padding:26px 36px 0">${button('Open my pass', pass, true)}${button('Add to calendar', cal, false)}</td></tr>
 <tr><td class="px" style="padding:18px 36px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.line};border-radius:14px;border-collapse:separate"><tr><td align="center" style="padding:20px 22px">
 <div style="font-family:${PLAY};font-style:italic;font-size:22px;line-height:1.2;color:${C.champ}">Bringing the crew?</div>

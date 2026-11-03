@@ -6,7 +6,7 @@ import { fmtDate, fmtDateTime } from '@/lib/format'
 import { Icon } from '@/components/icons'
 import { SearchInput } from '@/components/ui'
 import { cacheKey, loadCache, saveCache, loadQueue, saveQueue, type QueuedCheckIn } from './offline'
-import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
+import { nightCutoffLabel, nightListClosed } from '@/lib/guestlist-cutoff'
 import { headsIn, namesLine } from '@/lib/party'
 import { occasionTag } from '@/lib/crew'
 
@@ -61,13 +61,15 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
   const [pickerOpen, setPickerOpen] = useState(false)
   const flushing = useRef(false)
 
-  // Tonight's guest list cut-off (Pump 11pm, Mamacita 10:30pm), re-checked
-  // every 30 seconds so the door flips to closed on the minute.
+  // Tonight's guest list cut-off. A night with events.cutoff_at uses that
+  // instant; otherwise the venue time. Re-checked every 30 seconds so the
+  // door flips to closed on the minute.
   const venue = venues.find(v => v.id === venueId) ?? null
-  const untilLabel = cutoffLabel(venue?.guestlist_until)
+  const [eventCutoff, setEventCutoff] = useState<string | null>(null)
+  const untilLabel = nightCutoffLabel(venue?.guestlist_until, eventCutoff)
   const [clock, setClock] = useState(() => Date.now())
   useEffect(() => { const t = setInterval(() => setClock(Date.now()), 30_000); return () => clearInterval(t) }, [])
-  const listClosed = !!date && guestlistClosed(date, venue?.guestlist_until, new Date(clock))
+  const listClosed = !!date && nightListClosed(date, venue?.guestlist_until, eventCutoff, new Date(clock))
 
   const flash = (kind: 'ok' | 'warn' | 'err', msg: string) => {
     setToast({ kind, msg }); setTimeout(() => setToast(null), 3500)
@@ -93,16 +95,31 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
   }, [venueId, date])
 
   const load = useCallback(async () => {
-    if (!venueId || !date) { setRows([]); return }
+    if (!venueId || !date) { setRows([]); setEventCutoff(null); return }
     setLoading(true)
     const key = cacheKey(venueId, date)
+    // Drop the previous night's cut-off immediately. A cached night keeps its own.
+    const cachedNight = loadCache<Row>(key)
+    setEventCutoff(cachedNight?.cutoffAt ?? null)
     try {
-      const { data, error } = await supabase
-        .from('guest_registrations')
-        .select('id,status,qr_token,special_occasion,honoree_name,crew_size,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date,party)')
-        .eq('venue_id', venueId).eq('events.event_date', date)
-        .order('created_at', { ascending: false })
+      const [{ data, error }, evs] = await Promise.all([
+        supabase
+          .from('guest_registrations')
+          .select('id,status,qr_token,special_occasion,honoree_name,crew_size,plus_ones,party_names,group_id,source,guests(first_name,last_name,mobile,email),promoters(full_name,promoter_code),check_ins(checked_in_at,notes,method,admitted),events!inner(event_date,party)')
+          .eq('venue_id', venueId).eq('events.event_date', date)
+          .order('created_at', { ascending: false }),
+        // Same row public.guestlist_cutoff uses: the earliest night with its own cut-off.
+        supabase
+          .from('events')
+          .select('cutoff_at')
+          .eq('venue_id', venueId)
+          .eq('event_date', date)
+          .not('cutoff_at', 'is', null)
+          .order('created_at', { ascending: true })
+          .limit(1),
+      ])
       if (error) throw error
+      const cutoffAt = evs.error ? (cachedNight?.cutoffAt ?? null) : (evs.data?.[0]?.cutoff_at ?? null)
       const mapped: Row[] = (data ?? []).map((r: any) => ({
         id: r.id, status: r.status, qr_token: r.qr_token,
         first_name: r.guests?.first_name ?? '', last_name: r.guests?.last_name ?? '',
@@ -119,12 +136,13 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
         admitted: r.check_ins?.[0]?.admitted ?? r.check_ins?.admitted ?? null,
       }))
       setRows(mapped)
+      setEventCutoff(cutoffAt)
       const at = new Date().toISOString()
-      saveCache(key, { rows: mapped, at }); setCachedAt(at); setOnline(true)
+      saveCache(key, { rows: mapped, at, cutoffAt }); setCachedAt(at); setOnline(true)
     } catch {
       // No signal (or the request failed): fall back to what this device already knows.
       const c = loadCache<Row>(key)
-      if (c) { setRows(c.rows); setCachedAt(c.at) }
+      if (c) { setRows(c.rows); setCachedAt(c.at); setEventCutoff(c.cutoffAt ?? null) }
       setOnline(false)
     } finally { setLoading(false) }
   }, [venueId, date, supabase])
@@ -145,7 +163,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     const now = new Date().toISOString()
     setRows(rs => {
       const next = rs.map(r => r.id === id ? { ...r, status: noEntry ? 'no_entry' : 'checked_in', checked_in_at: now, method: 'manual' } : r)
-      saveCache(cacheKey(venueId, date), { rows: next, at: cachedAt ?? now })
+      saveCache(cacheKey(venueId, date), { rows: next, at: cachedAt ?? now, cutoffAt: eventCutoff })
       return next
     })
   }

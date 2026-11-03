@@ -1,3 +1,5 @@
+import { esc } from '@/lib/email/blocks'
+
 export const TRENT_PROMOTER_ID = '44ba5714-717b-46fb-ac6d-93116db6167a'
 export const TRENT_PROMOTER_CODE = 'trent49'
 
@@ -37,8 +39,10 @@ export function emailHtml(o: {
   pass: string
   occasionBlocks: string
   ownerGuestList?: boolean
-  /** e.g. "11pm" — the venue's guest list cut-off, when it has one. */
+  /** e.g. "11pm" or "10:30pm" — this night's guest list cut-off, when it has one. */
   untilLabel?: string | null
+  /** events.description. Omitted when the night has none. */
+  eventNote?: string | null
 }) {
   const pill = o.ownerGuestList
     ? `<span style="display:inline-block;background:rgba(212,175,55,.15);color:#d4af37;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:999px">OWNER'S GUEST LIST</span>`
@@ -52,6 +56,7 @@ export function emailHtml(o: {
         ${ownerLine}<p style="color:#9ca3af;margin:0 0 2px">${o.venue}</p>
         <p style="color:#9ca3af;font-size:14px;margin:0">${o.dateLabel}</p>
         ${cutoffBlock(o.untilLabel)}
+        ${o.eventNote?.trim() ? `<p style="color:#e5e7eb;font-size:14px;line-height:1.45;margin:14px 0 0">${esc(o.eventNote.trim()).replace(/\r\n|\n/g, '<br>')}</p>` : ''}
         <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:22px auto 8px"><tr><td style="background:#ffffff;border-radius:14px;padding:16px">
           <img src="${o.qrImg}" width="200" height="200" alt="Your QR code" style="display:block;width:200px;height:200px" />
         </td></tr></table>

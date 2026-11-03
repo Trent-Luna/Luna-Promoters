@@ -65,6 +65,29 @@ afterEach(() => {
 })
 
 describe('sendGuestConfirmation', () => {
+  it('uses the event cut-off and note when the night has them', async () => {
+    h.reg = reg({
+      venues: { name: 'Eclipse', slug: 'eclipse', guestlist_until: '23:00:00', whatsapp_channel_url: null },
+      events: {
+        event_date: '2026-11-05', name: 'Thu 05 Nov', start_time: null, party: null,
+        cutoff_at: '2026-11-05T12:30:00+00:00',
+        description: 'Strict 10:30pm guest list cut-off. No pass-outs.',
+      },
+    })
+    await sendGuestConfirmation('tok-1')
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.html).toContain('10:30pm sharp')
+    expect(body.html).toContain('No pass-outs.')
+    expect(body.html).not.toContain('11pm')
+  })
+
+  it('keeps the venue cut-off when the night has none of its own', async () => {
+    await sendGuestConfirmation('tok-1')
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.html).toContain('11pm sharp')
+    expect(body.html).not.toContain('No pass-outs')
+  })
+
   it('emails the pass and stamps it as sent', async () => {
     const r = await sendGuestConfirmation('tok-1')
     expect(r).toEqual({ ok: true })

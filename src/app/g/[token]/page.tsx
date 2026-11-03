@@ -4,7 +4,8 @@ import { QRCode } from '@/components/QRCode'
 import { SaveQR } from '@/components/SaveQR'
 import { StatusPill } from '@/components/ui'
 import { fmtDate, fmtTime } from '@/lib/format'
-import { cutoffLabel } from '@/lib/guestlist-cutoff'
+import { cutoffLabel, cutoffLabelFromInstant } from '@/lib/guestlist-cutoff'
+import { eventNoteFor } from '@/lib/load-event-notices'
 import { prettyNight } from '@/lib/trading'
 import { notFound } from 'next/navigation'
 import { CalendarShare } from './actions'
@@ -27,7 +28,10 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
   if (!reg) notFound()
   const members = (group ?? []) as Member[]
   const dateLabel = `${fmtDate(reg.event_date)}${reg.start_time ? ` · ${fmtTime(reg.start_time)}` : ''}`
-  const untilLabel = cutoffLabel(reg.guestlist_until)
+  // guestlist_closes_at is the event cut-off when the night has one, otherwise the venue time.
+  const untilLabel = cutoffLabelFromInstant(reg.guestlist_closes_at) ?? cutoffLabel(reg.guestlist_until)
+  const eventNote = await eventNoteFor(reg.venue_slug, reg.event_date)
+  const pass = { ...reg, event_note: eventNote }
   const upcoming = reg.event_date >= new Date(Date.now() + 10 * 3600_000).toISOString().slice(0, 10)
 
   const site = process.env.NEXT_PUBLIC_SITE_URL || ''
@@ -41,7 +45,7 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
   // Venues with their own look get the branded pass; others keep this one.
   const theme = themeFor(reg.venue_slug)
   if (theme) {
-    return <BrandedPass reg={reg} theme={theme} token={token} members={members} site={site} upcoming={upcoming} crew={crewCard} />
+    return <BrandedPass reg={pass} theme={theme} token={token} members={members} site={site} upcoming={upcoming} crew={crewCard} />
   }
 
   return (
@@ -75,6 +79,9 @@ export default async function GuestQR({ params }: { params: Promise<{ token: str
             <p className="text-sm font-semibold text-luna-goldsoft mb-3">
               Guest list entry until {untilLabel} sharp. Arrive before {untilLabel}.
             </p>
+          )}
+          {eventNote && (
+            <p className="text-sm font-semibold text-luna-goldsoft mb-3 whitespace-pre-line">{eventNote}</p>
           )}
           <p className="text-xs text-luna-muted mb-6">
             This QR is personal to you — save it and show it at the door. One scan, one entry.
