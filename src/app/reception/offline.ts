@@ -13,7 +13,7 @@ const QUEUE_KEY = 'door:queue:v1'
 
 export function cacheKey(venueId: string, date: string) { return `door:cache:v1:${venueId}:${date}` }
 
-export function loadCache<T>(key: string): { rows: T[]; at: string } | null {
+export function loadCache<T>(key: string): { rows: T[]; at: string; cutoffAt?: string | null } | null {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return null
@@ -23,7 +23,7 @@ export function loadCache<T>(key: string): { rows: T[]; at: string } | null {
   } catch { return null }
 }
 
-export function saveCache<T>(key: string, value: { rows: T[]; at: string }) {
+export function saveCache<T>(key: string, value: { rows: T[]; at: string; cutoffAt?: string | null }) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
     // keep only the eight most recent nights on this device

@@ -29,6 +29,13 @@ describe('Satin pass', () => {
     expect(html).toContain("lining-nums")
   })
 
+  it('shows a night note when the event has one, and escapes it', () => {
+    const html = satinPassHtml({ ...base, untilLabel: '10:30pm', eventNote: 'No pass-outs. <i>x</i>' })
+    expect(html).toContain('10:30pm sharp')
+    expect(html).toContain('No pass-outs. &lt;i&gt;x&lt;/i&gt;')
+    expect(satinPassHtml(base)).not.toContain('No pass-outs')
+  })
+
   it('says the guest list cut-off when the venue has one', () => {
     const html = satinPassHtml({ ...base, untilLabel: '11pm' })
     expect(html).toContain('Guest list closes')

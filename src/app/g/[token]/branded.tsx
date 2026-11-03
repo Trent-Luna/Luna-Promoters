@@ -3,7 +3,7 @@ import { QRCode } from '@/components/QRCode'
 import { SaveQR } from '@/components/SaveQR'
 import { StatusPill } from '@/components/ui'
 import { fmtDate, fmtTime } from '@/lib/format'
-import { cutoffLabel } from '@/lib/guestlist-cutoff'
+import { cutoffLabel, cutoffLabelFromInstant } from '@/lib/guestlist-cutoff'
 import { SISTERS, THEME_FONTS_URL, nightParts, rgba, tones, type VenueTheme } from '@/lib/venue-theme'
 import { CalendarShare } from './actions'
 import { GroupInvite, type Member } from './group'
@@ -21,7 +21,8 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming, cre
 }) {
   const { panel, line, muted } = tones(v)
   const n = nightParts(reg.event_date)
-  const until = cutoffLabel(reg.guestlist_until)
+  const until = cutoffLabelFromInstant(reg.guestlist_closes_at) ?? cutoffLabel(reg.guestlist_until)
+  const note = typeof reg.event_note === 'string' ? reg.event_note.trim() : ''
   const checkInUrl = `${site}/g/${token}`
   const promoterLink = `${site}/p/${reg.promoter_code}`
   const dateLabel = `${fmtDate(reg.event_date)}${reg.start_time ? ` · ${fmtTime(reg.start_time)}` : ''}`
@@ -115,6 +116,7 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming, cre
                 <span className="gp-num text-xl uppercase">{until} sharp</span>
               </div>
               <p className="text-xs mt-1 opacity-95">Arrive before {until}. After that the guest list no longer applies.</p>
+              {note && <p className="text-xs mt-1.5 font-semibold whitespace-pre-line">{note}</p>}
             </div>
           ) : (
             <div className="px-5 py-3.5" style={{ borderTop: `1px solid ${line}` }}>
@@ -123,6 +125,7 @@ export function BrandedPass({ reg, theme: v, token, members, site, upcoming, cre
                 <span className="gp-num uppercase">Arrive early</span>
               </div>
               <p className="gp-m text-xs mt-1">Entry is subject to capacity on the night.</p>
+              {note && <p className="text-xs mt-1.5 font-medium whitespace-pre-line" style={{ color: v.ink }}>{note}</p>}
             </div>
           )}
         </div>

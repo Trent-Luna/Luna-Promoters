@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { occasionBlocksHtml } from '@/lib/occasion-packages'
 import { confirmationSubject, emailHtml, isTrentPromoter } from '@/app/api/guest-confirmation/email'
-import { cutoffLabel } from '@/lib/guestlist-cutoff'
+import { cutoffLabel, cutoffLabelFromInstant } from '@/lib/guestlist-cutoff'
 import { themeFor } from '@/lib/venue-theme'
 import { brandedFrom, brandedHtml, brandedSubject, type PartyEmail } from '@/app/api/guest-confirmation/branded'
 import { confirmationText, type PartyLook } from '@/lib/party'
@@ -35,7 +35,7 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
   const svc = createServiceClient()
   const { data: reg } = await svc
     .from('guest_registrations')
-    .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, plus_ones, party_names, guests(first_name,email,mobile), venues(name,slug,guestlist_until,whatsapp_channel_url), events(event_date,name,start_time,party), promoters(id, promoter_code, full_name)')
+    .select('qr_token, special_occasion, confirmation_sent_at, promoter_id, plus_ones, party_names, guests(first_name,email,mobile), venues(name,slug,guestlist_until,whatsapp_channel_url), events(event_date,name,start_time,party,cutoff_at,description), promoters(id, promoter_code, full_name)')
     .eq('qr_token', token)
     .maybeSingle()
   if (!reg) return { ok: false, error: 'not_found' }
@@ -49,7 +49,10 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
 
   const venue = (reg as any).venues?.name || 'Luna Group'
   const venueSlug = (reg as any).venues?.slug as string | undefined
-  const untilLabel = cutoffLabel((reg as any).venues?.guestlist_until)
+  // The night's own cut-off when it has one; otherwise the venue's nightly time.
+  const night = (reg as any).events ?? {}
+  const untilLabel = cutoffLabelFromInstant(night.cutoff_at) ?? cutoffLabel((reg as any).venues?.guestlist_until)
+  const eventNote = String(night.description ?? '').trim() || null
   const occasion = (reg as any).special_occasion as string | undefined
   const occasionBlocks = occasionBlocksHtml(venueSlug, occasion)
   const eventDate = (reg as any).events?.event_date as string | undefined
@@ -63,7 +66,7 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
   const ownerGuestList = isTrentPromoter(promoterId, promoterCode)
 
   // A party night (migration 0051) carries its own name and the guest's group.
-  const ev: any = (reg as any).events ?? {}
+  const ev: any = night
   const look = (ev.party ?? null) as PartyLook | null
   const party: PartyEmail | null = look
     ? {
@@ -85,7 +88,7 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
         html: brandedHtml({
           theme, site, token, venueName: venue, first, eventDate,
           promoterName: (reg as any).promoters?.full_name ?? null,
-          untilLabel, occasion, ownerGuestList,
+          untilLabel, eventNote, occasion, ownerGuestList,
           whatsappUrl: (reg as any).venues?.whatsapp_channel_url ?? null,
           party,
         }),
@@ -94,12 +97,12 @@ export async function sendGuestConfirmation(token: string, opts: { force?: boole
       ? {
           from: SATIN_FROM,
           subject: satinSubject({ venueName: venue, eventDate, ownerGuestList }),
-          html: satinPassHtml({ site: site || siteUrl(), token, venueName: venue, first, eventDate, ownerGuestList, untilLabel, occasion }),
+          html: satinPassHtml({ site: site || siteUrl(), token, venueName: venue, first, eventDate, ownerGuestList, untilLabel, eventNote, occasion }),
         }
       : {
           from: 'Luna Group <noreply@lunagroup.com.au>',
           subject: confirmationSubject(venue, ownerGuestList),
-          html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel }),
+          html: emailHtml({ first, venue, dateLabel, qrImg: `${site}/api/qr/${token}`, pass: `${site}/g/${token}`, occasionBlocks, ownerGuestList, untilLabel, eventNote }),
         }
 
   const res = await fetch('https://api.resend.com/emails', {

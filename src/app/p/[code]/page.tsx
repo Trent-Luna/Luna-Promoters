@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { PartyPage } from './party'
 import { themeFor } from '@/lib/venue-theme'
 import type { PartyNight } from '@/lib/party'
+import { loadEventNotices } from '@/lib/load-event-notices'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,10 @@ export default async function PromoterLink({
   const { v, d, t, o, src, occ } = await searchParams
   const supabase = await createClient()
 
-  const { data } = await supabase.rpc('get_promoter_link', { p_code: code })
+  const [{ data }, eventNotices] = await Promise.all([
+    supabase.rpc('get_promoter_link', { p_code: code }),
+    loadEventNotices(),
+  ])
   if (!data) notFound()
 
   // A named source is a short slug; anything else is ignored rather than stored.
@@ -126,6 +130,7 @@ export default async function PromoterLink({
           showOccasion={false}
           source={source}
           party={{ maxPlusOnes: party.max_plus_ones ?? 0, texts: party.party?.sms === true }}
+          eventNotices={eventNotices}
         />
       </PartyPage>
     )
@@ -173,6 +178,7 @@ export default async function PromoterLink({
               showOccasion={showOccasion}
               occasionHint={showOccasion ? (occ ?? null) : null}
               source={source}
+              eventNotices={eventNotices}
             />
           )}
         </div>

@@ -7,12 +7,15 @@ import {
   shortNight, prettyNight, venueToday, addDays, tradingDaysLabel,
   type Blackout,
 } from '@/lib/trading'
-import { guestlistClosed, cutoffLabel } from '@/lib/guestlist-cutoff'
+import { nightCutoffLabel, nightListClosed } from '@/lib/guestlist-cutoff'
+import type { EventNotice } from '@/lib/event-notices'
 import { pixelForVenue, loadPixel, trackLead } from '@/lib/meta-pixel'
 import { clampPlusOnes, cleanNames } from '@/lib/party'
 import { CREW_MIN, CREW_MAX, clampCrew } from '@/lib/crew'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
+
+const NO_NOTICES: EventNotice[] = []
 
 const OCCASIONS = ['Birthday', 'Hens party', 'Bucks party', 'Engagement', 'Anniversary', 'Graduation', 'Corporate / work', 'Other']
 
@@ -80,6 +83,7 @@ export function GuestRegistrationForm({
   lockedVenue = null, lockedDate = null, showOccasion = true, source = null, occasionHint = null,
   party = null,
   venueTiles = null, extraPixels = [], ctaLabel = null, crew = null,
+  eventNotices = NO_NOTICES,
 }: {
   promoterCode: string
   venues: Venue[]
@@ -115,6 +119,12 @@ export function GuestRegistrationForm({
    * this out and the form is unchanged.
    */
   crew?: { honoreeLabel: string | null } | null
+  /**
+   * Nights that carry their own cut-off or a note (events.cutoff_at and
+   * events.description). Empty for every caller that does not pass them, and
+   * a night that is not in the list keeps the venue time exactly as before.
+   */
+  eventNotices?: EventNotice[]
 }) {
   const router = useRouter()
   const today = venueToday()
@@ -152,10 +162,14 @@ export function GuestRegistrationForm({
   const extraKey = extraPixels.join(',')
   useEffect(() => { for (const id of extraKey ? extraKey.split(',') : []) loadPixel(id) }, [extraKey])
   const pickVenue = (id: string) => { setVenueId(id); setDate(''); setErr(''); setSuggested(null) }
-  // The nightly cut-off (Pump 11pm, Mamacita 10:30pm). Once it passes, tonight
-  // is no longer on offer. The server refuses it too; this just says so first.
-  const until = venue?.guestlist_until ?? null
-  const untilLabel = cutoffLabel(until)
+  // The nightly cut-off. A night with events.cutoff_at uses that instant
+  // (Australia/Brisbane); every other night keeps the venue time. Once it
+  // passes, that night is no longer on offer. The server refuses it too.
+  const venueUntil = venue?.guestlist_until ?? null
+  const noticeFor = (night: string) => eventNotices.find(n => n.venueId === venueId && n.date === night) ?? null
+  const selectedNotice = date ? noticeFor(date) : null
+  const untilLabel = nightCutoffLabel(venueUntil, selectedNotice?.cutoffAt)
+  const eventNote = selectedNotice?.description?.trim() || null
   const isBirthday = occasion === 'Birthday'
 
   // The window the guest chooses from. A birthday gets the fortnight around it;
@@ -168,8 +182,8 @@ export function GuestRegistrationForm({
   const nights = useMemo(() => {
     if (!venueId) return []
     return tradingNightsBetween(window.from, window.to, tradingDays, blackouts, venueId)
-      .filter(n => !guestlistClosed(n, until))
-  }, [venueId, window.from, window.to, tradingDays, blackouts, until])
+      .filter(n => !nightListClosed(n, venueUntil, eventNotices.find(e => e.venueId === venueId && e.date === n)?.cutoffAt))
+  }, [venueId, window.from, window.to, tradingDays, blackouts, venueUntil, eventNotices])
 
   // A chosen date that the venue is shut on. Only reachable through the escape
   // hatch or a hand-edited link, and said plainly rather than failing on submit.
@@ -180,7 +194,7 @@ export function GuestRegistrationForm({
 
   // A night that trades but whose guest list has already closed — tonight,
   // after the cut-off, reached through a locked link or the free date input.
-  const chosenIsShut = !!date && !chosenIsClosed && guestlistClosed(date, until)
+  const chosenIsShut = !!date && !chosenIsClosed && nightListClosed(date, venueUntil, selectedNotice?.cutoffAt)
   const shutAlternative = chosenIsShut
     ? nextTradingNight(addDays(date, 1), tradingDays, blackouts, venueId)
     : null
@@ -334,10 +348,15 @@ export function GuestRegistrationForm({
         </p>
       )}
 
-      {venueId && untilLabel && (
-        <p className="text-xs text-luna-goldsoft font-medium">
-          Guest list entry is until {untilLabel} sharp. Arrive before then — after {untilLabel} the guest list no longer applies.
-        </p>
+      {venueId && (untilLabel || eventNote) && (
+        <div className="space-y-1">
+          {untilLabel && (
+            <p className="text-xs text-luna-goldsoft font-medium">
+              Guest list entry is until {untilLabel} sharp. Arrive before then — after {untilLabel} the guest list no longer applies.
+            </p>
+          )}
+          {eventNote && <p className="text-xs text-luna-goldsoft font-medium whitespace-pre-line">{eventNote}</p>}
+        </div>
       )}
 
       {showOccasion && (

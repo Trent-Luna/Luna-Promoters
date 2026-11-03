@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cutoffInstant, guestlistClosed, cutoffLabel } from './guestlist-cutoff'
+import { cutoffInstant, guestlistClosed, cutoffLabel, cutoffLabelFromInstant, nightCutoffLabel, nightListClosed } from './guestlist-cutoff'
 
 describe('guest list cut-off', () => {
   it('Pump 11pm on a Friday is 13:00 UTC that day', () => {
@@ -26,5 +26,22 @@ describe('guest list cut-off', () => {
     expect(cutoffLabel('00:30')).toBe('12:30am')
     expect(cutoffLabel(null)).toBeNull()
     expect(cutoffLabel('nonsense')).toBeNull()
+  })
+  it('reads an event cut-off instant in Australia/Brisbane, minutes included', () => {
+    expect(cutoffLabelFromInstant('2026-11-05T12:30:00.000Z')).toBe('10:30pm')
+    expect(cutoffLabelFromInstant('2026-11-05 12:30:00+00')).toBe('10:30pm')
+    expect(cutoffLabelFromInstant('2026-10-09T13:00:00.000Z')).toBe('11pm')
+    expect(cutoffLabelFromInstant(null)).toBeNull()
+    expect(cutoffLabelFromInstant('not-a-time')).toBeNull()
+  })
+  it('an event cut-off wins, and a night without one keeps the venue time', () => {
+    const at = new Date('2026-11-05T12:30:00.000Z')
+    expect(nightCutoffLabel('23:00:00', '2026-11-05T12:30:00.000Z')).toBe('10:30pm')
+    expect(nightCutoffLabel('23:00:00', null)).toBe('11pm')
+    expect(nightCutoffLabel(null, null)).toBeNull()
+    expect(nightListClosed('2026-11-05', '23:00:00', '2026-11-05T12:30:00.000Z', at)).toBe(true)
+    expect(nightListClosed('2026-11-05', '23:00:00', '2026-11-05T12:30:00.000Z', new Date('2026-11-05T12:29:00.000Z'))).toBe(false)
+    expect(nightListClosed('2026-11-05', null, null, at)).toBe(false)
+    expect(nightListClosed('2026-10-09', '23:00:00', null, new Date('2026-10-09T13:00:00.000Z'))).toBe(true)
   })
 })

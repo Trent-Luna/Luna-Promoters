@@ -1,10 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/Logo'
 import { GuestRegistrationForm } from '@/app/p/[code]/guest-form'
+import { loadEventNotices } from '@/lib/load-event-notices'
 
 export async function GuestlistContent() {
   const supabase = await createClient()
-  const { data } = await supabase.rpc('get_promoter_link', { p_code: 'luna' })
+  const [{ data }, eventNotices] = await Promise.all([
+    supabase.rpc('get_promoter_link', { p_code: 'luna' }),
+    loadEventNotices(),
+  ])
   const venues = (data?.venues ?? []) as { id: string; name: string }[]
   const blackouts = (data?.blackouts ?? []) as { venue_id: string | null; date: string }[]
 
@@ -25,7 +29,7 @@ export async function GuestlistContent() {
               The guestlist isn&apos;t available right now. Please check back soon!
             </p>
           ) : (
-            <GuestRegistrationForm promoterCode="luna" venues={venues} blackouts={blackouts} />
+            <GuestRegistrationForm promoterCode="luna" venues={venues} blackouts={blackouts} eventNotices={eventNotices} />
           )}
         </div>
       </section>
