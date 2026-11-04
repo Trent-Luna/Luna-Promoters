@@ -28,8 +28,8 @@ export function WhatsappSettings({ inviteUrl, pendingCount }: { inviteUrl: strin
         />
         <p className="text-xs text-luna-muted">
           Paste the channel link (WhatsApp → the channel → Share → Copy link). A group invite
-          link works too. Promoters see a &ldquo;Join the WhatsApp&rdquo; button on their dashboard
-          and after signing up. Leave it empty to hide it everywhere.
+          link works too. Promoters see a Follow button on their dashboard and in the welcome
+          email. Leave it empty to hide it everywhere.
         </p>
         {err && <p className="text-xs text-red-400">{err}</p>}
         <button
