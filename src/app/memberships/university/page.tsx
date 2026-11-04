@@ -8,19 +8,19 @@ export const dynamic = 'force-dynamic'
 
 const ASSETS = '/memberships/university'
 
-type Venue = { name: string; colour: string; src?: string }
+type Venue = { name: string; colour: string; href: string; src?: string }
 
 // Official logo files, original brand colours. A venue without `src` falls
 // back to its name as styled text.
 const VENUES: Venue[] = [
-  { name: 'Eclipse', colour: '#E7C873', src: `${ASSETS}/eclipse.png` },
-  { name: 'Eclipse After Dark', colour: '#D0343A', src: `${ASSETS}/after-dark.png` },
-  { name: 'Su Casa', colour: '#A78BFA', src: `${ASSETS}/su-casa.png` },
-  { name: 'Pump', colour: '#F4281C', src: `${ASSETS}/pump.png` },
-  { name: 'Juju', colour: '#F26822', src: `${ASSETS}/juju.png` },
-  { name: 'Ember & Ash', colour: '#A65E3E', src: `${ASSETS}/ember-and-ash.png` },
-  { name: 'Night Market', colour: '#C81E3E', src: `${ASSETS}/night-market.png` },
-  { name: 'Mamacita', colour: '#F83460', src: `${ASSETS}/mamacita.png` },
+  { name: 'Eclipse', colour: '#E7C873', href: 'https://eclipsebrisbane.com.au/', src: `${ASSETS}/eclipse.png` },
+  { name: 'Eclipse After Dark', colour: '#D0343A', href: 'https://eclipsebrisbane.com.au/#afterdark', src: `${ASSETS}/after-dark.png` },
+  { name: 'Su Casa', colour: '#A78BFA', href: 'https://sucasabrisbane.com/', src: `${ASSETS}/su-casa.png` },
+  { name: 'Pump', colour: '#F4281C', href: 'https://pumpnc.com.au/', src: `${ASSETS}/pump.png` },
+  { name: 'Juju', colour: '#F26822', href: 'https://jujumermaidbeach.com.au/', src: `${ASSETS}/juju.png` },
+  { name: 'Ember & Ash', colour: '#A65E3E', href: 'https://emberandash.au/', src: `${ASSETS}/ember-and-ash.png` },
+  { name: 'Night Market', colour: '#C81E3E', href: 'https://nightmarketbrisbane.com.au/', src: `${ASSETS}/night-market.png` },
+  { name: 'Mamacita', colour: '#F83460', href: 'https://mamacitanightclub.com/', src: `${ASSETS}/mamacita.png` },
 ]
 
 const STEPS = [
@@ -217,8 +217,9 @@ export default function UniversitySignupPage() {
           <SectionTitle>Valid across Luna Group venues</SectionTitle>
           <div className="mt-[30px] grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
             {VENUES.map(v => (
-              <div key={v.name}
-                className="relative grid h-24 place-items-center overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0B0C10] p-[18px] transition-colors hover:border-white/15 lg:h-[124px]">
+              <a key={v.name} href={v.href} target="_blank" rel="noopener noreferrer"
+                aria-label={`Visit ${v.name} website (opens in new tab)`}
+                className="relative grid h-24 place-items-center overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0B0C10] p-[18px] outline-none transition-[border-color,box-shadow] hover:border-white/15 hover:ring-1 hover:ring-[#E7C873]/40 focus-visible:ring-2 focus-visible:ring-[#E7C873] focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080B] lg:h-[124px]">
                 {v.src ? (
                   <img src={v.src} alt={v.name} className="h-10 w-full object-contain lg:h-14" />
                 ) : (
@@ -229,7 +230,7 @@ export default function UniversitySignupPage() {
                   </span>
                 )}
                 <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 opacity-75" style={{ background: v.colour }} />
-              </div>
+              </a>
             ))}
           </div>
         </div>
