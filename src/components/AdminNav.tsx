@@ -19,6 +19,7 @@ export const ADMIN_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/promoters', label: 'Promoters', icon: 'users' },
       { href: '/admin/university', label: 'University', icon: 'grad' },
+      { href: '/admin/offcampus', label: 'Off Campus', icon: 'trophy' },
       { href: '/admin/guests', label: 'Guests', icon: 'list' },
       { href: '/admin/guestlists', label: 'Guestlists', icon: 'cal' },
       { href: '/admin/moved-nights', label: 'Moved nights', icon: 'cal' },
