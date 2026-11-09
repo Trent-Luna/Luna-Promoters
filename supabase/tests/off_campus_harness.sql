@@ -50,6 +50,9 @@ begin
     (door, 'test-door@example.test', 'TEST Door'), (door_other, 'test-door-other@example.test', 'TEST Other Door'),
     (mgr, 'test-mgr@example.test', 'TEST Manager'), (nobody, 'test-nobody@example.test', 'TEST Nobody')
   on conflict (id) do nothing;
+  -- live: a sign-up trigger may already have made these rows without a name
+  update public.users set full_name = 'TEST ' || initcap(split_part(split_part(email::text, '@', 1), '-', 2))
+   where id in (admin_a, admin_b, door, door_other, mgr, nobody);
   insert into public.roles(user_id, role, venue_id) values
     (admin_a, 'admin', null), (admin_b, 'admin', null), (door, 'reception', su),
     (door_other, 'reception', other), (mgr, 'venue_manager', su), (nobody, 'promoter', null);
