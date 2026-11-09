@@ -2,7 +2,7 @@
 --
 -- Runs every check inside one transaction and then throws, so nothing it
 -- does is ever kept: the report comes back as the error message. Safe to run
--- against the live database after 0056 has been applied (it creates its own
+-- against the live database after 0057 has been applied (it creates its own
 -- TEST users, members and clubs and they all roll back).
 --
 --   psql "$DB" -f supabase/tests/off_campus_harness.sql

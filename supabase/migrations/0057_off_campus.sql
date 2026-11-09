@@ -1,4 +1,4 @@
--- 0056 — Off Campus Thursdays at Su Casa Brisbane.
+-- 0057 — Off Campus Thursdays at Su Casa Brisbane.
 --
 -- A weekly uni night: students register their university and their club or
 -- society, get a season pass, and every pass scanned by Su Casa door staff

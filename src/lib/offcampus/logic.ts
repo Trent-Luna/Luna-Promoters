@@ -1,6 +1,6 @@
 // Off Campus Thursdays — pure logic shared by the pages, the door and tests.
 //
-// The database decides what counts (supabase/migrations/0056_off_campus.sql).
+// The database decides what counts (supabase/migrations/0057_off_campus.sql).
 // This file only turns its answers into words and keeps the few rules the
 // browser also needs (name cleaning, captions, the door result) in one place
 // so the pages and the door can't drift apart.

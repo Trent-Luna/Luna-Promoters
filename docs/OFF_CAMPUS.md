@@ -14,7 +14,7 @@ Built additively in this app; nothing existing changes behaviour. Everything sit
 | Terms, privacy | `/offcampus/terms`, `/offcampus/privacy` |
 | Door | Scan the pass in **Door Check-in** (`/reception`). A phone-camera scan opens `/offcampus/door/<token>` (staff only; counting needs a tap) |
 | Admin | `/admin/offcampus`: Overview, Nights (door windows, This Thursday details, reconciliation, corrections, flags), Clubs (requests, organisers, merge/retire), Members (search, pause, change club, CSV exports), Prizes, Settings |
-| Database | `supabase/migrations/0056_off_campus.sql` (tables, RLS, functions, Season 01) and `0055_universities_rls.sql` |
+| Database | `supabase/migrations/0057_off_campus.sql` (tables, RLS, functions, Season 01) and `0056_universities_rls.sql` |
 | Tests | `src/lib/offcampus/logic.test.ts` (vitest) and `supabase/tests/off_campus_harness.sql` (78 checks, rolls itself back) |
 
 ## What protects the count
@@ -45,7 +45,7 @@ One season pass per person; online-only door scans (no offline queue); a pending
 
 ## Go-live checklist
 
-1. Apply `0055` and `0056` to the live database.
+1. Apply `0056` and `0057` to the live database.
 2. Run `supabase/tests/off_campus_harness.sql` against it (expect `0 failed`; it rolls back).
 3. Merge and deploy.
 4. Admin → Off Campus → Nights: set Thursday's rooftop and club times and DJs; check the door window.
@@ -55,4 +55,4 @@ One season pass per person; online-only door scans (no offline queue); a pending
 
 ## Rollback
 
-App: revert the merge. Database: see the commented block at the end of `0056` (drops only `offcampus_*` objects). `0055` can be undone with `alter table public.universities disable row level security;` plus re-granting, but there is no reason to.
+App: revert the merge. Database: see the commented block at the end of `0057` (drops only `offcampus_*` objects). `0056` can be undone with `alter table public.universities disable row level security;` plus re-granting, but there is no reason to.

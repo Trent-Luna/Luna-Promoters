@@ -1,4 +1,4 @@
--- 0055 — Lock down the universities list.
+-- 0056 — Lock down the universities list.
 --
 -- Found 9 Nov 2026 while planning Off Campus Thursdays: public.universities
 -- had row-level security switched off and the anon role held INSERT, UPDATE,
