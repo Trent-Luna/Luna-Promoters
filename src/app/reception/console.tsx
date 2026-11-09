@@ -9,6 +9,7 @@ import { cacheKey, loadCache, saveCache, loadQueue, saveQueue, type QueuedCheckI
 import { nightCutoffLabel, nightListClosed } from '@/lib/guestlist-cutoff'
 import { headsIn, namesLine } from '@/lib/party'
 import { occasionTag } from '@/lib/crew'
+import { doorTokenFrom, doorResult } from '@/lib/offcampus/logic'
 
 interface Venue { id: string; name: string; guestlist_until?: string | null }
 interface Row {
@@ -308,14 +309,29 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, date, supabase, load, listClosed, untilLabel])
 
+  // An Off Campus season pass counts an arrival for the student's club. The
+  // database decides everything (staff, venue, door window, once a night);
+  // there is no offline queue for these, so a scan without signal says so.
+  const checkInOffCampus = useCallback(async (token: string) => {
+    if (!navigator.onLine) {
+      setScanResult({ kind: 'err', title: 'NO SIGNAL', sub: 'Off Campus passes need a connection. Scan again when back online.' }); return
+    }
+    const { data, error } = await supabase.rpc('offcampus_check_in', { p_token: token, p_device: 'reception' })
+    if (error) { setScanResult({ kind: 'err', title: 'NO SIGNAL', sub: 'Couldn’t reach the server. Scan again.' }); return }
+    const r = doorResult(data)
+    setScanResult({ kind: r.kind, title: `OFF CAMPUS · ${r.title}`, sub: r.sub })
+  }, [supabase])
+
   // A university membership QR (/verify/<token>) goes to the wristband screen —
-  // one scanner at the door for both kinds of pass.
+  // one scanner at the door for every kind of pass.
   const onScan = useCallback((text: string) => {
+    const oc = doorTokenFrom(text)
+    if (oc) { checkInOffCampus(oc); return }
     const m = text.match(/\/verify\/([A-Za-z0-9_-]+)/)
     if (m) { setScanning(false); router.push(`/verify/${m[1]}`); return }
     const token = (text.split('/g/')[1] || text).split(/[?#]/)[0]
     checkInByToken(token)
-  }, [checkInByToken, router])
+  }, [checkInByToken, checkInOffCampus, router])
 
   const venueName = venues.find(v => v.id === venueId)?.name ?? ''
 

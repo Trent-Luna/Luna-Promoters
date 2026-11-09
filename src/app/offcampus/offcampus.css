@@ -1,0 +1,47 @@
+/* Off Campus Thursdays — its own look inside the guest-list app.
+   Fonts are self-hosted (SIL Open Font License, see public/offcampus/fonts). */
+@font-face { font-family: 'OC Graduate'; src: url('/offcampus/fonts/graduate-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'OC Josefin'; src: url('/offcampus/fonts/josefin-sans-latin-300-normal.woff2') format('woff2'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'OC Josefin'; src: url('/offcampus/fonts/josefin-sans-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'OC Josefin'; src: url('/offcampus/fonts/josefin-sans-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'OC Josefin'; src: url('/offcampus/fonts/josefin-sans-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
+.oc {
+  --oc-night: #0B0812; --oc-panel: #161022; --oc-line: #3A2F52; --oc-chalk: #F0EDF8;
+  --oc-haze: #B8B0CC; --oc-lilac: #A78BFA; --oc-ice: #7DD3FC;
+  min-height: 100vh; background: var(--oc-night); color: var(--oc-chalk);
+  font-family: 'OC Josefin', 'Century Gothic', Arial, sans-serif;
+}
+.oc a { color: var(--oc-lilac); }
+.oc .oc-display { font-family: 'OC Graduate', Rockwell, Georgia, serif; font-weight: 400; letter-spacing: 0.01em; }
+.oc .oc-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--oc-ice); }
+.oc .oc-card { background: var(--oc-panel); border: 1px solid var(--oc-line); border-radius: 18px; }
+.oc .oc-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  min-height: 56px; padding: 14px 20px; border-radius: 16px; text-decoration: none;
+  background: var(--oc-panel); color: var(--oc-chalk); border: 1px solid var(--oc-line);
+  font-weight: 700; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; text-align: left;
+}
+.oc .oc-btn:hover { border-color: var(--oc-lilac); }
+.oc .oc-btn small { display: block; font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; opacity: 0.8; margin-top: 3px; }
+.oc .oc-btn-primary { background: var(--oc-lilac); color: var(--oc-night); border-color: var(--oc-lilac); }
+.oc .oc-btn-primary:hover { background: #C4B5FD; }
+.oc .oc-btn:disabled { opacity: 0.6; }
+.oc .oc-seg { display: flex; gap: 6px; background: var(--oc-panel); border: 1px solid var(--oc-line); border-radius: 999px; padding: 4px; }
+.oc .oc-seg button {
+  flex: 1; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  border: 0; border-radius: 999px; padding: 10px 6px; min-height: 40px; background: transparent; color: var(--oc-chalk); cursor: pointer;
+}
+.oc .oc-seg button[aria-pressed="true"] { background: var(--oc-lilac); color: var(--oc-night); }
+.oc .oc-input, .oc .oc-select {
+  width: 100%; height: 52px; border-radius: 12px; border: 1px solid var(--oc-line); background: var(--oc-night);
+  color: var(--oc-chalk); padding: 0 14px; font: inherit; font-size: 16px; font-weight: 600; color-scheme: dark;
+}
+.oc .oc-input:focus, .oc .oc-select:focus { outline: none; border-color: var(--oc-lilac); box-shadow: 0 0 0 4px rgba(167,139,250,.18); }
+.oc .oc-label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--oc-chalk); }
+.oc .oc-check { display: flex; gap: 12px; align-items: flex-start; font-size: 14.5px; line-height: 1.45; cursor: pointer; }
+.oc .oc-check input { margin-top: 2px; width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--oc-lilac); }
+.oc details.oc-faq > summary { list-style: none; cursor: pointer; }
+.oc details.oc-faq > summary::-webkit-details-marker { display: none; }
+.oc details.oc-faq[open] .oc-faq-sign { transform: rotate(45deg); }
+.oc .oc-faq-sign { transition: transform 150ms ease-out; }
