@@ -47,7 +47,8 @@ export default async function AdminOffCampus({ searchParams }: { searchParams: P
   const flagsByNight = new Map<string, number>()
   for (const f of flags ?? []) if (f.night_id) flagsByNight.set(f.night_id, (flagsByNight.get(f.night_id) ?? 0) + 1)
   const nightRows = (nights ?? []).map(n => ({ ...n, arrivals: byNight.get(n.id) ?? 0, open_flags: flagsByNight.get(n.id) ?? 0 }))
-  const brisbane = (unis ?? []).filter(u => (u.regions ?? []).includes('brisbane'))
+  // Every active university (0058); the picker isn't limited to Brisbane.
+  const allUnis = unis ?? []
   const now = Date.now()
   const current = nightRows.find(n => !n.skipped && Date.parse(n.opens_at) <= now && Date.parse(n.closes_at) > now)
   const next = nightRows.find(n => !n.skipped && Date.parse(n.opens_at) > now)
@@ -99,10 +100,10 @@ export default async function AdminOffCampus({ searchParams }: { searchParams: P
       )}
 
       {tab === 'nights' && (night
-        ? <NightReport nightId={night} teams={teams ?? []} unis={brisbane} />
+        ? <NightReport nightId={night} teams={teams ?? []} unis={allUnis} />
         : <NightsTab nights={nightRows} seasons={seasons ?? []} />)}
-      {tab === 'clubs' && <ClubsTab unis={brisbane} teams={teams ?? []} requests={requests ?? []} organisers={(organisers ?? []) as any[]} />}
-      {tab === 'members' && <MembersTab unis={brisbane} teams={teams ?? []} />}
+      {tab === 'clubs' && <ClubsTab unis={allUnis} teams={teams ?? []} requests={requests ?? []} organisers={(organisers ?? []) as any[]} />}
+      {tab === 'members' && <MembersTab unis={allUnis} teams={teams ?? []} />}
       {tab === 'prizes' && <PrizesTab prizes={prizes ?? []} nights={nightRows} seasons={seasons ?? []} settings={settings} organisers={(organisers ?? []) as any[]} />}
       {tab === 'settings' && <SettingsTab settings={settings} />}
     </AppShell>

@@ -75,7 +75,7 @@ export function MembersTab({ unis, teams }: { unis: any[]; teams: any[] }) {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-luna-muted">Showing up to 300. {unis.length} Brisbane universities are on the sign-up list.</p>
+      <p className="text-xs text-luna-muted">Showing up to 300. {unis.length} universities are on the sign-up list.</p>
     </div>
   )
 }

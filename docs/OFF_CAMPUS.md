@@ -14,7 +14,7 @@ Built additively in this app; nothing existing changes behaviour. Everything sit
 | Terms, privacy | `/offcampus/terms`, `/offcampus/privacy` |
 | Door | Scan the pass in **Door Check-in** (`/reception`). A phone-camera scan opens `/offcampus/door/<token>` (staff only; counting needs a tap) |
 | Admin | `/admin/offcampus`: Overview, Nights (door windows, This Thursday details, reconciliation, corrections, flags), Clubs (requests, organisers, merge/retire), Members (search, pause, change club, CSV exports), Prizes, Settings |
-| Database | `supabase/migrations/0057_off_campus.sql` (tables, RLS, functions, Season 01) and `0056_universities_rls.sql` |
+| Database | `supabase/migrations/0057_off_campus.sql` (tables, RLS, functions, Season 01), `0058_off_campus_all_universities.sql` and `0056_universities_rls.sql` |
 | Tests | `src/lib/offcampus/logic.test.ts` (vitest) and `supabase/tests/off_campus_harness.sql` (78 checks, rolls itself back) |
 
 ## What protects the count
@@ -41,7 +41,7 @@ New members reach the Luna CRM through the existing `crm_sync` outbox (entity `o
 
 ## Defaults chosen (9 Nov 2026)
 
-One season pass per person; online-only door scans (no offline queue); a pending club counts for its university until approved, then its arrivals move across with a recorded adjustment; members can change club from their pass until their first counted arrival in an active season; public counts under 3 masked; the Brisbane-region universities from `universities`. Season 01 runs Thu 12 Nov 2026 to Thu 28 Jan 2027, door window 7pm to 3am (change per night in admin).
+One season pass per person; online-only door scans (no offline queue); a pending club counts for its university until approved, then its arrivals move across with a recorded adjustment; members can change club from their pass until their first counted arrival in an active season; public counts under 3 masked; every active university in `universities` (Brisbane-only at first, widened in `0058`). Season 01 runs Thu 12 Nov 2026 to Thu 28 Jan 2027, door window 7pm to 3am (change per night in admin).
 
 ## Go-live checklist
 

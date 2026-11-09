@@ -50,6 +50,9 @@ begin
     (door, 'test-door@example.test', 'TEST Door'), (door_other, 'test-door-other@example.test', 'TEST Other Door'),
     (mgr, 'test-mgr@example.test', 'TEST Manager'), (nobody, 'test-nobody@example.test', 'TEST Nobody')
   on conflict (id) do nothing;
+  -- live: a sign-up trigger may already have made these rows without a name
+  update public.users set full_name = 'TEST ' || initcap(split_part(split_part(email::text, '@', 1), '-', 2))
+   where id in (admin_a, admin_b, door, door_other, mgr, nobody);
   insert into public.roles(user_id, role, venue_id) values
     (admin_a, 'admin', null), (admin_b, 'admin', null), (door, 'reception', su),
     (door_other, 'reception', other), (mgr, 'venue_manager', su), (nobody, 'promoter', null);
@@ -111,8 +114,16 @@ begin
   if v->>'error' = 'age_required' then ok := ok + 1; else bad := bad + 1; report := report || E'\nFAIL 18+ required ' || v; end if;
   v := pg_temp.call('anon', null, format($q$select public.offcampus_register('TEST Five','t5@example.test','0400000005',%L,%L,null,false,true,false,false)$q$, uq, netball));
   if v->>'error' = 'privacy_required' then ok := ok + 1; else bad := bad + 1; report := report || E'\nFAIL privacy required ' || v; end if;
+  v := pg_temp.call('anon', null, format($q$select public.offcampus_register('TEST Five','t5@example.test','0400000005',%L,null,null,false,true,true,false)$q$, gen_random_uuid()));
+  if v->>'error' = 'bad_university' then ok := ok + 1; else bad := bad + 1; report := report || E'\nFAIL unknown university refused ' || v; end if;
+  update public.universities set is_active = false where id = bond;
   v := pg_temp.call('anon', null, format($q$select public.offcampus_register('TEST Five','t5@example.test','0400000005',%L,null,null,false,true,true,false)$q$, bond));
-  if v->>'error' = 'bad_university' then ok := ok + 1; else bad := bad + 1; report := report || E'\nFAIL only Brisbane unis ' || v; end if;
+  if v->>'error' = 'bad_university' then ok := ok + 1; else bad := bad + 1; report := report || E'\nFAIL inactive university refused ' || v; end if;
+  update public.universities set is_active = true where id = bond;
+  v := pg_temp.call('anon', null, $q$select public.offcampus_public_info()$q$);
+  select count(*) into n from jsonb_array_elements(v->'universities') u where u->>'short' in ('Bond', 'SCU');
+  if n = (select count(*) from public.universities where short_name in ('Bond', 'SCU') and is_active) and n > 0 then ok := ok + 1;
+  else bad := bad + 1; report := report || E'\nFAIL Gold Coast universities on the list, found ' || n; end if;
   v := pg_temp.call('anon', null, format($q$select public.offcampus_register('TEST Five','t5@example.test','0400000005',%L,%L,null,false,true,true,false)$q$, qut, netball));
   if v->>'error' = 'bad_team' then ok := ok + 1; else bad := bad + 1; report := report || E'\nFAIL club must belong to the uni ' || v; end if;
   select id into m1 from public.offcampus_members where pass_token = tok1;
