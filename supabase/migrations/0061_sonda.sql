@@ -1,4 +1,4 @@
--- 0060 — Sonda Sounds: its own guest list, Fridays at Eclipse.
+-- 0061 — Sonda Sounds: its own guest list, Fridays at Eclipse.
 --
 -- Trent, 12 Nov 2026: "they will be running fridays at eclipse every week with
 -- start date TBC … rebrand it with its own crm/guest list." Sonda is a
