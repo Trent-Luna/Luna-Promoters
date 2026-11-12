@@ -9,8 +9,8 @@ const AGREEMENTS = [
 ]
 
 export function PromoterSignupForm({
-  refCode = '', initialCategory = 'promoter', lockCategory = false,
-}: { refCode?: string; initialCategory?: string; lockCategory?: boolean }) {
+  refCode = '', initialCategory = 'promoter', lockCategory = false, preferredVenue = null, nightSlug = null,
+}: { refCode?: string; initialCategory?: string; lockCategory?: boolean; preferredVenue?: string | null; nightSlug?: string | null }) {
   const router = useRouter()
   const [f, setF] = useState({
     full_name: '', mobile: '', email: '', dob: '',
@@ -35,7 +35,7 @@ export function PromoterSignupForm({
       const { data, error } = await supabase.rpc('submit_promoter_application', {
         p_full_name: f.full_name.trim(), p_mobile: f.mobile.trim(), p_email: f.email.trim(),
         p_dob: f.dob, p_instagram: f.instagram, p_tiktok: f.tiktok, p_facebook: f.facebook,
-        p_suburb: f.suburb, p_preferred_venue: null,
+        p_suburb: f.suburb, p_preferred_venue: preferredVenue,
         p_other_venues: [], p_agreement: true, p_marketing: true, p_ip: ip, p_ref_code: f.ref.trim() || null,
         p_category: f.category,
       })
@@ -50,7 +50,12 @@ export function PromoterSignupForm({
         setErr(m[data?.error] || 'Could not submit application. Please check your details.')
         return
       }
-      router.push(data.auto_approved ? '/signup/success?approved=1' : '/signup/success')
+      // A night's applicant lands on that night's success page (?v=sonda).
+      const q = new URLSearchParams()
+      if (data.auto_approved) q.set('approved', '1')
+      if (nightSlug) q.set('v', nightSlug)
+      const qs = q.toString()
+      router.push(qs ? `/signup/success?${qs}` : '/signup/success')
     } catch (e: any) {
       setErr(e.message || 'Something went wrong. Please try again.')
     } finally { setLoading(false) }
@@ -128,9 +133,11 @@ export function PromoterSignupForm({
       <button className="btn-gold w-full btn-lg" disabled={loading || !allAgreed}>
         {loading ? 'Submitting…' : 'Submit application'}
       </button>
-      <p className="text-xs text-luna-muted text-center">
-        Your application will be reviewed by the Luna Group team. You'll receive access once approved.
-      </p>
+      {!nightSlug && (
+        <p className="text-xs text-luna-muted text-center">
+          Your application will be reviewed by the Luna Group team. You'll receive access once approved.
+        </p>
+      )}
     </form>
   )
 }

@@ -93,3 +93,50 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.85;
   cursor: pointer;
 }
+
+/* ── Sonda Sounds skin ─────────────────────────────────────────────────────
+   The promoter application and its success page at ?v=sonda wear Sonda's
+   brand, not Luna's (Trent, 12 Nov 2026): cream #EFEEDB on near-black, square
+   corners, Archivo expanded caps. Scoped to .skin-sonda so nothing else in
+   the app changes. The font arrives as --font-night from next/font. */
+.skin-sonda {
+  --sonda-ink: #EFEEDB;
+  --sonda-bg: #0B0B09;
+  --sonda-card: #141410;
+  --sonda-field: #1C1C17;
+  --sonda-line: rgba(239, 238, 219, 0.16);
+  --sonda-muted: rgba(239, 238, 219, 0.66);
+  background: var(--sonda-bg);
+  color: var(--sonda-ink);
+  font-family: var(--font-night), 'Arial', sans-serif;
+  font-stretch: 100%;
+}
+.skin-sonda .sonda-display {
+  font-family: var(--font-night), 'Arial Black', sans-serif;
+  font-weight: 900; font-stretch: 125%; text-transform: uppercase;
+  letter-spacing: -0.01em; line-height: 0.92;
+}
+.skin-sonda .sonda-eyebrow {
+  font-size: 12px; font-weight: 700; font-stretch: 112%;
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--sonda-muted);
+}
+.skin-sonda .card { background: var(--sonda-card); border-color: var(--sonda-line); border-radius: 4px; }
+.skin-sonda .input {
+  background: var(--sonda-field); border-color: var(--sonda-line); border-radius: 2px;
+  color: var(--sonda-ink); font-size: 16px;
+}
+.skin-sonda .input::placeholder { color: rgba(239, 238, 219, 0.4); }
+.skin-sonda .input:focus { border-color: var(--sonda-ink); }
+.skin-sonda .label {
+  color: var(--sonda-muted); font-size: 12px; font-weight: 700; font-stretch: 112%;
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+.skin-sonda .text-luna-muted { color: var(--sonda-muted); }
+.skin-sonda .btn { border-radius: 2px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 800; font-stretch: 112%; }
+.skin-sonda .btn-gold { background: var(--sonda-ink); color: var(--sonda-bg); }
+.skin-sonda .btn-gold:hover { background: #ffffff; }
+.skin-sonda .btn-ghost { background: transparent; border-color: var(--sonda-line); color: var(--sonda-ink); }
+.skin-sonda .btn-ghost:hover { border-color: var(--sonda-ink); }
+.skin-sonda input[type='checkbox'] { accent-color: var(--sonda-ink); }
+.skin-sonda .bg-luna-surface { background: var(--sonda-field); }
+.skin-sonda a.underline:hover { color: #ffffff; }
