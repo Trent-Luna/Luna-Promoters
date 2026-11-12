@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { isValidGuestEmail } from '@/lib/guest-email'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -81,6 +82,9 @@ export async function POST(req: Request) {
 
   const dob = (body.date_of_birth ?? '').trim()
   if (dob && !ISO_DATE.test(dob)) return bad('bad_date_of_birth', 'expected YYYY-MM-DD')
+  const email = (body.email ?? '').trim()
+  if (!email) return bad('email_required', 'a guest needs an email address', 422)
+  if (!isValidGuestEmail(email)) return bad('invalid_email', 'email needs a full domain, like name@gmail.com', 422)
 
   // ---- call the same function the public guestlist uses -----------------
   const supabase = createServiceClient()
@@ -91,7 +95,7 @@ export async function POST(req: Request) {
     p_first: first,
     p_last: last,
     p_mobile: mobile,
-    p_email: (body.email ?? '').trim(),
+    p_email: email,
     p_dob: dob || null,
     p_instagram: (body.instagram ?? '').trim(),
     p_marketing: body.marketing_consent ?? false,

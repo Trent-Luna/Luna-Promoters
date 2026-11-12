@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Icon } from '@/components/icons'
 import { StatusPill } from '@/components/ui'
+import { EmailSuggestion } from '@/components/EmailSuggestion'
+import { INVALID_GUEST_EMAIL, isValidGuestEmail } from '@/lib/guest-email'
 
 export interface Member { id: string; first_name: string; last_name: string; status: string; qr_token: string; is_host: boolean; is_me: boolean }
 
@@ -27,7 +29,8 @@ export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
   async function add(e: React.FormEvent) {
     e.preventDefault(); setErr(''); setAdded(null)
     if (!f.first.trim() || f.mobile.replace(/\D/g, '').length < 8) { setErr('A first name and a mobile number, please.'); return }
-    if (!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(f.email.trim())) { setErr('An email address for them, please — that is how they get their QR.'); return }
+    if (!f.email.trim()) { setErr('An email address for them, please — that is how they get their QR.'); return }
+    if (!isValidGuestEmail(f.email)) { setErr(INVALID_GUEST_EMAIL); return }
     setBusy(true)
     try {
       const supabase = createClient()
@@ -42,7 +45,8 @@ export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
           past_event: 'This night has already happened.',
           bad_input: 'A first name and a mobile number, please.',
           email_required: 'An email address for them, please — that is how they get their QR.',
-          bad_email: 'That email does not look right — check it and try again.',
+          bad_email: INVALID_GUEST_EMAIL,
+          invalid_email: INVALID_GUEST_EMAIL,
         }
         setErr(m[data?.error] || 'Could not add them — please try again.'); return
       }
@@ -105,7 +109,11 @@ export function GroupInvite({ token, members, site, venue, dateLabel, canAdd }:
             <div><label className="label">Last name</label><input className="input" value={f.last} onChange={e => set('last', e.target.value)} /></div>
           </div>
           <div><label className="label">Mobile *</label><input className="input" type="tel" required placeholder="04xx xxx xxx" value={f.mobile} onChange={e => set('mobile', e.target.value)} /></div>
-          <div><label className="label">Email * <span className="font-normal">(we&apos;ll email them their QR)</span></label><input className="input" type="email" required value={f.email} onChange={e => set('email', e.target.value)} /></div>
+          <div>
+            <label className="label">Email * <span className="font-normal">(we&apos;ll email them their QR)</span></label>
+            <input className="input" type="email" inputMode="email" autoComplete="email" required value={f.email} onChange={e => { set('email', e.target.value); setErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
+            <EmailSuggestion email={f.email} onAccept={v => { set('email', v); setErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
+          </div>
           {err && <p className="text-sm text-red-400">{err}</p>}
           {added && (
             <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm flex items-center gap-3">
