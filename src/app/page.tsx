@@ -4,18 +4,40 @@ import { PromoterSignupForm } from './signup-form'
 import { GuestlistContent } from './guestlist-content'
 import { MembershipLanding } from './memberships/landing'
 import Link from 'next/link'
+import { createServiceClient } from '@/lib/supabase/server'
+import { promoterNightFor } from '@/lib/promoter-nights'
+import { NightApply } from '@/components/NightApply'
 
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ ref?: string; v?: string }> }) {
   const host = (await headers()).get('host') || ''
-  const { ref } = await searchParams
+  const { ref, v } = await searchParams
   if (host.split(':')[0].startsWith('guestlist.')) {
     return <GuestlistContent />
   }
   // memberships.lunagroup.com.au → membership picker. promoter.* stays unchanged.
   if (host.split(':')[0].startsWith('memberships.')) {
     return <MembershipLanding />
+  }
+
+  // A promoter-run night recruiting its own promoters (?v=sonda). The venue id
+  // is looked up with the service client because venues are not readable
+  // signed out; the slug comes only from the PROMOTER_NIGHTS allow-list, and
+  // nothing but the id leaves this function.
+  const night = promoterNightFor(v)
+  let nightVenueId: string | null = null
+  if (night && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const { data } = await createServiceClient().from('venues').select('id').eq('slug', night.slug).maybeSingle()
+      nightVenueId = (data as { id?: string } | null)?.id ?? null
+    } catch {
+      nightVenueId = null
+    }
+  }
+
+  if (night) {
+    return <NightApply night={night} refCode={ref ?? ''} venueId={nightVenueId} />
   }
 
   return (

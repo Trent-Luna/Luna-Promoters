@@ -88,6 +88,17 @@ export const THEMES: Record<string, VenueTheme> = {
     hero: '/brand/email/hero-eclipse.jpg', logo: '/brand/email/logo-eclipse.png', booth: '/brand/email/booth-eclipse.jpg', outlookHero: '/brand/email/hero-eclipse-outlook.jpg', logoW: 260,
     boothT: 'Book a VIP booth', boothP: 'A booth on the floor for the group, bottle service to the table.',
   },
+  // Trent, 12 Nov 2026: Sonda Sounds, Fridays at Eclipse, with its own guest
+  // list. Cream on black from the Sonda brand files; booths are Eclipse's.
+  'sonda': {
+    short: 'Sonda', onKey: 'sonda',
+    bg: '#0B0B09', ink: '#EFEEDB', acc: '#EFEEDB', accInk: '#0B0B09',
+    head: "'Archivo Black','Arial Black',Arial,sans-serif", headW: 400, headCase: 'uppercase', headTrack: '0.02em',
+    body: "'Archivo Narrow','Arial Narrow',Arial,sans-serif", num: "'Archivo Black','Arial Black',Arial,sans-serif", numW: 400,
+    h1: 28, rad: 2, btnCase: 'uppercase',
+    hero: '/brand/email/hero-sonda.jpg', heroDim: 0, logo: '/brand/email/logo-sonda.png', booth: '/brand/email/booth-sonda.jpg', outlookHero: '/brand/email/hero-sonda-outlook.jpg', logoW: 300,
+    boothT: 'Book a VIP booth', boothP: 'Fridays at Eclipse. A booth for the group, bottles to the table.',
+  },
   'eclipse-afterdark': {
     short: 'After Dark', onKey: 'after-dark',
     bg: '#0A0707', ink: '#F2ECEC', acc: '#D0343A', accInk: '#FFFFFF',
