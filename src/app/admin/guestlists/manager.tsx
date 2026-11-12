@@ -6,6 +6,8 @@ import { Icon } from '@/components/icons'
 import { setNightList, sendBoothOffer, sendGuestPass } from '../actions'
 import { tradesOn, nextTradingNight, prettyNight, tradingDaysLabel } from '@/lib/trading'
 import { occasionTag } from '@/lib/crew'
+import { INVALID_GUEST_EMAIL, isValidGuestEmail } from '@/lib/guest-email'
+import { EmailSuggestion } from '@/components/EmailSuggestion'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null }
 interface Row {
@@ -131,6 +133,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
     e.preventDefault(); setMsg(null); setDupe(null)
     if (!venueId || !date) { setMsg({ ok: false, text: 'Pick a venue and date first.' }); return }
     if (!f.email.trim()) { setMsg({ ok: false, text: 'Add their email: their QR is sent there.' }); return }
+    if (!isValidGuestEmail(f.email)) { setMsg({ ok: false, text: INVALID_GUEST_EMAIL }); return }
     setSaving(true)
     const { data, error } = await supabase.rpc('add_guest_manual_vd', {
       p_venue: venueId, p_date: date, p_first: f.first.trim(), p_last: f.last.trim(),
@@ -153,6 +156,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
         duplicate: 'That guest is already on this list.',
         not_trading: `${venue?.name ?? 'This venue'} isn’t open on ${prettyNight(date)}. Tick “open anyway” if you are trading.`,
         not_authorised: 'You don’t manage this venue.',
+        invalid_email: INVALID_GUEST_EMAIL,
       }
       setMsg({ ok: false, text: m[data?.error] || 'Could not add guest.' })
       return
@@ -206,6 +210,13 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
   async function saveEdit(id: string) {
     setEditErr('')
     if (!ef.first.trim() || !ef.mobile.trim()) { setEditErr('First name and mobile are required.'); return }
+    const typedEmail = ef.email.trim()
+    const originalEmail = (rows.find(row => row.id === id)?.email ?? '').trim()
+    // A guest already saved with a bad address can still be edited. Changing
+    // that address, or typing a new one, has to be a real domain.
+    if (typedEmail && !isValidGuestEmail(typedEmail) && typedEmail.toLowerCase() !== originalEmail.toLowerCase()) {
+      setEditErr(INVALID_GUEST_EMAIL); return
+    }
     setEditSaving(true)
     const { data, error } = await supabase.rpc('update_guest_registration', {
       p_registration: id, p_first: ef.first.trim(), p_last: ef.last.trim(), p_mobile: ef.mobile.trim(),
@@ -226,6 +237,7 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
         not_authorised: 'You don’t manage this venue.',
         already_on_that_night: 'That guest is already on the list for that night.',
         bad_date: 'Pick a date within the next year.',
+        invalid_email: INVALID_GUEST_EMAIL,
       }
       setEditErr(m[data?.error] || data?.error || error?.message || 'Could not save.')
       return
@@ -320,7 +332,11 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
           {/* Required since 22 Oct 2026. Trent: "they need an email too". The
               QR pass goes by email, so a guest added without one would arrive
               with nothing to scan. */}
-          <div><label className="label">Email *</label><input required type="email" className="input !py-2.5" placeholder="Their QR is emailed here" value={f.email} onChange={e => set('email', e.target.value)} /></div>
+          <div>
+            <label className="label">Email *</label>
+            <input required type="email" inputMode="email" autoComplete="email" className="input !py-2.5" placeholder="Their QR is emailed here" value={f.email} onChange={e => { set('email', e.target.value); setMsg(m => m && m.text === INVALID_GUEST_EMAIL ? null : m) }} />
+            <EmailSuggestion email={f.email} onAccept={v => { set('email', v); setMsg(m => m && m.text === INVALID_GUEST_EMAIL ? null : m) }} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="label">Instagram</label><input className="input !py-2.5" placeholder="@handle" value={f.instagram} onChange={e => set('instagram', e.target.value)} /></div>
             <div><label className="label">DOB</label><input type="date" max={today} className="input !py-2.5" value={f.dob} onChange={e => set('dob', e.target.value)} /></div>
@@ -409,7 +425,11 @@ export function GuestlistManager({ venues, initialVenue, initialDate, canToggle 
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                               <div><label className="label">Mobile *</label><input className="input !py-2" type="tel" value={ef.mobile} onChange={e => setE('mobile', e.target.value)} /></div>
-                              <div><label className="label">Email</label><input className="input !py-2" type="email" value={ef.email} onChange={e => setE('email', e.target.value)} /></div>
+                              <div>
+                                <label className="label">Email</label>
+                                <input className="input !py-2" type="email" inputMode="email" autoComplete="email" value={ef.email} onChange={e => { setE('email', e.target.value); setEditErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
+                                <EmailSuggestion email={ef.email} onAccept={v => { setE('email', v); setEditErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
+                              </div>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               <div><label className="label">DOB</label><input className="input !py-2" type="date" max={today} value={ef.dob} onChange={e => setE('dob', e.target.value)} /></div>

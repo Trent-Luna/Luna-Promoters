@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { venueToday } from '@/lib/trading'
 import { loadPixel, trackLead, pixelForVenue } from '@/lib/meta-pixel'
+import { INVALID_GUEST_EMAIL, isValidGuestEmail } from '@/lib/guest-email'
+import { EmailSuggestion } from '@/components/EmailSuggestion'
 
 /**
  * A friend joining a host's crew (/c/<code>, migration 0053). The venue and
@@ -30,6 +32,7 @@ export function CrewJoinForm({ code, venueName, extraPixels, cta }: {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr('')
+    if (!isValidGuestEmail(f.email)) { setErr(INVALID_GUEST_EMAIL); return }
     setLoading(true)
     try {
       const { data, error } = await createClient().rpc('join_crew', {
@@ -42,7 +45,8 @@ export function CrewJoinForm({ code, venueName, extraPixels, cta }: {
           duplicate: 'You’re already on the list for this night.',
           bad_input: 'A first name and a mobile number, please.',
           email_required: 'Please enter your email — that’s how your QR gets to you.',
-          bad_email: 'That email doesn’t look right — check it and try again.',
+          bad_email: INVALID_GUEST_EMAIL,
+          invalid_email: INVALID_GUEST_EMAIL,
           guestlist_closed: 'The guest list for this night has closed.',
           past_event: 'This night has already happened.',
           cancelled: 'This crew link is no longer active.',
@@ -73,7 +77,11 @@ export function CrewJoinForm({ code, venueName, extraPixels, cta }: {
       </div>
       <div><label className="label">Mobile number *</label><input className="input" required type="tel" placeholder="04xx xxx xxx" value={f.mobile} onChange={e => set('mobile', e.target.value)} /></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label className="label">Email *</label><input className="input" type="email" required value={f.email} onChange={e => set('email', e.target.value)} /></div>
+        <div>
+          <label className="label">Email *</label>
+          <input className="input" type="email" inputMode="email" autoComplete="email" required value={f.email} onChange={e => { set('email', e.target.value); setErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
+          <EmailSuggestion email={f.email} onAccept={v => { set('email', v); setErr('') }} />
+        </div>
         <div><label className="label">Date of birth</label><input className="input" type="date" max={today} value={f.dob} onChange={e => set('dob', e.target.value)} /></div>
       </div>
       <div><label className="label">Instagram</label><input className="input" placeholder="@handle" value={f.instagram} onChange={e => set('instagram', e.target.value)} /></div>

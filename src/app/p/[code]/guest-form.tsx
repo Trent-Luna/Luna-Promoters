@@ -12,6 +12,8 @@ import type { EventNotice } from '@/lib/event-notices'
 import { pixelForVenue, loadPixel, trackLead } from '@/lib/meta-pixel'
 import { clampPlusOnes, cleanNames } from '@/lib/party'
 import { CREW_MIN, CREW_MAX, clampCrew } from '@/lib/crew'
+import { INVALID_GUEST_EMAIL, isValidGuestEmail } from '@/lib/guest-email'
+import { EmailSuggestion } from '@/components/EmailSuggestion'
 
 interface Venue { id: string; name: string; trading_days?: number[] | null; guestlist_until?: string | null }
 
@@ -203,6 +205,7 @@ export function GuestRegistrationForm({
     e.preventDefault(); setErr(''); setSuggested(null)
     if (!venueId) { setErr('Please choose a venue.'); return }
     if (!date) { setErr('Please choose a date.'); return }
+    if (!isValidGuestEmail(f.email)) { setErr(INVALID_GUEST_EMAIL); return }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -239,6 +242,7 @@ export function GuestRegistrationForm({
           venue_not_found: 'That venue is not available.',
           promoter_not_found: 'This promoter link is not active.',
           email_required: 'Please enter a valid email address to get on the list.',
+          invalid_email: INVALID_GUEST_EMAIL,
         }
         setErr(m[data?.error] || 'Could not register. Please check your details.')
         return
@@ -443,7 +447,8 @@ export function GuestRegistrationForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">Email *</label>
-          <input className="input" type="email" required value={f.email} onChange={e => set('email', e.target.value)} />
+          <input className="input" type="email" inputMode="email" autoComplete="email" required value={f.email} onChange={e => { set('email', e.target.value); setErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
+          <EmailSuggestion email={f.email} onAccept={v => { set('email', v); setErr(cur => cur === INVALID_GUEST_EMAIL ? '' : cur) }} />
         </div>
         <div>
           <label className="label">Date of birth {isBirthday && <span className="text-luna-gold font-normal">— sets your nights</span>}</label>
