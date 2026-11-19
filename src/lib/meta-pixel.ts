@@ -7,6 +7,12 @@
  * dataset already existed). Su Casa Brisbane the same way. Only venues listed
  * here load the pixel; every other venue's form stays free of Meta tracking.
  *
+ * Trent, 19 Nov 2026: Eclipse and After Dark added. Their Meta ads land on the
+ * house guest list (guestlist.lunagroup.com.au, via the CRM /q/guest-list hop),
+ * where the live venue names are "Eclipse" and "Eclipse AfterDark". After Dark
+ * is listed BEFORE Eclipse because the first match wins: "Eclipse AfterDark"
+ * also matches /eclipse/ and must never fall through to the Eclipse dataset.
+ *
  * Events: PageView when the form shows a pixel venue, and Lead when the guest
  * is registered. Lead carries the pass token as eventID so a later server-side
  * (Conversions API) event for the same sign-up is de-duplicated, not doubled.
@@ -22,6 +28,8 @@ const PIXELS: { match: RegExp; id: string }[] = [
   { match: /pump/i, id: '1337692745079424' }, // "Pump Pixel" dataset, Luna Group Hospitality
   { match: /mamacita/i, id: '1358760112583754' }, // "Mamacitas Pixel" dataset, Luna Group Hospitality
   { match: /su ?casa/i, id: '785459746721078' }, // Su Casa Brisbane dataset
+  { match: /after ?dark/i, id: '3211344019074876' }, // After Dark dataset; MUST stay before Eclipse
+  { match: /eclipse/i, id: '737996371533022' }, // Eclipse dataset
 ]
 
 export function pixelForVenue(name?: string | null): string | null {
