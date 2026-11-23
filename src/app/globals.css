@@ -105,13 +105,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 /* ── Silver glass skin ─────────────────────────────────────────────────────
-   The admin and venue-manager shell wears the look Atlas moved to on 23 Nov
-   2026 — the Luna VIP staff portal's: blue-black surfaces, glass cards with a
+   Everything behind the sign-in wears the look Atlas moved to on 23 Nov 2026
+   — the Luna VIP staff portal's: blue-black surfaces, glass cards with a
    silver edge, Arial with Michroma titles, light type, chrome silver for the
    primary button and the page you are on (Trent, 24 Nov 2026: "i also want
-   you to update the promoters app"). Scoped to .skin-glass, which only
-   SidebarShell sets, so the promoter portal, the door and every public page
-   (guest list forms, sign-up, occasion and membership pages) are untouched.
+   you to update the promoters app", then "yes all of the promoter change"
+   for the promoter portal and the door). Scoped to .skin-glass, which the two
+   shells in AppShell.tsx set, so every public page (guest list forms,
+   sign-up, login, occasion and membership pages) is untouched.
    Gold stays the accent for links, key numbers and tier colours.
 
    The component rules sit in @layer components behind :where(), so a utility
@@ -145,8 +146,13 @@ html:has(.skin-glass) body {
   background: linear-gradient(100deg, #151722, #0a0e17);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 7px 20px rgba(0, 0, 0, 0.2);
 }
-/* The page you are on, and the avatar. */
-.skin-glass .side-active {
+/* The phone tab bar of the promoter portal and the door. */
+.skin-glass .glass-tabbar {
+  background: linear-gradient(180deg, rgba(17, 19, 29, 0.96), rgba(6, 8, 14, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 -7px 20px rgba(0, 0, 0, 0.3);
+}
+/* The page you are on, the avatar, and a selected filter pill. */
+.skin-glass :is(.side-active, .glass-selected) {
   background-image: var(--chrome);
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: var(--chrome-shadow);
@@ -164,6 +170,10 @@ html:has(.skin-glass) body {
 .skin-glass :is(.text-xl, .text-2xl, .text-3xl) {
   letter-spacing: -0.04em;
 }
+/* Small words set inside a big figure ("27 checked in") keep normal spacing. */
+.skin-glass :is(h1, .text-xl, .text-2xl, .text-3xl) :is(.text-xs, .text-sm, .text-base) {
+  letter-spacing: normal;
+}
 /* Card and section titles: the display face. */
 .skin-glass :is(h2, h3) {
   font-family: var(--font-display), Arial, Helvetica, sans-serif;
@@ -173,9 +183,19 @@ html:has(.skin-glass) body {
 }
 /* What must still stand out: a totals row, and the chrome itself. */
 .skin-glass :is(tfoot, tr.font-bold, tr.font-semibold) :is(td, th),
-.skin-glass .side-active,
+.skin-glass :is(.side-active, .glass-selected),
 .skin-glass .btn-gold {
   font-weight: 700;
+}
+/* The door's scan result and its toasts are read at arm's length in a dark
+   room, so they keep their weight; light type is for screens you sit at. */
+.skin-glass .door-signal:is(.font-semibold, .font-bold, .font-extrabold),
+.skin-glass .door-signal :is(.font-semibold, .font-bold, .font-extrabold) {
+  font-weight: 700;
+}
+/* A chrome button keeps its bevel where the page asked for the old gold glow. */
+.skin-glass .btn-gold.shadow-glow {
+  box-shadow: var(--chrome-shadow);
 }
 
 @layer components {

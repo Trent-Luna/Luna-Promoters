@@ -398,7 +398,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
       </div>
 
       {toast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 top-4 z-50 px-5 py-3 rounded-xl font-semibold shadow-glow ${
+        <div className={`door-signal fixed left-1/2 -translate-x-1/2 top-4 z-50 px-5 py-3 rounded-xl font-semibold shadow-glow ${
           toast.kind === 'ok' ? 'bg-emerald-500 text-black' :
           toast.kind === 'warn' ? 'bg-amber-400 text-black' : 'bg-red-500 text-white'}`}>
           {toast.msg}
@@ -491,7 +491,7 @@ export function ReceptionConsole({ venues, hasTabBar = false }: { venues: Venue[
           <p className="text-center text-luna-muted pb-6 text-lg">Guest pass or university membership — point the camera at the code</p>
 
           {scanResult && (
-            <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-8 ${
+            <div className={`door-signal fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-8 ${
               scanResult.kind === 'ok' ? 'bg-emerald-500' : scanResult.kind === 'warn' ? 'bg-amber-500' : 'bg-red-600'}`}>
               <div className="text-white" style={{ fontSize: '7rem', lineHeight: 1 }}>
                 {scanResult.kind === 'ok' ? '✓' : scanResult.kind === 'warn' ? '!' : '✕'}

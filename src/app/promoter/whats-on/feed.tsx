@@ -15,10 +15,10 @@ export function WhatsOnFeed({ venues, posts }: { venues: Venue[]; posts: Post[] 
     <div>
       <div className="flex gap-2 mb-5 flex-wrap">
         <button onClick={() => setVenue('')}
-          className={`pill border ${venue === '' ? 'bg-white/10 text-white border-white' : 'border-luna-border text-luna-muted'}`}>All venues</button>
+          className={`pill border ${venue === '' ? 'glass-selected' : 'border-luna-border text-luna-muted'}`}>All venues</button>
         {venues.map(v => (
           <button key={v.id} onClick={() => setVenue(v.id)}
-            className={`pill border ${venue === v.id ? 'bg-white/10 text-white border-white' : 'border-luna-border text-luna-muted'}`}>{v.name}</button>
+            className={`pill border ${venue === v.id ? 'glass-selected' : 'border-luna-border text-luna-muted'}`}>{v.name}</button>
         ))}
       </div>
 

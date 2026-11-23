@@ -3,7 +3,7 @@ import { Logo } from '@/components/Logo'
 
 export default function ReceptionError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-5 p-6 text-center">
+    <div className="skin-glass min-h-screen flex flex-col items-center justify-center gap-5 p-6 text-center">
       <Logo size={30} />
       <p className="text-lg font-semibold">Something went wrong on the door screen.</p>
       <p className="text-sm text-luna-muted max-w-xs">
