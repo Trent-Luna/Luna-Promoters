@@ -46,7 +46,9 @@ export function NavLink({ href, label, active }: { href: string; label: string; 
 
 /**
  * Sidebar navigation row. Matches Atlas: 12px radius, 10px/12px padding,
- * 14px text, a 16px stroke icon, and a gold active state on a 12% gold fill.
+ * 14px text, a 16px stroke icon, and a chrome silver pill for the page you
+ * are on (.side-active in globals.css; it was a 12% gold fill before Atlas
+ * moved to Silver glass).
  */
 export function SidebarLink({ href, label, icon, active }:
   { href: string; label: string; icon?: string; active: boolean }) {
@@ -55,9 +57,9 @@ export function SidebarLink({ href, label, icon, active }:
       aria-current={active ? 'page' : undefined}
       className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition ${
         active
-          ? 'bg-luna-gold/[0.12] text-luna-gold'
+          ? 'side-active'
           : 'text-luna-subtle hover:text-luna-text hover:bg-white/[0.04]'}`}>
-      {icon && <Icon name={icon} size={16} className={active ? 'text-luna-gold' : 'text-luna-muted'} />}
+      {icon && <Icon name={icon} size={16} className={active ? 'text-current' : 'text-luna-muted'} />}
       <span className="truncate">{label}</span>
     </Link>
   )

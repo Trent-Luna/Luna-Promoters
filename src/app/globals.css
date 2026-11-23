@@ -2,7 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  /* The luna-* neutrals, as channels (tailwind.config.ts). A skin overrides them. */
+  --luna-bg: 9 9 11;
+  --luna-surface: 14 14 16;
+  --luna-card: 23 23 26;
+  --luna-border: 30 30 34;
+  --luna-text: 250 250 250;
+  --luna-muted: 138 138 144;
+  --luna-subtle: 161 161 166;
+}
 
 /* Flat background to match Atlas — the previous radial vignette was tuned for
    a centred, full-bleed layout and reads as off-centre next to a sidebar. */
@@ -92,6 +102,132 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   filter: none;
   opacity: 0.85;
   cursor: pointer;
+}
+
+/* ── Silver glass skin ─────────────────────────────────────────────────────
+   The admin and venue-manager shell wears the look Atlas moved to on 23 Nov
+   2026 — the Luna VIP staff portal's: blue-black surfaces, glass cards with a
+   silver edge, Arial with Michroma titles, light type, chrome silver for the
+   primary button and the page you are on (Trent, 24 Nov 2026: "i also want
+   you to update the promoters app"). Scoped to .skin-glass, which only
+   SidebarShell sets, so the promoter portal, the door and every public page
+   (guest list forms, sign-up, occasion and membership pages) are untouched.
+   Gold stays the accent for links, key numbers and tier colours.
+
+   The component rules sit in @layer components behind :where(), so a utility
+   on the same element (a gold border on a Banner, say) still wins. */
+html:has(.skin-glass),
+html:has(.skin-glass) body {
+  background: #030407;
+}
+.skin-glass {
+  --chrome: linear-gradient(180deg, #f3f5fc 0%, #d9deec 48%, #bcc5da 100%);
+  --chrome-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.33), inset 0 -1px 1px #01020b, 0 3px 5px rgba(0, 0, 0, 0.53);
+  /* The neutrals, re-toned. Text against the card fill: 16.9:1, 11.7:1 (subtle)
+     and 7.6:1 (muted). */
+  --luna-bg: 3 4 7;
+  --luna-surface: 7 10 18;
+  --luna-card: 11 14 24;
+  --luna-border: 42 49 70;
+  --luna-text: 238 240 246;
+  --luna-muted: 154 163 186;
+  --luna-subtle: 195 202 219;
+  background:
+    radial-gradient(ellipse 60% 520px at 88% 0%, rgba(58, 38, 82, 0.34), rgba(0, 0, 0, 0) 70%) no-repeat,
+    #030407;
+  color: #eef0f6;
+  font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+}
+.skin-glass .glass-rail {
+  background: linear-gradient(180deg, #11131d, #06080e);
+}
+.skin-glass .glass-topbar {
+  background: linear-gradient(100deg, #151722, #0a0e17);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 7px 20px rgba(0, 0, 0, 0.2);
+}
+/* The page you are on, and the avatar. */
+.skin-glass .side-active {
+  background-image: var(--chrome);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--chrome-shadow);
+  color: #171925;
+  font-weight: 700;
+}
+.skin-glass .stack-label { color: #9aa3ba; }
+/* Light type: headings, names and figures are regular weight. Arial has no
+   semibold, so every weight utility would otherwise render bold. */
+.skin-glass :is(h1, h2, h3),
+.skin-glass :is(.font-semibold, .font-bold, .font-extrabold) {
+  font-weight: 400;
+}
+.skin-glass h1,
+.skin-glass :is(.text-xl, .text-2xl, .text-3xl) {
+  letter-spacing: -0.04em;
+}
+/* Card and section titles: the display face. */
+.skin-glass :is(h2, h3) {
+  font-family: var(--font-display), Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+/* What must still stand out: a totals row, and the chrome itself. */
+.skin-glass :is(tfoot, tr.font-bold, tr.font-semibold) :is(td, th),
+.skin-glass .side-active,
+.skin-glass .btn-gold {
+  font-weight: 700;
+}
+
+@layer components {
+  :where(.skin-glass) .card {
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background:
+      linear-gradient(140deg, rgba(23, 25, 39, 0.85), rgba(10, 14, 23, 0.96) 65%, rgba(25, 19, 42, 0.85)) padding-box,
+      linear-gradient(135deg, rgba(186, 182, 206, 0.73), rgba(68, 73, 89, 0.53) 34%, rgba(139, 130, 159, 0.6) 72%, #333a50) border-box;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), inset 0 -1px 0 rgba(0, 0, 0, 0.6), 0 10px 28px rgba(0, 0, 0, 0.27);
+  }
+  /* Glass never sits on glass: a card inside a card is a quiet wash. */
+  :where(.skin-glass) .card .card {
+    border-color: rgba(255, 255, 255, 0.09);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018));
+    box-shadow: none;
+  }
+  :where(.skin-glass) :is(.btn, .btn-gold, .btn-ghost, .btn-danger) {
+    border-radius: 9999px;
+    font-weight: 500;
+  }
+  :where(.skin-glass) .btn-gold {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-image: var(--chrome);
+    box-shadow: var(--chrome-shadow);
+    color: #171925;
+  }
+  :where(.skin-glass) .btn-gold:hover {
+    filter: brightness(1.1);
+  }
+  :where(.skin-glass) .btn-ghost {
+    border-color: #74768d;
+    background-image: linear-gradient(180deg, #292b3d, #10131e);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13), 0 3px 7px rgba(0, 0, 0, 0.33);
+  }
+  :where(.skin-glass) .btn-ghost:hover {
+    border-color: #a3a5bf;
+  }
+  :where(.skin-glass) .input {
+    border-color: rgba(185, 193, 213, 0.2);
+  }
+  :where(.skin-glass) .eyebrow,
+  :where(.skin-glass) .stat-lbl {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: #9aa3ba;
+  }
+  :where(.skin-glass) .stat-num {
+    font-weight: 400;
+    letter-spacing: -0.04em;
+  }
 }
 
 /* ── Sonda Sounds skin ─────────────────────────────────────────────────────

@@ -19,18 +19,22 @@ const config: Config = {
     extend: {
       colors: {
         luna: {
-          bg:      '#09090b',
-          surface: '#0e0e10',
-          card:    '#17171a',
-          border:  '#1e1e22',
+          // The six neutrals are CSS variables (channels, set in globals.css)
+          // so a scoped skin can re-tone them: the admin shell's Silver glass
+          // skin does. Their :root values are the ones listed above, so every
+          // page outside a skin is exactly as it was.
+          bg:      'rgb(var(--luna-bg) / <alpha-value>)',
+          surface: 'rgb(var(--luna-surface) / <alpha-value>)',
+          card:    'rgb(var(--luna-card) / <alpha-value>)',
+          border:  'rgb(var(--luna-border) / <alpha-value>)',
           // Atlas accent. This was previously flattened to #ffffff for a
           // monochrome look; restored so admin matches Atlas.
           gold:    '#d4a24c',
           goldsoft:'#e0b877',
           purple:  '#6b6b74',
-          text:    '#fafafa',
-          muted:   '#8a8a90',
-          subtle:  '#a1a1a6',
+          text:    'rgb(var(--luna-text) / <alpha-value>)',
+          muted:   'rgb(var(--luna-muted) / <alpha-value>)',
+          subtle:  'rgb(var(--luna-subtle) / <alpha-value>)',
         },
       },
       borderColor: { hairline: 'rgba(255,255,255,0.07)' },
