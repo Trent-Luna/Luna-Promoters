@@ -67,7 +67,8 @@ export function SidebarLink({ href, label, icon, active }:
 
 /**
  * Tab for the public shell. Inline on desktop; `bottom` renders the stacked
- * icon-over-label form used in the phone tab bar (44px+ target).
+ * icon-over-label form used in the phone tab bar (44px+ target). The tab you
+ * are on is chrome silver, as in the sidebar (.side-active in globals.css).
  */
 export function TabLink({ href, label, icon, active, bottom = false }:
   { href: string; label: string; icon?: string; active: boolean; bottom?: boolean }) {
@@ -75,7 +76,7 @@ export function TabLink({ href, label, icon, active, bottom = false }:
     return (
       <Link href={href} aria-current={active ? 'page' : undefined}
         className={`flex-1 min-h-[52px] flex flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition ${
-          active ? 'bg-luna-gold/[0.12] text-luna-gold' : 'text-luna-muted'}`}>
+          active ? 'side-active' : 'text-luna-muted'}`}>
         {icon && <Icon name={icon} size={20} />}
         <span className="truncate max-w-full px-1">{label}</span>
       </Link>
@@ -84,7 +85,7 @@ export function TabLink({ href, label, icon, active, bottom = false }:
   return (
     <Link href={href} aria-current={active ? 'page' : undefined}
       className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-xl text-sm font-medium transition ${
-        active ? 'bg-luna-gold/[0.12] text-luna-gold' : 'text-luna-muted hover:text-luna-text hover:bg-white/[0.04]'}`}>
+        active ? 'side-active' : 'text-luna-muted hover:text-luna-text hover:bg-white/[0.04]'}`}>
       {icon && <Icon name={icon} size={16} />}
       {label}
     </Link>

@@ -72,8 +72,8 @@ function Initials({ name }: { name: string }) {
  * "Silver glass" look since 23 Nov 2026 (Trent, 24 Nov: "i also want you to
  * update the promoters app"): dark glass sidebar and top bar, hairline rules,
  * a chrome silver active state. The look is the .skin-glass block in
- * globals.css, scoped to this shell — the promoter portal, the door and every
- * public page are outside it and unchanged.
+ * globals.css. PublicShell below wears the same skin; the public pages
+ * (guest list forms, sign-up, login) are outside it and unchanged.
  */
 async function SidebarShell({
   nav, groups, current, title, subtitle, eyebrow, children, right,
@@ -175,14 +175,18 @@ async function SidebarShell({
  * Public chrome: the promoter portal and the door. Top tabs on desktop, a
  * bottom tab bar on phones — thumbs live at the bottom of the screen and the
  * old wrapping tab strip pushed content down every time a tab was added.
+ *
+ * It wears the Silver glass skin too (Trent, 24 Nov 2026, asked whether the
+ * portal and the door should follow the admin: "yes all of the promoter
+ * change"), so a promoter, a door host and an admin see one product.
  */
 function PublicShell({
   nav, current, title, subtitle, children, right,
 }: { nav: NavItem[]; current: string; title?: string; subtitle?: React.ReactNode; children: React.ReactNode; right?: React.ReactNode }) {
   const tabs = nav.length > 1
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 bg-luna-bg/85 backdrop-blur border-b border-white/[0.07]">
+    <div className={`skin-glass ${displayFont.variable} min-h-screen`}>
+      <header className="glass-topbar sticky top-0 z-30 border-b border-white/[0.07]">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
           <Logo size={24} />
           {tabs && (
@@ -205,7 +209,7 @@ function PublicShell({
         {children}
       </main>
       {tabs && (
-        <nav className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-luna-surface/95 backdrop-blur border-t border-white/[0.07]
+        <nav className="glass-tabbar sm:hidden fixed bottom-0 inset-x-0 z-30 backdrop-blur border-t border-white/[0.07]
                         flex px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] gap-1">
           {nav.map(n => <TabLink key={n.href} {...n} active={current === n.href} bottom />)}
         </nav>
