@@ -6,6 +6,7 @@ import { SearchBox } from './SearchBox'
 import { ADMIN_NAV, ADMIN_GROUPS, groupsFor, groupLabelFor, type NavGroup, type NavItem } from './AdminNav'
 import { VENUE_NAV, roleLabel } from './nav'
 import { getSession } from '@/lib/auth'
+import { displayFont } from '@/app/display-font'
 
 export type { NavItem }
 
@@ -58,7 +59,7 @@ function Initials({ name }: { name: string }) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   const txt = (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : name.slice(0, 2)).toUpperCase()
   return (
-    <div className="w-7 h-7 rounded-full bg-luna-gold/15 text-luna-gold text-[11px] font-bold flex items-center justify-center shrink-0">
+    <div className="side-active w-7 h-7 rounded-full text-[11px] flex items-center justify-center shrink-0">
       {txt || '·'}
     </div>
   )
@@ -67,8 +68,12 @@ function Initials({ name }: { name: string }) {
 /**
  * Sidebar chrome — admins and venue managers. Persistent 240px sidebar on
  * desktop, a native <details> menu on phones (no JS needed; matters for a
- * manager on a phone in a venue basement). Mirrors Atlas: #0e0e10 sidebar,
- * 64px top bar, hairline rules, gold active state.
+ * manager on a phone in a venue basement). Mirrors Atlas, which has worn the
+ * "Silver glass" look since 23 Nov 2026 (Trent, 24 Nov: "i also want you to
+ * update the promoters app"): dark glass sidebar and top bar, hairline rules,
+ * a chrome silver active state. The look is the .skin-glass block in
+ * globals.css, scoped to this shell — the promoter portal, the door and every
+ * public page are outside it and unchanged.
  */
 async function SidebarShell({
   nav, groups, current, title, subtitle, eyebrow, children, right,
@@ -83,9 +88,9 @@ async function SidebarShell({
   const eyebrowText = eyebrow ?? (nav === ADMIN_NAV ? groupLabelFor(current) : undefined)
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
+    <div className={`skin-glass ${displayFont.variable} min-h-screen lg:grid lg:grid-cols-[240px_1fr]`}>
       {/* ---------- desktop sidebar ---------- */}
-      <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen border-r border-white/[0.07] bg-luna-surface">
+      <aside className="glass-rail hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen border-r border-white/[0.07]">
         <div className="px-5 pt-5 pb-3">
           <a href={nav === ADMIN_NAV ? '/admin' : '/venue'} className="block">
             <Logo size={22} />
@@ -113,8 +118,8 @@ async function SidebarShell({
 
       <div className="min-w-0 flex flex-col">
         {/* ---------- top bar ---------- */}
-        <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 lg:px-10
-                           bg-luna-bg/90 backdrop-blur border-b border-white/[0.07]">
+        <header className="glass-topbar sticky top-0 z-30 h-16 flex items-center gap-3 px-4 lg:px-10
+                           border-b border-white/[0.07]">
           <div className="lg:hidden"><Logo size={20} /></div>
           {title && (
             <span className="hidden lg:block text-sm font-medium text-luna-text truncate">
