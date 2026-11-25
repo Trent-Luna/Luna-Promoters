@@ -123,6 +123,35 @@ function isChannel(url: string) {
   try { return new URL(url.trim()).hostname.replace(/^www\./, '') === 'whatsapp.com' } catch { return false }
 }
 
+/**
+ * The one thing to do, as its own card. A copy of actionCard in
+ * src/lib/email/blocks.ts — an edge function cannot import it.
+ */
+function actionCard(eyebrow: string, note: string, label: string, href: string) {
+  return `<tr><td class="px" style="padding:24px 36px 0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${S.panel};border:1px solid ${S.line};border-top:4px solid ${S.acc};border-radius:14px;border-collapse:separate">
+<tr><td style="padding:20px 22px 22px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="font-family:${S.font};font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:${S.acc}">${eyebrow}</td></tr>
+<tr><td style="padding-top:8px;${B(14, S.ink)}">${note}</td></tr>
+<tr><td style="padding-top:18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td align="center" bgcolor="${S.acc}" style="background:${S.acc};border-radius:999px"><a href="${esc(href)}" style="display:block;padding:16px 20px;text-align:center;${B(15, S.accInk, 'font-weight:700;letter-spacing:0.06em;text-decoration:none')}">${label}</a></td>
+</tr></table></td></tr>
+</table>
+</td></tr></table>
+</td></tr>`
+}
+
+// Keep in step with src/lib/whatsapp-copy.ts.
+const CHANNEL_TITLE = 'Follow the Luna Group Promoters WhatsApp Channel'
+const CHANNEL_BODY = 'All guest list links, headliner drops and promoter perks go out first in our WhatsApp Channel. Tap Follow so you don&rsquo;t miss out.'
+
+function channelCard(invite: string) {
+  const note = `<div style="${B(18, S.ink, 'font-weight:700;line-height:1.25')}">${CHANNEL_TITLE}</div>`
+    + `<div style="${B(14, S.muted, 'padding-top:8px')}">${CHANNEL_BODY}</div>`
+  return actionCard('WhatsApp Channel', note, 'Follow', invite)
+}
+
 // ----------------------------------------------------------------- emails ---
 const WELCOME_SUBJECT = "You're in: your Luna guest list link"
 const INVITE_SUBJECT = 'Follow the Luna promoter WhatsApp channel'
@@ -133,16 +162,23 @@ function welcomeHtml(first: string, code: string, invite: string | null) {
     ['Your guest list link', `<a href="${esc(link)}" style="color:${S.acc}">${esc(link.replace(/^https?:\/\//, ''))}</a>. Share it anywhere; everyone who signs up is on your list.`],
     ['Your dashboard', 'See who&rsquo;s signed up and who checked in.'],
   ]
-  if (invite) items.push(['The promoter channel', 'Cut-offs, table drops and which rooms need numbers go out there first.'])
-  return shell(WELCOME_SUBJECT, invite ? 'Your link, your dashboard and the promoter channel.' : 'Your link and your dashboard.', [
+  // No link configured: the welcome is unchanged, and the channel is simply absent.
+  const rows = [
     header(),
     intro('Promoters &middot; welcome', `You&rsquo;re in, ${esc(first)}`,
-      `Welcome to the Luna Group promoter team. ${invite ? 'Three' : 'Two'} things and you&rsquo;re running.`),
+      'Welcome to the Luna Group promoter team. Two things and you&rsquo;re running.'),
+  ]
+  if (invite) rows.push(channelCard(invite))
+  rows.push(
     steps(items),
-    buttons(['Open my dashboard', `${SITE}/promoter`], invite ? ['Follow the channel', invite] : null),
+    buttons(['Open my dashboard', `${SITE}/promoter`]),
     para('New to this? The Promoter Guide is on your dashboard.', 14),
     footer("You're getting this because you were approved as a Luna Group promoter."),
-  ])
+  )
+  const preheader = invite
+    ? 'All guest list links, headliner drops and promoter perks go out first in our WhatsApp Channel.'
+    : 'Your link and your dashboard.'
+  return shell(WELCOME_SUBJECT, preheader, rows)
 }
 
 function inviteHtml(first: string, invite: string) {

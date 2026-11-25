@@ -3,7 +3,9 @@ import { GROUP_PHONE, clubSkin, esc, lunaSkin, shell, tones, venueFrom } from '.
 import { boothOfferEmail } from './guests'
 import { movedNightEmail } from './moved-night'
 import { universityEmails } from './university'
-import { promoterNudgeEmail, whatsappInviteEmail } from './promoters'
+import { readFileSync } from 'node:fs'
+import { promoterNudgeEmail, promoterWelcomeEmail, whatsappInviteEmail } from './promoters'
+import { WHATSAPP_CHANNEL_BODY, WHATSAPP_CHANNEL_TITLE } from '@/lib/whatsapp-copy'
 import { THEMES } from '@/lib/venue-theme'
 
 const SITE = 'https://promoter.lunagroup.com.au'
@@ -167,5 +169,31 @@ describe('promoters', () => {
     const group = whatsappInviteEmail('Jess Morgan', 'https://chat.whatsapp.com/xyz', 'welcome')
     expect(group.html).toContain('You&rsquo;re in, Jess')
     expect(group.html).not.toContain('Your number stays private')
+  })
+  it('welcome: a channel card when a link is set, and nothing when it is empty', () => {
+    const invite = 'https://whatsapp.com/channel/abc'
+    const m = promoterWelcomeEmail('Jess Morgan', 'JESSM', invite)
+    frame(m.html)
+    expect(m.subject).toBe("You're in: your Luna guest list link")
+    expect(m.html).toContain('You&rsquo;re in, Jess')
+    expect(m.html).toContain(WHATSAPP_CHANNEL_TITLE)
+    expect(m.html).toContain('headliner drops and promoter perks')
+    expect(m.html).toContain(`href="${invite}"`)
+    expect(m.html).toContain('>Follow<')
+    expect(m.html).toContain(`${SITE}/p/JESSM`)
+    expect(m.html).toContain(`${SITE}/promoter`)
+    const blank = promoterWelcomeEmail('Jess Morgan', 'JESSM', '   ')
+    expect(blank.html).not.toContain(WHATSAPP_CHANNEL_TITLE)
+    expect(blank.html).not.toContain('whatsapp.com')
+    expect(blank.html).toContain(`${SITE}/promoter`)
+    const named = promoterWelcomeEmail('<script>', 'JESSM', null)
+    expect(named.html).not.toContain('<script>')
+  })
+  it('the edge-function welcome repeats the same channel copy', () => {
+    const edge = readFileSync(new URL('../../../supabase/functions/promoter-emails/index.ts', import.meta.url), 'utf8')
+    expect(edge).toContain(WHATSAPP_CHANNEL_TITLE)
+    expect(edge).toContain('headliner drops and promoter perks')
+    expect(edge).toContain(WHATSAPP_CHANNEL_BODY.replace(/\u2019/g, '&rsquo;'))
+    expect(edge).toContain('if (invite) rows.push(channelCard(invite))')
   })
 })
